@@ -1,8 +1,6 @@
-# Spatio-Temporal Deformable Attention Network for Video Deblurring (ECCV2022)
+# modified STDAN
 
-PyTorch codes for "[Spatio-Temporal Deformable Attention Network for Video Deblurring](https://arxiv.org/abs/2207.10852) (ECCV2022)"
-
-![Overview](https://vilab.hit.edu.cn/projects/stdan/images/STDAN-Overview.png)
+This project is based on [STDAN](https://github.com/huicongzhang/STDAN)
 
 ## Datasets
 
@@ -13,15 +11,11 @@ We use the [GoPro](https://github.com/SeungjunNah/DeepDeblur_release), [DVD](htt
 - [BSD](https://drive.google.com/file/d/19cel6QgofsWviRbA5IPMEv_hDbZ30vwH/view?usp=sharing)
 
 
-## Pretrained Models
-
-You could download the pretrained model from [here](https://drive.google.com/drive/folders/1ysVyLbw_phxAu5bJVNVSMH4ccFLTZhVp?usp=sharing) and put the weights in [weights folder](weights). 
-
 ## Prerequisites
 #### Clone the Code Repository
 
 ```
-git clone https://github.com/huicongzhang/STDAN.git
+git clone https://github.com/stmrym/STDAN_modified.git
 ```
 ### Install Pytorch Denpendencies
 
@@ -34,7 +28,7 @@ conda install pytorch==1.10.1 torchvision==0.11.2 torchaudio==0.10.1 cudatoolkit
 #### Install Python Denpendencies and Build PyTorch Extensions
 
 ```
-cd STDAN
+cd STDAN_modified
 sh install.sh
 ```
 
@@ -44,29 +38,16 @@ sh install.sh
 To train STDAN, you can simply use the following command:
 
 ```
-python runner.py --data_path=/yourpath/DeepVideoDeblurring_Dataset/quantitative_datasets --data_name=DVD --phase=train
+bash run_code_train.sh
 ```
 
 To test STDAN, you can simply use the following command:
-    
+
 ```
-python runner.py --data_path=/yourpath/DeepVideoDeblurring_Dataset/quantitative_datasets --data_name=DVD --phase=test --weights=./weights/DVD_release.pth 
+bash run_code_test.sh
 ```
 
 In [here](config.py), there are more settings of testing and training. 
-
-Some video results are shown in [here](https://vilab.hit.edu.cn/projects/stdan)
-
-## Cite this work
-
-```
-@inproceedings{zhang2022spatio,
-    title={Spatio-Temporal Deformable Attention Network for Video Deblurring},
-    author={Zhang, Huicong and Xie, Haozhe and Yao, Hongxun},
-    booktitle={ECCV},
-    year={2022}
-}
-```
 
 
 ## License
@@ -74,7 +55,7 @@ Some video results are shown in [here](https://vilab.hit.edu.cn/projects/stdan)
 This project is open sourced under MIT license. 
 
 ## Acknowledgement
-This project is based on [STFAN](https://github.com/sczhou/STFAN)
+This project is based on [STDAN](https://github.com/huicongzhang/STDAN)
 
 
 
