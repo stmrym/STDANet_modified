@@ -113,8 +113,9 @@ class STDAN(nn.Module):
         n, t, c, h, w = frames.size()
         frames_1 = frames[:, :-1, :, :, :].reshape(-1, c, h, w)
         frames_2 = frames[:, 1:, :, :, :].reshape(-1, c, h, w)
+
         flows_forward = self.estimate_flow(frames_1, frames_2).view(n, t-1, 2, h, w)
-        # print(flows_forward.shape)
+
         flows_backward = self.estimate_flow(frames_2,frames_1).view(n, t-1, 2, h, w)
 
         return flows_forward,flows_backward

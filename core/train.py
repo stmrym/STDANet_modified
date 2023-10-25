@@ -13,7 +13,8 @@ import random
 from losses.multi_loss import *
 from time import time
 
-from core.test import test
+# from core.test import test
+from core.val import val
 # from models.VGG19 import VGG19
 # from utils.network_utils import flow2rgb
 from tqdm import tqdm
@@ -77,6 +78,8 @@ def train(cfg, init_epoch, dataset_loader, train_transforms, val_transforms,
         log.info(' learning rate: {0}'.format(deblurnet_lr_scheduler.get_last_lr()))
         tqdm_train = tqdm(train_data_loader)
         tqdm_train.set_description('[TRAIN] [Epoch {0}/{1}]'.format(epoch_idx,cfg.TRAIN.NUM_EPOCHES))
+
+
         for seq_idx, (name, seq_blur, seq_clear) in enumerate(tqdm_train):
             # Measure data time
             data_time.update(time() - batch_end_time)
@@ -93,12 +96,13 @@ def train(cfg, init_epoch, dataset_loader, train_transforms, val_transforms,
             gt_seq = torch.cat(seq_clear,1)
             
             b,t,c,h,w = gt_seq.shape
-            recons_1, recons_2, recons_3, out,flow_fowards,flow_backwards = deblurnet(input_seq)
+            recons_1, recons_2, recons_3, out,flow_forwards,flow_backwards = deblurnet(input_seq)
 
             output_img = torch.cat([recons_1, recons_2, recons_3, out],dim=1)
             
             down_simple_gt = F.interpolate(gt_seq.reshape(-1,c,h,w), size=(h//4, w//4),mode='bilinear', align_corners=True).reshape(b,t,c,h//4,w//4)
-            warploss = warp_loss(down_simple_gt, flow_fowards, flow_backwards)*0.05 
+
+            warploss = warp_loss(down_simple_gt, flow_forwards, flow_backwards)*0.05 
             warp_mse_losses.update(warploss.item(), cfg.CONST.TRAIN_BATCH_SIZE)
             
             t_gt_seq = torch.cat([gt_seq[:,1,:,:,:],gt_seq[:,2,:,:,:],gt_seq[:,3,:,:,:],gt_seq[:,2,:,:,:]],dim=1)
@@ -110,7 +114,7 @@ def train(cfg, init_epoch, dataset_loader, train_transforms, val_transforms,
         
             img_PSNR = util.calc_psnr(out.detach(),gt_seq[:,2,:,:,:].detach())
             img_PSNRs_iter1.update(img_PSNR, cfg.CONST.TRAIN_BATCH_SIZE)
-   
+
             img_PSNR = util.calc_psnr(recons_2.detach(),gt_seq[:,2,:,:,:].detach())
             img_PSNRs_iter2.update(img_PSNR, cfg.CONST.TRAIN_BATCH_SIZE)
             
@@ -129,25 +133,27 @@ def train(cfg, init_epoch, dataset_loader, train_transforms, val_transforms,
             # t.set_postfix()
             tqdm_train.set_postfix_str("  DeblurLoss {0} [{1}, {2}] PSNR_itr1 {3} PSNR_itr2 {4}".format(
                                         deblur_losses, deblur_mse_losses, warp_mse_losses,img_PSNRs_iter2,img_PSNRs_iter1))
+        
             
         # Append epoch loss to TensorBoard
-        train_writer.add_scalar('EpochPSNR_TRAIN', img_PSNRs_iter1.avg, epoch_idx)
+        train_writer.add_scalar('Loss/EpochWarpMSELoss_TRAIN', warp_mse_losses.avg, epoch_idx)
+        train_writer.add_scalar('Loss/EpochMSELoss_TRAIN', deblur_mse_losses.avg, epoch_idx)
+        train_writer.add_scalar('Loss/EpochDeblurLoss_TRAIN', deblur_losses.avg, epoch_idx)  # add each loss
+        train_writer.add_scalar('PSNR/Epoch_PSNR_TRAIN', img_PSNRs_iter1.avg, epoch_idx)
         deblurnet_lr_scheduler.step()
         
         epoch_end_time = time()
         log.info('[TRAIN] [Epoch {0}/{1}]\t EpochTime {2}\t itr1 {3} itr2 {4}'
               .format(epoch_idx, cfg.TRAIN.NUM_EPOCHES, epoch_end_time - epoch_start_time, img_PSNRs_iter2.avg,img_PSNRs_iter1.avg))
         
-       
-        
 
         if epoch_idx%5 == 0:
-            test_img_PSNR,Best_Img_PSNR = test(cfg, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader, val_transforms, deblurnet,deblurnet_solver,val_writer)
+            test_img_PSNR,Best_Img_PSNR = val(cfg, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader, val_transforms, deblurnet,deblurnet_solver,val_writer)
             
          
         
         if epoch_idx%cfg.TRAIN.SAVE_FREQ == 0:
-            utils.network_utils.save_checkpoints(os.path.join(ckpt_dir, 'ckpt-epoch-%04d.pth.tar' % ((epoch_idx) % (10*cfg.TRAIN.SAVE_FREQ)  )), \
+            utils.network_utils.save_checkpoints(os.path.join(ckpt_dir, 'ckpt-epoch-%04d.pth.tar' % (epoch_idx)), \
                                                       epoch_idx, deblurnet,deblurnet_solver, \
                                                       Best_Img_PSNR, Best_Epoch)
             

@@ -135,6 +135,7 @@ models/ops/MultiScaleDeformableAttention.egg-info/
 */*/*/__pycache__
 __pycache__
 exp_log
+mmcv
 utils/__pycache__
 models/__pycache__
 losses/__pycache__

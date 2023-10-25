@@ -8,6 +8,7 @@ import matplotlib
 get_local.activate() """
 # from models import deformable_transformer
 import os
+import re
 
 import torch
 # Fix problem: no $DISPLAY environment variable
@@ -34,6 +35,7 @@ def get_args_from_command_line():
     parser.add_argument('--weights', dest='weights', help='Initialize network from the weights file', type=str)
     parser.add_argument('--data_path', dest='data_path', help='Set dataset root_path', type=str)
     parser.add_argument('--data_name', dest='data_name', help='Set dataset root_path', type=str)
+    parser.add_argument('--json_path', dest='json_path', help='JSON file path', type=str)
     parser.add_argument('--out_path', dest='out_path', help='Set output path')
     parser.add_argument('--packing', dest='packing', help='set packing')
     
@@ -49,6 +51,8 @@ def main():
     args.n_sequence = 5
     args.n_frames_per_video = 100
     # print(args.packing)
+    # print(cfg.DIR.DATASET_JSON_FILE_PATH)
+
     if args.gpu_id is not None:
         cfg.CONST.DEVICE = args.gpu_id
     if args.phase is not None:
@@ -82,8 +86,15 @@ def main():
                 cfg.DIR.DATASET_JSON_FILE_PATH = './datasets/BSD_2ms16msDeblur.json'
             elif cfg.DATASET.DATASET_NAME == 'BSD_3ms24ms':
                 cfg.DIR.DATASET_JSON_FILE_PATH = './datasets/BSD_3ms24msDeblur.json'
+        elif cfg.DATASET.DATASET_NAME == 'REDS_RR':
+            # cfg.DIR.DATASET_JSON_FILE_PATH = './datasets/REDS_RR.json'
+            # cfg.DIR.DATASET_JSON_FILE_PATH = './datasets/REDS_RR_train_val_test.json'
+            # cfg.DIR.DATASET_JSON_FILE_PATH = './datasets/REDS_RR_val.json'
+            cfg.DIR.DATASET_JSON_FILE_PATH = args.json_path
+            cfg.DIR.IMAGE_BLUR_PATH = os.path.join(args.data_path,'%s/%s/input/%s.png')
+            cfg.DIR.IMAGE_CLEAR_PATH = os.path.join(args.data_path,'%s/%s/GT/%s.png')            
         
-        
+
     if args.out_path is not None:
         cfg.DIR.OUT_PATH = args.out_path
     """ if args.packing is not None:
@@ -96,16 +107,23 @@ def main():
     
     
     if cfg.NETWORK.PHASE == 'resume':
-        output_dir = os.path.join(cfg.DIR.OUT_PATH,"train",cfg.CONST.WEIGHTS.split("/")[-3  ], '%s')
+        output_dir = os.path.join(cfg.DIR.OUT_PATH,"train",cfg.CONST.WEIGHTS.split("/")[-3], '%s')
+        print_log    = output_dir % 'print.log'
         # print_log    = os.path.join("exp_log", cfg.CONST.WEIGHTS.split("/")[0]+".log")
     elif  cfg.NETWORK.PHASE == "test":
-        output_dir = os.path.join(cfg.DIR.OUT_PATH,"test",cfg.NETWORK.DEBLURNETARCH + "_" + cfg.DATASET.DATASET_NAME, '%s')
+        dir_dataset_name = args.data_path.split('/')[-1]
+        # output_dir = os.path.join(cfg.DIR.OUT_PATH,"test",cfg.NETWORK.DEBLURNETARCH + "_" + cfg.DATASET.DATASET_NAME + '_' + re.split('[/.]', cfg.CONST.WEIGHTS)[-3], '%s')
+        output_dir = os.path.join(cfg.DIR.OUT_PATH,"test",cfg.NETWORK.DEBLURNETARCH + "_" + dir_dataset_name + '_' + re.split('[/.]', cfg.CONST.WEIGHTS)[-3], '%s')
         print_log    = output_dir % 'print.log'
-        dir_exit = os.path.join(cfg.DIR.OUT_PATH,"test",cfg.NETWORK.DEBLURNETARCH + "_" + cfg.DATASET.DATASET_NAME)
+        # dir_exit = os.path.join(cfg.DIR.OUT_PATH,"test",cfg.NETWORK.DEBLURNETARCH + "_" + cfg.DATASET.DATASET_NAME + '_' + re.split('[/.]', cfg.CONST.WEIGHTS)[-3])
+        dir_exit = os.path.join(cfg.DIR.OUT_PATH,"test",cfg.NETWORK.DEBLURNETARCH + "_" + dir_dataset_name + '_' + re.split('[/.]', cfg.CONST.WEIGHTS)[-3])
         if not os.path.exists(dir_exit):
             os.makedirs(dir_exit)
     else:
-        output_dir = os.path.join(cfg.DIR.OUT_PATH,"train",dt.now().isoformat() + '_' + cfg.NETWORK.DEBLURNETARCH + "_" + cfg.NETWORK.TAG, '%s')
+        timestr = dt.now().isoformat(timespec='seconds').replace(':', '')
+        cfg.NETWORK.TAG = args.data_path.split('/')[-1]
+        output_dir = os.path.join(cfg.DIR.OUT_PATH,"train", timestr + '_' + cfg.NETWORK.DEBLURNETARCH + "_" + cfg.NETWORK.TAG, '%s') # changed to use timestr
+        # output_dir = os.path.join(cfg.DIR.OUT_PATH,"train",dt.now().isoformat() + '_' + cfg.NETWORK.DEBLURNETARCH + "_" + cfg.NETWORK.TAG, '%s')
         # print_log    = os.path.join("exp_log", dt.now().isoformat() + '_' + cfg.NETWORK.DEBLURNETARCH + "_" + cfg.NETWORK.TAG +".log")
         log_dir      = output_dir % 'logs'
         ckpt_dir     = output_dir % 'checkpoints'

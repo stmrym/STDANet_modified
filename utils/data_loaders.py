@@ -18,6 +18,7 @@ from utils.imgio_gen import readgen
 
 class DatasetType(Enum):
     TRAIN = 0
+    VAL = -1
     TEST  = 1
 
 
@@ -168,7 +169,25 @@ class VideoDeblurDataLoader_No_Slipt:
                     sequences.extend(sequence)
                     seq_num += 1
 
+                
                 # # print('[INFO] %s Collecting files of Taxonomy [Name = %s]' % (dt.now(), name + ': ' + str(sam_len-seq_len+1)))
+
+            elif dataset_type == DatasetType.VAL and file['phase'] == 'val':
+                name = file['name']
+                phase = file['phase']
+                samples = file['sample']
+                sam_len = len(samples)
+                seq_len = cfg.DATA.VAL_SEQ_LENGTH
+                seq_num = int(sam_len / seq_len)
+                for n in range(sam_len-seq_len+1):
+                    sequence = self.get_files_of_taxonomy(phase, name, samples[n:n+ seq_len])
+                    # print(samples[n:n+ seq_len])
+                    sequences.extend(sequence)
+
+                if not seq_len%seq_len == 0:
+                    sequence = self.get_files_of_taxonomy(phase, name, samples[-seq_len:])
+                    sequences.extend(sequence)
+                    seq_num += 1
 
 
             elif dataset_type == DatasetType.TEST and file['phase'] == 'test':
@@ -201,8 +220,14 @@ class VideoDeblurDataLoader_No_Slipt:
 
         for sample_idx, sample_name in enumerate(samples):
             # Get file path of img
-            img_blur_path = self.img_blur_path_template % (name, sample_name)
-            img_clear_path = self.img_clear_path_template % (name, sample_name)
+            # for DVD
+            # img_blur_path = self.img_blur_path_template % (name, sample_name)
+            # img_clear_path = self.img_clear_path_template % (name, sample_name)
+            
+            # for REDS_RR
+            img_blur_path = self.img_blur_path_template % (phase, name, sample_name)
+            img_clear_path = self.img_clear_path_template % (phase, name, sample_name)
+
             if os.path.exists(img_blur_path) and os.path.exists(img_clear_path):
                 seq_blur_paths.append(img_blur_path)
                 seq_clear_paths.append(img_clear_path)
@@ -301,5 +326,6 @@ DATASET_LOADER_MAPPING = {
     'GOPRO': VideoDeblurDataLoader_No_Slipt_gopro_bsd,
     'BSD_3ms24ms': VideoDeblurDataLoader_No_Slipt_gopro_bsd,
     'BSD_1ms8ms': VideoDeblurDataLoader_No_Slipt_gopro_bsd,
-    'BSD_2ms16ms': VideoDeblurDataLoader_No_Slipt_gopro_bsd
+    'BSD_2ms16ms': VideoDeblurDataLoader_No_Slipt_gopro_bsd,
+    'REDS_RR': VideoDeblurDataLoader_No_Slipt
 }

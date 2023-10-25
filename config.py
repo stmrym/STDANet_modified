@@ -12,10 +12,12 @@ cfg     = __C
 # Common
 #
 __C.CONST                               = edict()
-__C.CONST.DEVICE                        = '1'                   # gpu_ids
+__C.CONST.DEVICE                        = '0'                   # gpu_ids
 __C.CONST.NUM_WORKER                    = 8                               # number of data workers
-__C.CONST.WEIGHTS                       = 'weights/DVD_release.pth' # data weights path
+__C.CONST.WEIGHTS                       = 'exp_log/train/2023-10-18T155558_STDAN_Stack_REDS/checkpoints/latest-ckpt.pth.tar' # data weights path
+# __C.CONST.WEIGHTS                       = ''
 __C.CONST.TRAIN_BATCH_SIZE              = 8
+__C.CONST.VAL_BATCH_SIZE                = 4
 __C.CONST.TEST_BATCH_SIZE               = 4
 # __C.CONST.PACKING                       = True
 #
@@ -64,7 +66,6 @@ elif cfg.DATASET.DATASET_NAME == 'BSD_3ms24ms':
     __C.DIR.DATASET_ROOT = '/home/hczhang/datasets/BSD/BSD_3ms24ms'
     __C.DIR.IMAGE_BLUR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/Blur/RGB/%s.png')
     __C.DIR.IMAGE_CLEAR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/Sharp/RGB/%s.png')
-
 #
 # data augmentation
 #
@@ -76,6 +77,7 @@ __C.DATA.GAUSSIAN                       = [0, 1e-4]               # mu, std_var
 __C.DATA.COLOR_JITTER                   = [0.2, 0.15, 0.3, 0.1]   # brightness, contrast, saturation, hue
 __C.DATA.TRAIN_SEQ_LENGTH               = 5
 __C.DATA.FRAME_LENGTH                   = 5
+__C.DATA.VAL_SEQ_LENGTH                 = 5
 __C.DATA.TEST_SEQ_LENGTH                = 5
 
 
@@ -85,7 +87,8 @@ __C.DATA.TEST_SEQ_LENGTH                = 5
 __C.NETWORK                             = edict()
 __C.NETWORK.DEBLURNETARCH               = 'STDAN_Stack'             
 __C.NETWORK.PHASE                       = 'test'                 # available options: 'train', 'test', 'resume'
-__C.NETWORK.TAG                         = "DVD"                  # logs folder tag
+__C.NETWORK.TAG                         = "REDS"                  # logs folder tag
+# __C.NETWORK.TAG                         = "DVD"                  # logs folder tag
 
 #
 # Training
@@ -102,7 +105,7 @@ __C.TRAIN.BETA                          = 0.999
 __C.TRAIN.BIAS_DECAY                    = 0.0                    # regularization of bias, default: 0
 __C.TRAIN.WEIGHT_DECAY                  = 0.0                    # regularization of weight, default: 0
 __C.TRAIN.PRINT_FREQ                    = 100                    # print step
-__C.TRAIN.SAVE_FREQ                     = 10                     # weights will be overwritten every save_freq epoch
+__C.TRAIN.SAVE_FREQ                     = 5                     # weights will be overwritten every save_freq epoch
 
 #
 # Testing options

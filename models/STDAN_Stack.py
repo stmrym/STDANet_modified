@@ -39,6 +39,7 @@ class STDAN_Stack(nn.Module):
     def forward(self, x):
         frame_list = [x[:, i, :, :, :] for i in range(self.n_sequence)]
         concated = torch.stack([frame_list[0], frame_list[1], frame_list[2]], dim=1)
+
         recons_1,flow_forward_recons_1,flow_backward_recons_1 = self.recons_net(concated)
 
         

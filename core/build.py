@@ -31,21 +31,29 @@ def  bulid_net(cfg,args,output_dir):
     torch.backends.cudnn.benchmark  = True
 
     # Set up data augmentation
-    train_transforms = utils.data_transforms.Compose([
-        # utils.data_transforms.ColorJitter(cfg.DATA.COLOR_JITTER),
-        utils.data_transforms.Normalize(mean=cfg.DATA.MEAN, std=cfg.DATA.STD),
-        utils.data_transforms.RandomCrop(cfg.DATA.CROP_IMG_SIZE),
-        utils.data_transforms.RandomVerticalFlip(),
-        utils.data_transforms.RandomHorizontalFlip(),
-        # utils.data_transforms.RandomColorChannel(),
-        utils.data_transforms.RandomGaussianNoise(cfg.DATA.GAUSSIAN),
-        utils.data_transforms.ToTensor(),
-    ])
+    if cfg.NETWORK.PHASE in ['train', 'resume']:
 
-    test_transforms = utils.data_transforms.Compose([
+        train_transforms = utils.data_transforms.Compose([
+            # utils.data_transforms.ColorJitter(cfg.DATA.COLOR_JITTER),
+            utils.data_transforms.Normalize(mean=cfg.DATA.MEAN, std=cfg.DATA.STD),
+            utils.data_transforms.RandomCrop(cfg.DATA.CROP_IMG_SIZE),
+            utils.data_transforms.RandomVerticalFlip(),
+            utils.data_transforms.RandomHorizontalFlip(),
+            # utils.data_transforms.RandomColorChannel(),
+            utils.data_transforms.RandomGaussianNoise(cfg.DATA.GAUSSIAN),
+            utils.data_transforms.ToTensor(),
+        ])
+
+        val_transforms = utils.data_transforms.Compose([
+            utils.data_transforms.Normalize(mean=cfg.DATA.MEAN, std=cfg.DATA.STD),
+            utils.data_transforms.ToTensor(),
+        ])
+
+    elif cfg.NETWORK.PHASE in ['test']:
+        test_transforms = utils.data_transforms.Compose([
         utils.data_transforms.Normalize(mean=cfg.DATA.MEAN, std=cfg.DATA.STD),
         utils.data_transforms.ToTensor(),
-    ])
+        ])
 
     # Set up data loader
     
@@ -53,7 +61,7 @@ def  bulid_net(cfg,args,output_dir):
     # dataset_loader = utils.data_loaders.DATASET_LOADER_MAPPING[cfg.DATASET.DATASET_NAME]()
     # dataset_loader = data.Data(args)
     # Set up networks
-
+    
     deblurnet = models.__dict__[cfg.NETWORK.DEBLURNETARCH].__dict__[cfg.NETWORK.DEBLURNETARCH]()
 
     log.info('%s Parameters in %s: %d.' % (dt.now(), cfg.NETWORK.DEBLURNETARCH,
@@ -127,12 +135,16 @@ def  bulid_net(cfg,args,output_dir):
         
         checkpoint = torch.load(os.path.join(cfg.CONST.WEIGHTS),map_location='cpu')
         
-        weights = {}
-        for k,v in checkpoint.items():
-            if 'flow_net' not in k:
-                weights.update({k.replace('module.','').replace('Defattn1.','MMA.').replace('Defattn3.','MSA.'):v})
-       
-        deblurnet.load_state_dict(weights)
+        # weights = {}
+        # for k,v in checkpoint.items():
+        #     if 'flow_net' not in k:
+        #         weights.update({k.replace('module.','').replace('Defattn1.','MMA.').replace('Defattn3.','MSA.'):v})
+
+        # print('----------')
+        # print(checkpoint['deblurnet_state_dict'].keys())
+        # deblurnet.load_state_dict(weights)
+        deblurnet.load_state_dict({k.replace('module.',''):v for k,v in checkpoint['deblurnet_state_dict'].items()})
+        deblurnet_solver.load_state_dict(checkpoint['deblurnet_solver_state_dict'])
         
         init_epoch = 0
         Best_Img_PSNR = 0
@@ -151,11 +163,11 @@ def  bulid_net(cfg,args,output_dir):
     
 
 
-   
+
     
     if cfg.NETWORK.PHASE in ["train","resume"]:
         train_writer = SummaryWriter(os.path.join(log_dir, 'train'))
-        test_writer  = SummaryWriter(os.path.join(log_dir, 'test'))
+        val_writer  = SummaryWriter(os.path.join(log_dir, 'val'))
     else:
         train_writer = None
         test_writer  = None
@@ -165,12 +177,14 @@ def  bulid_net(cfg,args,output_dir):
         
     log.info(' Output_dir： {0}'.format(output_dir[:-2]))
     
+
+
     if cfg.NETWORK.PHASE in ['train','resume']:
-        train(cfg, init_epoch, dataset_loader, train_transforms, test_transforms,
+        train(cfg, init_epoch, dataset_loader, train_transforms, val_transforms,
                               deblurnet, deblurnet_solver, deblurnet_lr_scheduler,
-                              ckpt_dir, train_writer, test_writer,
+                              ckpt_dir, train_writer, val_writer,
                               Best_Img_PSNR, Best_Epoch)
     else:
-        
-        test(cfg, init_epoch,Best_Img_PSNR,ckpt_dir,dataset_loader, test_transforms, deblurnet, deblurnet_solver,test_writer)
+        dir_dataset_name = args.data_path.split('/')[-1]
+        test(cfg, dir_dataset_name, init_epoch,Best_Img_PSNR,ckpt_dir,dataset_loader, test_transforms, deblurnet, deblurnet_solver,test_writer)
         

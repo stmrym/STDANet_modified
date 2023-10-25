@@ -50,7 +50,8 @@ def load_file_list(root_path, child_path = None, is_flatten=False):
             filenames_structured = filenames_structured.flatten()
 
     return folder_paths, filenames_structured, num_files
-root_path = "/home/hczhang/datasets/BSD/BSD_3ms24ms"
+
+root_path = os.environ['HOME'] + "DeepVideoDeblurring_Dataset/"
 child_path = "RGB"
 folder_paths, filenames_structured, num_files = load_file_list(root_path,child_path)
 filenames_structured_list = list(filenames_structured)
@@ -59,18 +60,22 @@ print(len(filenames_structured_list))
 print(len(filenames_structured_list[0]))
 print(filenames_structured_list[100][0].split("/"))
 print(folder_paths_list[100])
-samples = []
-file = io.open('BSD_3ms24msDeblur.json','w',encoding='utf-8')
-for i in range(len(folder_paths_list)):
-    folder_path = folder_paths_list[i]
-    print(folder_path.split("/"))
-    sample_sub = []
-    if folder_path.split("/")[6] != "valid" and folder_path.split("/")[8] != "Blur":
-        for j in range(len(filenames_structured_list[i])):
-            sample_sub.append(filenames_structured_list[i][j].split("/")[-1].split(".")[0])
-        l = {'name': folder_path.split("/")[7],'phase': folder_path.split("/")[6],'sample': sample_sub}
-        samples.append(l)
-js = json.dump(samples, file, sort_keys=False, indent=4)
+
+
+# samples = []
+# file = io.open('BSD_3ms24msDeblur.json','w',encoding='utf-8')
+# for i in range(len(folder_paths_list)):
+#     folder_path = folder_paths_list[i]
+#     print(folder_path.split("/"))
+#     sample_sub = []
+#     if folder_path.split("/")[6] != "valid" and folder_path.split("/")[8] != "Blur":
+#         for j in range(len(filenames_structured_list[i])):
+#             sample_sub.append(filenames_structured_list[i][j].split("/")[-1].split(".")[0])
+#         l = {'name': folder_path.split("/")[7],'phase': folder_path.split("/")[6],'sample': sample_sub}
+#         samples.append(l)
+# js = json.dump(samples, file, sort_keys=False, indent=4)
+
+
 # For VideoDeblur dataset
 # file = io.open('VideoDeblur.json','w',encoding='utf-8')
 # root = '/DeepVideoDeblurringDataset'
