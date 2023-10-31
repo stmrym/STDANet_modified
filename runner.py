@@ -24,7 +24,8 @@ from datetime import datetime as dt
 from config import cfg
 # from models.deformable_detr import DeformableDETR
 # from models.deformable_transformer import DeformableTransformer
-
+import warnings
+warnings.filterwarnings("ignore") 
 # torch.manual_seed(1)
 
 def get_args_from_command_line():
@@ -94,7 +95,7 @@ def main():
             cfg.DIR.IMAGE_BLUR_PATH = os.path.join(args.data_path,'%s/%s/input/%s.png')
             cfg.DIR.IMAGE_CLEAR_PATH = os.path.join(args.data_path,'%s/%s/GT/%s.png')            
         
-
+    cfg.DIR.DATASET_JSON_FILE_PATH = args.json_path
     if args.out_path is not None:
         cfg.DIR.OUT_PATH = args.out_path
     """ if args.packing is not None:

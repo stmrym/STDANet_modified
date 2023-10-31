@@ -12,10 +12,10 @@ cfg     = __C
 # Common
 #
 __C.CONST                               = edict()
-__C.CONST.DEVICE                        = '0'                   # gpu_ids
+__C.CONST.DEVICE                        = 'all'                             # gpu_ids
 __C.CONST.NUM_WORKER                    = 8                               # number of data workers
-__C.CONST.WEIGHTS                       = 'exp_log/train/2023-10-18T155558_STDAN_Stack_REDS/checkpoints/latest-ckpt.pth.tar' # data weights path
-# __C.CONST.WEIGHTS                       = ''
+# __C.CONST.WEIGHTS                       = 'exp_log/train/2023-10-18T155558_STDAN_Stack_REDS/checkpoints/latest-ckpt.pth.tar' # data weights path
+__C.CONST.WEIGHTS                       = ''
 __C.CONST.TRAIN_BATCH_SIZE              = 8
 __C.CONST.VAL_BATCH_SIZE                = 4
 __C.CONST.TEST_BATCH_SIZE               = 4
@@ -96,7 +96,7 @@ __C.NETWORK.TAG                         = "REDS"                  # logs folder 
 
 __C.TRAIN                               = edict()
 __C.TRAIN.USE_PERCET_LOSS               = False
-__C.TRAIN.NUM_EPOCHES                   = 1200                    # maximum number of epoches
+__C.TRAIN.NUM_EPOCHES                   = 400   # original: 1200                   # maximum number of epoches
 __C.TRAIN.LEARNING_RATE                 = 1e-4
 __C.TRAIN.LR_MILESTONES                 = [400,600,800,1000]   
 __C.TRAIN.LR_DECAY                      = 0.5                   # Multiplicative factor of learning rate decay
