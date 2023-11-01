@@ -1,5 +1,18 @@
-# python runner.py --data_path=$HOME/datasets/DeepVideoDeblurring_Dataset/quantitative_datasets --data_name=DVD --phase=resume
-python3 runner.py --data_path=/work/dataset/BSD_3ms24ms --json_path=/work/STDAN_modified/datasets/BSD_3ms24ms_train_val_test.json --data_name=BSD_3ms24ms --phase=train
+#!/bin/bash
+
+python3 runner.py \
+    --data_path=$HOME/datasets/BSD_3ms24ms \
+    --json_path=./datasets/BSD_3ms24ms_train_val_test.json \
+    --data_name=BSD_3ms24ms \
+    --phase=train   # for Huawei
+
+# python3 runner.py \
+#     --data_path=/work/dataset/BSD_3ms24ms \
+#     --json_path=/work/STDAN_modified/datasets/BSD_3ms24ms_train_val_test.json \
+#     --data_name=BSD_3ms24ms \
+#     --phase=train   # for YNU
+
+
 
 # python runner.py --data_path=$HOME/datasets/REDS --data_name=REDS_RR --phase=train
 # python runner.py --data_path=$HOME/datasets/REDS --data_name=REDS_RR --phase=resume

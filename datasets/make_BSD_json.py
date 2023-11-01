@@ -2,9 +2,10 @@ import json
 import os
 import glob
 
-dataset_path = '/media/ichilab/disk/moriyama/dataset'
+# dataset_path = '/media/ichilab/disk/moriyama/dataset'
+dataset_path = '/home/moriyamasota/datasets'
 bsd_type = 'BSD_3ms24ms'
-phase_list = ['test', 'val', 'train']
+phase_list = ['test', 'valid', 'train']
 
 dict_list = []
 

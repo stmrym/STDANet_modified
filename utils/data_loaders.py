@@ -18,7 +18,7 @@ from utils.imgio_gen import readgen
 
 class DatasetType(Enum):
     TRAIN = 0
-    VAL = -1
+    VALID = -1
     TEST  = 1
 
 
@@ -172,7 +172,7 @@ class VideoDeblurDataLoader_No_Slipt:
                 
                 # # print('[INFO] %s Collecting files of Taxonomy [Name = %s]' % (dt.now(), name + ': ' + str(sam_len-seq_len+1)))
 
-            elif dataset_type == DatasetType.VAL and file['phase'] == 'val':
+            elif dataset_type == DatasetType.VALID and file['phase'] == 'val':
                 name = file['name']
                 phase = file['phase']
                 samples = file['sample']
@@ -274,6 +274,24 @@ class VideoDeblurDataLoader_No_Slipt_gopro_bsd:
 
                 # print('[INFO] %s Collecting files of Taxonomy [Name = %s]' % (dt.now(), name + ': ' + str(sam_len-seq_len+1)))
 
+            elif dataset_type == DatasetType.VALID and file['phase'] == 'valid':
+                name = file['name']
+                phase = file['phase']
+                samples = file['sample']
+                sam_len = len(samples)
+                seq_len = cfg.DATA.VAL_SEQ_LENGTH
+                seq_num = int(sam_len / seq_len)
+                for n in range(sam_len-seq_len+1):
+                    sequence = self.get_files_of_taxonomy(phase, name, samples[n:n+ seq_len])
+                    # print(samples[n:n+ seq_len])
+                    sequences.extend(sequence)
+
+                if not seq_len%seq_len == 0:
+                    sequence = self.get_files_of_taxonomy(phase, name, samples[-seq_len:])
+                    sequences.extend(sequence)
+                    seq_num += 1
+
+                # print('[INFO] %s Collecting files of Taxonomy [Name = %s]' % (dt.now(), name + ': ' + str(sam_len-seq_len+1)))
 
             elif dataset_type == DatasetType.TEST and file['phase'] == 'test':
                 name = file['name']

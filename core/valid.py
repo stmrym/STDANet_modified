@@ -72,10 +72,10 @@ def mkdir(path):
 
 
 
-def val(cfg, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader, val_transforms, deblurnet, deblurnet_solver,val_writer):
+def valid(cfg, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader, val_transforms, deblurnet, deblurnet_solver,val_writer):
     # Set up data loader
     val_data_loader = torch.utils.data.DataLoader(
-        dataset=dataset_loader.get_dataset(utils.data_loaders.DatasetType.VAL, val_transforms),
+        dataset=dataset_loader.get_dataset(utils.data_loaders.DatasetType.VALID, val_transforms),
         batch_size=cfg.CONST.VAL_BATCH_SIZE,
         num_workers=cfg.CONST.NUM_WORKER, pin_memory=True, shuffle=False)
    
@@ -100,7 +100,7 @@ def val(cfg, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader, val_transforms, d
     # g_names= 'init'
     deblurnet.eval()
     tqdm_val = tqdm(val_data_loader)
-    tqdm_val.set_description('[VAL] [Epoch {0}/{1}]'.format(epoch_idx,cfg.TRAIN.NUM_EPOCHES))
+    tqdm_val.set_description('[VALID] [Epoch {0}/{1}]'.format(epoch_idx,cfg.TRAIN.NUM_EPOCHES))
     
     for seq_idx, (name, seq_blur, seq_clear) in enumerate(tqdm_val):
         data_time.update(time() - batch_end_time)
@@ -180,7 +180,7 @@ def val(cfg, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader, val_transforms, d
             
 
     # Output val results
-    log.info('============================ VAL RESULTS ============================')
+    log.info('============================ VALID RESULTS ============================')
     
     
 
@@ -199,7 +199,7 @@ def val(cfg, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader, val_transforms, d
         utils.network_utils.save_checkpoints(os.path.join(ckpt_dir, 'best-ckpt.pth.tar'), \
                                                     epoch_idx, deblurnet,deblurnet_solver, \
                                                     Best_Img_PSNR, Best_Epoch)
-    log.info('[VAL] Total_Mean_PSNR:itr1:{0},itr2:{1},best:{2}'.format(img_PSNRs_iter1.avg,img_PSNRs_iter2.avg,Best_Img_PSNR))
+    log.info('[VALID] Total_Mean_PSNR:itr1:{0},itr2:{1},best:{2}'.format(img_PSNRs_iter1.avg,img_PSNRs_iter2.avg,Best_Img_PSNR))
     
     # test_writer.add_scalar(cfg.NETWORK.DEBLURNETARCH + '/EpochPSNR_TEST', img_PSNRs_mid.avg, epoch_idx + 1)
     return img_PSNRs_iter2.avg,Best_Img_PSNR

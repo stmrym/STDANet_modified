@@ -58,6 +58,7 @@ def  bulid_net(cfg,args,output_dir):
     # Set up data loader
     
     dataset_loader = utils.data_loaders.DATASET_LOADER_MAPPING[cfg.DATASET.DATASET_NAME]()
+
     # dataset_loader = utils.data_loaders.DATASET_LOADER_MAPPING[cfg.DATASET.DATASET_NAME]()
     # dataset_loader = data.Data(args)
     # Set up networks

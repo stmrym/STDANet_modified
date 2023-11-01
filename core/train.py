@@ -14,7 +14,8 @@ from losses.multi_loss import *
 from time import time
 
 # from core.test import test
-from core.val import val
+# from STDAN.core.valid import valid
+from core.valid import valid
 # from models.VGG19 import VGG19
 # from utils.network_utils import flow2rgb
 from tqdm import tqdm
@@ -53,7 +54,6 @@ def train(cfg, init_epoch, dataset_loader, train_transforms, val_transforms,
             num_workers=cfg.CONST.NUM_WORKER, pin_memory=True, shuffle=True)
         # train_data_loader = dataset_loader.loader_train
 
-        
         # Tick / tock
         epoch_start_time = time()
         # Batch average meterics
@@ -148,7 +148,7 @@ def train(cfg, init_epoch, dataset_loader, train_transforms, val_transforms,
         
 
         if epoch_idx%5 == 0:
-            test_img_PSNR,Best_Img_PSNR = val(cfg, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader, val_transforms, deblurnet,deblurnet_solver,val_writer)
+            test_img_PSNR,Best_Img_PSNR = valid(cfg, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader, val_transforms, deblurnet,deblurnet_solver,val_writer)
             
          
         
