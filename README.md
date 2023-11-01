@@ -38,13 +38,13 @@ sh install.sh
 To train STDAN, you can simply use the following command:
 
 ```
-bash run_code_train.sh
+python runner.py --data_path=~/datasets/BSD_3ms24ms --json_path=./datasets/BSD_3ms24ms_train_val_test.json --data_name=BSD_3ms24ms --phase=train   
 ```
 
 To test STDAN, you can simply use the following command:
 
 ```
-bash run_code_test.sh
+python runner.py --data_path=~/datasets/REDS --json_path=./datasets/BSD_3ms24ms_train_val_test.json --data_name=BSD_3ms24ms --phase=test --weights=$HOME/STDAN/exp_log/train/[CKPT].pth.tar
 ```
 
 In [here](config.py), there are more settings of testing and training. 
