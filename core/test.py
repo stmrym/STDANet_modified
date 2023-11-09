@@ -22,7 +22,7 @@ from time import time
 # from utils.imgio_gen import visulize_attention_ratio
 from utils.util import ssim_calculate
 from tqdm import tqdm
-import pandas as pd
+import glob
 # from mmflow.datasets import visualize_flow, write_flow
 from models.submodules import warp
 def warp_loss(frames_list,flow_forwards,flow_backwards):
@@ -203,6 +203,7 @@ def test(cfg, dir_dataset_name, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader
     tqdm_test = tqdm(test_data_loader)
     tqdm_test.set_description('[TEST] [Epoch {0}/{1}]'.format(epoch_idx,cfg.TRAIN.NUM_EPOCHES))
     
+    
     for seq_idx, (name, seq_blur, seq_clear) in enumerate(tqdm_test):
         data_time.update(time() - batch_end_time)
 
@@ -210,7 +211,6 @@ def test(cfg, dir_dataset_name, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader
         seq_clear = [utils.network_utils.var_or_cuda(img).unsqueeze(1) for img in seq_clear]
         # seq_len = len(seq_blur)
         # Switch models to training mode
-
 
         # if name[0] == "IMG_0055.00077":
         
@@ -238,7 +238,6 @@ def test(cfg, dir_dataset_name, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader
             down_simple_gt = F.interpolate(gt_seq.reshape(-1,c,h,w), size=(h//4, w//4),mode='bilinear', align_corners=True).reshape(b,t,c,h//4,w//4)
             
             warploss = warp_loss_train(down_simple_gt, flow_forwards, flow_backwards)*0.05 
-
             
             warp_mse_losses.update(warploss.item(), cfg.CONST.TEST_BATCH_SIZE)
 
@@ -286,83 +285,18 @@ def test(cfg, dir_dataset_name, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader
                         .format(test_time ,data_time, img_PSNRs_iter1,img_PSNRs_iter2,img_ssims_iter1,img_ssims_iter2))
                 
                 # saving images
-                out_dir = os.path.join(cfg.DIR.OUT_PATH,"test",cfg.NETWORK.DEBLURNETARCH + "_" + dir_dataset_name + '_' + re.split('[/.]', cfg.CONST.WEIGHTS)[-3])
+                out_dir = os.path.join(cfg.DIR.OUT_PATH, "test", cfg.CONST.DEBUG_PREFIX + cfg.NETWORK.DEBLURNETARCH + "_" + dir_dataset_name + '_' + re.split('[/.]', cfg.CONST.WEIGHTS)[-3])
                 seq, img_name = name[0].split('.')  # name = ['000.00000002']
 
                 # saving output image
                 if os.path.isdir(os.path.join(out_dir, 'output', seq)) == False:
                     os.makedirs(os.path.join(out_dir, 'output', seq), exist_ok=True)
 
-                output_image = np.maximum(output_image.numpy().copy(), 0)
-                output_image_bgr = cv2.cvtColor(output_image.astype(np.uint8), cv2.COLOR_RGB2BGR)
+                output_image = output_image.numpy().copy()
+                output_image_bgr = cv2.cvtColor(np.clip(output_image, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
                 
                 cv2.imwrite(os.path.join(out_dir, 'output', seq, img_name + '.png'), output_image_bgr)
-
-
-                out_flow_forward = (flow_forwards[-1])[0][1].permute(1,2,0).cpu().detach().numpy()
-                H, W, _ = out_flow_forward.shape
-                out_flow_forward = cv2.resize(out_flow_forward, (W*4, H*4))
-
-                # saving flow_hsv
-                # 角度範囲のパラメータ
-                ang_min = 0
-                ang_max = 360
-                _ang_min, _ang_max = adjust_ang(ang_min, ang_max)  # 角度の表現を統一する
-
-                # HSV色空間の配列に入れる
-                hsv = np.zeros_like(output_image.astype(np.uint8), dtype='uint8')
-                mag, ang = cv2.cartToPolar(out_flow_forward[..., 0], out_flow_forward[..., 1], angleInDegrees=True)
-                any_mag, any_ang = any_angle_only(mag, ang, ang_min, ang_max)
-                hsv[..., 0] = 180*(any_ang - _ang_min) / (_ang_max - _ang_min)
-                hsv[..., 1] = 255
-                # hsv[..., 2] = cv2.normalize(any_mag, None, 0, 255, cv2.NORM_MINMAX)
-                hsv[..., 2] = np.clip(any_mag * 20, 0, 255) # 正規化なし
-                flow_rgb = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
-
-                # 画像の原点にHSV色空間を埋め込み
-                flow_rgb_display = np.copy(flow_rgb)
-                hsv_cmap_rgb, *_ = hsv_cmap(_ang_min, _ang_max, 51)
-                flow_rgb_display[0:hsv_cmap_rgb.shape[0], 0:hsv_cmap_rgb.shape[1]] = hsv_cmap_rgb
-
-                fig, ax = plt.subplots(figsize=(8, 6), dpi=350)
-                ax.axis("off")
-                ax.imshow(flow_rgb_display)
-
-
-                forward_hsv_path = os.path.join(out_dir, 'flow_hsv', seq)
-                if os.path.isdir(forward_hsv_path) == False:
-                    os.makedirs(forward_hsv_path)
-                plt.savefig(os.path.join(forward_hsv_path, img_name + '.png'), bbox_inches = "tight")
-
-                plt.clf()
-                plt.close()
-                
-                # saving flow_vector
-                fig, ax = plt.subplots(figsize=(8,6), dpi=350)
-                ax.axis("off")
-                ax.imshow(output_image.astype(np.uint8))
-                
-                x, y, u, v = flow_vector(flow=out_flow_forward, spacing=10, margin=0, minlength=1)  # flow.shape must be (H, W, 2)
-                im = ax.quiver(x, y, u/np.sqrt(pow(u,2)+pow(v,2)),v/np.sqrt(pow(u,2)+pow(v,2)),np.sqrt(pow(u,2)+pow(v,2)), cmap='jet', angles='xy', scale_units='xy', scale=0.1)
-                
-                divider = make_axes_locatable(ax) #axに紐付いたAxesDividerを取得
-                cax = divider.append_axes("right", size="5%", pad=0.1) #append_axesで新しいaxesを作成
-                cb = fig.colorbar(im, cax=cax)
-                cb.mappable.set_clim(0.0, 8.0)
-
-
-                forward_path = os.path.join(out_dir, 'flow_forward', seq)
-                if os.path.isdir(forward_path) == False:
-                    os.makedirs(forward_path)
-                plt.savefig(os.path.join(forward_path, img_name + '.png'), bbox_inches = "tight")
-
-                plt.clf()
-                plt.close()
-
-
-            else:
-                tqdm_test.set_postfix_str('RT {0} DT {1} imgPSNR_iter1 {2} imgPSNR_iter2 {3}'
-                        .format(test_time ,data_time, img_PSNRs_iter1,img_PSNRs_iter2))     
+    
             
             
     # Output testing results
@@ -370,31 +304,113 @@ def test(cfg, dir_dataset_name, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader
 
         log.info('============================ TEST RESULTS ============================')
         log.info('[TEST] Total_Mean_PSNR:itr1:{0},itr2:{1},best:{2},ssim_it1 {3},ssim_it2 {4}'.format(img_PSNRs_iter1.avg,img_PSNRs_iter2.avg,Best_Img_PSNR,img_ssims_iter1.avg,img_ssims_iter2.avg))
-        
-    '''
-    else:
-        # Output val results
-        log.info('============================ TEST RESULTS ============================')
-        
-        
 
-        # Add testing results to TensorBoard
-        test_writer.add_scalar('Loss/EpochWarpMSELoss_TEST', warp_mse_losses.avg, epoch_idx)
-        test_writer.add_scalar('Loss/EpochMSELoss_TEST', deblur_mse_losses.avg, epoch_idx)
-        test_writer.add_scalar('Loss/EpochDeblurLoss_TEST', deblur_mse_losses.avg, epoch_idx) 
-        test_writer.add_scalar('PSNR/Epoch_PSNR_TEST', img_PSNRs_iter2.avg, epoch_idx)
-        test_writer.add_scalar('SSIM/Epoch_SSIM_TEST', img_ssims_iter2.avg, epoch_idx)
-        if img_PSNRs_iter2.avg  >= Best_Img_PSNR:
-            if not os.path.exists(ckpt_dir):
-                os.makedirs(ckpt_dir)
+    
+    # creating flow map from npy    
+    out_dir = os.path.join(cfg.DIR.OUT_PATH, "test", cfg.CONST.DEBUG_PREFIX + cfg.NETWORK.DEBLURNETARCH + "_" + dir_dataset_name + '_' + re.split('[/.]', cfg.CONST.WEIGHTS)[-3])
+    log.info('========================== SAVING FLOW MAP ===========================')
+    
+    seqs = sorted([f for f in os.listdir(os.path.join(os.path.join(out_dir, 'flow_npy'))) if os.path.isdir(os.path.join(out_dir, 'flow_npy', f))])
 
-            Best_Img_PSNR = img_PSNRs_iter2.avg
-            Best_Epoch = epoch_idx
-            utils.network_utils.save_checkpoints(os.path.join(ckpt_dir, 'best-ckpt.pth.tar'), \
-                                                      epoch_idx, deblurnet,deblurnet_solver, \
-                                                      Best_Img_PSNR, Best_Epoch)
-        log.info('[TEST] Total_Mean_PSNR:itr1:{0},itr2:{1},best:{2}'.format(img_PSNRs_iter1.avg,img_PSNRs_iter2.avg,Best_Img_PSNR))
+    for seq in seqs:
+        npy_files = sorted(glob.glob(os.path.join(out_dir, 'flow_npy', seq, '*.npy')))
+        out_flows = []
+        names = []
+        for npy_file in npy_files:
+            npy = np.load(npy_file)
+            H, W, _ = npy.shape
+            npy = cv2.resize(npy, (W*4, H*4))
+            out_flows.append(npy)
+            names.append(os.path.splitext((os.path.basename(npy_file)))[0])
         
-        # test_writer.add_scalar(cfg.NETWORK.DEBLURNETARCH + '/EpochPSNR_TEST', img_PSNRs_mid.avg, epoch_idx + 1)
-        return img_PSNRs_iter2.avg,Best_Img_PSNR
-    '''
+        width = W*4
+        height = H*4
+
+        firstLoop = True
+        for out_flow in out_flows:  # get amin and amax for each seq
+            ang_min = 0
+            ang_max = 360
+            _ang_min, _ang_max = adjust_ang(ang_min, ang_max)  # 角度の表現を統一する
+            mag, ang = cv2.cartToPolar(out_flow[..., 0], out_flow[..., 1], angleInDegrees=True)
+            any_mag, _ = any_angle_only(mag, ang, ang_min, ang_max)
+            
+            _, _, u, v = flow_vector(flow=out_flow, spacing=10, margin=0, minlength=1)  # flow.shape must be (H, W, 2)
+            vector_mag = np.nanmax(np.sqrt(pow(u,2)+pow(v,2)))
+
+            if firstLoop == True:
+                amax = np.amax(any_mag)
+                amin = np.amin(any_mag)
+                vector_amax = vector_mag
+                firstLoop = False
+            else:
+                if amax < np.amax(any_mag):
+                    amax = np.amax(any_mag)
+                if amin > np.amin(any_mag):
+                    amin = np.amin(any_mag)
+                if vector_amax < vector_mag:
+                    vector_amax = vector_mag
+
+        print(seq)
+        for img_name, out_flow in tqdm(zip(names, out_flows)):
+            # saving flow_hsv
+            # 角度範囲のパラメータ
+            ang_min = 0
+            ang_max = 360
+            _ang_min, _ang_max = adjust_ang(ang_min, ang_max)  # 角度の表現を統一する
+
+
+            # HSV色空間の配列に入れる
+            hsv = np.zeros_like(np.empty([height, width, 3]).astype(np.uint8), dtype='uint8')
+            mag, ang = cv2.cartToPolar(out_flow[..., 0], out_flow[..., 1], angleInDegrees=True)
+            any_mag, any_ang = any_angle_only(mag, ang, ang_min, ang_max)
+            hsv[..., 0] = 180*(any_ang - _ang_min) / (_ang_max - _ang_min)
+            hsv[..., 1] = 255
+            # hsv[..., 2] = cv2.normalize(any_mag, None, 0, 255, cv2.NORM_MINMAX) # default
+            hsv[..., 2] = (any_mag - amin)/(amax - amin) * 255 # min-max normalization (0~255)
+            # hsv[..., 2] = np.clip(any_mag, 0, 255) # 正規化なし
+
+            flow_rgb = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+
+            # 画像の原点にHSV色空間を埋め込み
+            flow_rgb_display = np.copy(flow_rgb)
+            hsv_cmap_rgb, *_ = hsv_cmap(_ang_min, _ang_max, 51)
+            flow_rgb_display[0:hsv_cmap_rgb.shape[0], 0:hsv_cmap_rgb.shape[1]] = hsv_cmap_rgb
+
+            fig, ax = plt.subplots(figsize=(8, 6), dpi=350)
+            ax.axis("off")
+            ax.imshow(flow_rgb_display)
+
+
+            forward_hsv_path = os.path.join(out_dir, 'flow_hsv', seq)
+            if os.path.isdir(forward_hsv_path) == False:
+                os.makedirs(forward_hsv_path)
+            plt.savefig(os.path.join(forward_hsv_path, img_name + '.png'), bbox_inches = "tight")
+
+            plt.clf()
+            plt.close()
+            
+
+            # saving flow_vector
+            fig, ax = plt.subplots(figsize=(8,6), dpi=350)
+            ax.axis("off")
+            output_image = cv2.imread(os.path.join(out_dir, 'output', seq, img_name + '.png'), cv2.IMREAD_GRAYSCALE)
+
+            ax.imshow(output_image.astype(np.uint8),cmap='gray', alpha=0.8)
+            
+            x, y, u, v = flow_vector(flow=out_flow, spacing=10, margin=0, minlength=5)  # flow.shape must be (H, W, 2)
+            im = ax.quiver(x, y, u/np.sqrt(pow(u,2)+pow(v,2)),v/np.sqrt(pow(u,2)+pow(v,2)),np.sqrt(pow(u,2)+pow(v,2)), cmap='jet', angles='xy', scale_units='xy', scale=0.1)
+            
+            divider = make_axes_locatable(ax) #axに紐付いたAxesDividerを取得
+            cax = divider.append_axes("right", size="5%", pad=0.1) #append_axesで新しいaxesを作成
+            cb = fig.colorbar(im, cax=cax)
+            cb.mappable.set_clim(0, vector_amax)
+
+
+            forward_path = os.path.join(out_dir, 'flow_forward', seq)
+            if os.path.isdir(forward_path) == False:
+                os.makedirs(forward_path)
+            plt.savefig(os.path.join(forward_path, img_name + '.png'), bbox_inches = "tight")
+
+            plt.clf()
+            plt.close()
+                
