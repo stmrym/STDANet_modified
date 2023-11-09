@@ -308,9 +308,10 @@ def test(cfg, dir_dataset_name, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader
     
     # creating flow map from npy    
     out_dir = os.path.join(cfg.DIR.OUT_PATH, "test", cfg.CONST.DEBUG_PREFIX + cfg.NETWORK.DEBLURNETARCH + "_" + dir_dataset_name + '_' + re.split('[/.]', cfg.CONST.WEIGHTS)[-3])
+
     log.info('========================== SAVING FLOW MAP ===========================')
     
-    seqs = sorted([f for f in os.listdir(os.path.join(os.path.join(out_dir, 'flow_npy'))) if os.path.isdir(os.path.join(out_dir, 'flow_npy', f))])
+    seqs = sorted([f for f in os.listdir(os.path.join(out_dir, 'flow_npy')) if os.path.isdir(os.path.join(out_dir, 'flow_npy', f))])
 
     for seq in seqs:
         npy_files = sorted(glob.glob(os.path.join(out_dir, 'flow_npy', seq, '*.npy')))
