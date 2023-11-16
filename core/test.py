@@ -296,8 +296,12 @@ def test(cfg, dir_dataset_name, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader
                 output_image_bgr = cv2.cvtColor(np.clip(output_image, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
                 
                 cv2.imwrite(os.path.join(out_dir, 'output', seq, img_name + '.png'), output_image_bgr)
-    
-            
+
+                # saving npy files
+                if os.path.isdir(os.path.join(out_dir, 'flow_npy', seq)) == False:
+                    os.makedirs(os.path.join(out_dir, 'flow_npy', seq), exist_ok=True)
+                out_flow_forward = (flow_forwards[-1])[0][1].permute(1,2,0).cpu().detach().numpy()               
+                np.save(os.path.join(out_dir, 'flow_npy', seq, img_name + '.npy'),out_flow_forward)
             
     # Output testing results
     if cfg.NETWORK.PHASE == 'test':
