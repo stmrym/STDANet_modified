@@ -1,16 +1,16 @@
 #!/bin/bash
 
-python3 runner.py \
-    --data_path=$HOME/datasets/BSD_3ms24ms \
-    --json_path=./datasets/BSD_3ms24ms_train_val_test.json \
-    --data_name=BSD_3ms24ms \
-    --phase=train   
-
 # python3 runner.py \
-#     --data_path=/work/dataset/BSD_3ms24ms \
-#     --json_path=/work/STDAN_modified/datasets/BSD_3ms24ms_train_val_test.json \
+#     --data_path=$HOME/datasets/BSD_3ms24ms \
+#     --json_path=./datasets/BSD_3ms24ms_train_val_test.json \
 #     --data_name=BSD_3ms24ms \
 #     --phase=train   
+
+python3 runner.py \
+    --data_path=/work/dataset/BSD_3ms24ms \
+    --json_path=/work/STDAN_modified/datasets/BSD_3ms24ms_train_val_test.json \
+    --data_name=BSD_3ms24ms \
+    --phase=train   
 
 
 

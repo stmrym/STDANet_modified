@@ -200,9 +200,10 @@ def test(cfg, dir_dataset_name, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader
     # test_psnr = dict()
     # g_names= 'init'
     deblurnet.eval()
+    
+    print(f'Total test case: {len(test_data_loader)}')
     tqdm_test = tqdm(test_data_loader)
     tqdm_test.set_description('[TEST] [Epoch {0}/{1}]'.format(epoch_idx,cfg.TRAIN.NUM_EPOCHES))
-    
     
     for seq_idx, (name, seq_blur, seq_clear) in enumerate(tqdm_test):
         data_time.update(time() - batch_end_time)
@@ -297,6 +298,11 @@ def test(cfg, dir_dataset_name, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader
                 
                 cv2.imwrite(os.path.join(out_dir, 'output', seq, img_name + '.png'), output_image_bgr)
     
+                # saving flow map .npy
+                if os.path.isdir(os.path.join(out_dir, 'flow_npy', seq)) == False:
+                    os.makedirs(os.path.join(out_dir, 'flow_npy', seq), exist_ok=True)
+                out_flow_forward = (flow_forwards[-1])[0][1].permute(1,2,0).cpu().detach().numpy()
+                np.save(os.path.join(out_dir, 'flow_npy', seq, img_name + '.npy'), out_flow_forward)
             
             
     # Output testing results
