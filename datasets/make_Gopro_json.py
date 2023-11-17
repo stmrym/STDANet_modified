@@ -3,7 +3,7 @@ import os
 import glob
 
 dataset_path = os.path.join(os.environ['HOME'], 'datasets')
-bsd_type = 'BSD_2ms16ms'
+bsd_type = 'BSD_3ms24ms'
 phase_list = ['test', 'valid', 'train']
 
 dict_list = []
