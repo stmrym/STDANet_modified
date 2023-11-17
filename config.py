@@ -98,10 +98,10 @@ __C.NETWORK.TAG                         = "REDS"                  # logs folder 
 
 __C.TRAIN                               = edict()
 __C.TRAIN.USE_PERCET_LOSS               = False
-__C.TRAIN.NUM_EPOCHES                   = 1200   # original: 1200                   # maximum number of epoches
+__C.TRAIN.NUM_EPOCHES                   = 1000   # original: 1200                   # maximum number of epoches
 __C.TRAIN.LEARNING_RATE                 = 1e-4
-__C.TRAIN.LR_MILESTONES                 = [400,600,800,1000]   
-# __C.TRAIN.LR_MILESTONES                 = [600,700,800,1000]   
+# __C.TRAIN.LR_MILESTONES                 = [400,600,800,1000]   
+__C.TRAIN.LR_MILESTONES                 = [300,400,500,600]   
 __C.TRAIN.LR_DECAY                      = 0.5                   # Multiplicative factor of learning rate decay
 __C.TRAIN.MOMENTUM                      = 0.9
 __C.TRAIN.BETA                          = 0.999
