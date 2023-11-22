@@ -16,11 +16,11 @@ Deblurred output
 
 [TODO]
 
-flow vector
+Flow vector
 
 [TODO]
 
-flow angle
+Flow angle
 
 [TODO]
 
