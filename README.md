@@ -7,6 +7,23 @@ This project is based on [STDAN](https://github.com/huicongzhang/STDAN)
 - We save output images and visualized flow images at the time of testing.
 - We added [valid.py](core/valid.py) and split the BSD dataset into train, valid and test by [make_BSD_json.py](datasets/make_BSD_json.py).
 
+### Output examples
+Input
+
+[TODO]
+
+Deblurred output
+
+[TODO]
+
+flow vector
+
+[TODO]
+
+flow angle
+
+[TODO]
+
 ## Datasets
 
 We use the [GoPro](https://github.com/SeungjunNah/DeepDeblur_release), [DVD](http://www.cs.ubc.ca/labs/imager/tr/2017/DeepVideoDeblurring/) and [BSD](https://github.com/zzh-tech/ESTRNN) datasets in our experiments, which are available below:
