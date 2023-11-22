@@ -12,14 +12,14 @@ cfg     = __C
 # Common
 #
 __C.CONST                               = edict()
-__C.CONST.DEVICE                        = '1'                             # gpu_ids
+__C.CONST.DEVICE                        = '0'                             # gpu_ids
 __C.CONST.NUM_WORKER                    = 8                               # number of data workers
 # __C.CONST.WEIGHTS                       = 'exp_log/train/2023-10-18T155558_STDAN_Stack_REDS/checkpoints/latest-ckpt.pth.tar' # data weights path
 __C.CONST.WEIGHTS                       = ''
 __C.CONST.TRAIN_BATCH_SIZE              = 8
 __C.CONST.VAL_BATCH_SIZE                = 4
 __C.CONST.TEST_BATCH_SIZE               = 4
-__C.CONST.DEBUG_PREFIX                  = ''  # This strings will be added to output_dir_path
+__C.CONST.DEBUG_PREFIX                  = 'lr_1e-2_'  # This strings will be added to output_dir_path
 # __C.CONST.DEBUG_PREFIX                  = 'debug_'  # This strings will be added to output_dir_path
 # __C.CONST.PACKING                       = True
 #
@@ -99,9 +99,9 @@ __C.NETWORK.TAG                         = "REDS"                  # logs folder 
 __C.TRAIN                               = edict()
 __C.TRAIN.USE_PERCET_LOSS               = False
 __C.TRAIN.NUM_EPOCHES                   = 1000   # original: 1200                   # maximum number of epoches
-__C.TRAIN.LEARNING_RATE                 = 1e-4
+__C.TRAIN.LEARNING_RATE                 = 1e-2 # original: 1e-4
 # __C.TRAIN.LR_MILESTONES                 = [400,600,800,1000]   
-__C.TRAIN.LR_MILESTONES                 = [300,400,500,600]   
+__C.TRAIN.LR_MILESTONES                 = [300,400,500,600,700]   
 __C.TRAIN.LR_DECAY                      = 0.5                   # Multiplicative factor of learning rate decay
 __C.TRAIN.MOMENTUM                      = 0.9
 __C.TRAIN.BETA                          = 0.999

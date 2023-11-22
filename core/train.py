@@ -111,13 +111,13 @@ def train(cfg, init_epoch, dataset_loader, train_transforms, val_transforms,
             
             deblur_loss = deblur_mse_loss + warploss  
             deblur_losses.update(deblur_loss.item(), cfg.CONST.TRAIN_BATCH_SIZE)
-        
+
             img_PSNR = util.calc_psnr(out.detach(),gt_seq[:,2,:,:,:].detach())
             img_PSNRs_iter1.update(img_PSNR, cfg.CONST.TRAIN_BATCH_SIZE)
 
             img_PSNR = util.calc_psnr(recons_2.detach(),gt_seq[:,2,:,:,:].detach())
             img_PSNRs_iter2.update(img_PSNR, cfg.CONST.TRAIN_BATCH_SIZE)
-            
+
             
             deblurnet_solver.zero_grad()
             deblur_loss.backward()
@@ -140,6 +140,7 @@ def train(cfg, init_epoch, dataset_loader, train_transforms, val_transforms,
         train_writer.add_scalar('Loss/EpochMSELoss_TRAIN', deblur_mse_losses.avg, epoch_idx)
         train_writer.add_scalar('Loss/EpochDeblurLoss_TRAIN', deblur_losses.avg, epoch_idx)  # add each loss
         train_writer.add_scalar('PSNR/Epoch_PSNR_TRAIN', img_PSNRs_iter1.avg, epoch_idx)
+        train_writer.add_scalar('lr/Epoch_lr', deblurnet_lr_scheduler.get_last_lr()[0], epoch_idx)  # add lr
         deblurnet_lr_scheduler.step()
         
         epoch_end_time = time()
