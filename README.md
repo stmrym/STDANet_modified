@@ -1,6 +1,6 @@
 # modified STDAN
 
-Modified video deblurring model. This project is based on [STDAN](https://github.com/huicongzhang/STDAN).
+Modified **video deblurring model STDAN.** This project is based on [STDAN](https://github.com/huicongzhang/STDAN).
 
 ## Changes from the original
 
@@ -79,7 +79,7 @@ In [config.py](config.py), there are more settings of testing and training.
 This project is open sourced under MIT license. 
 
 ## Acknowledgement
-This project is based on [STDAN](https://github.com/huicongzhang/STDAN)
+This project is based on [STDAN](https://github.com/huicongzhang/STDAN).
 
 
 
