@@ -1,10 +1,10 @@
 # modified STDAN
 
-This project is based on [STDAN](https://github.com/huicongzhang/STDAN)
+Modified video deblurring model. This project is based on [STDAN](https://github.com/huicongzhang/STDAN).
 
 ## Changes from the original
 
-- We save output images and visualized flow images at the time of testing.
+- We save output images (**Output**) and visualized flow images (**Flow vector** and **Flow angle**) at the time of testing.
 - We added [valid.py](core/valid.py) and split the BSD dataset into train, valid and test by [make_BSD_json.py](datasets/make_BSD_json.py).
 
 ### Output examples
