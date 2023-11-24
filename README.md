@@ -2,6 +2,28 @@
 
 This project is based on [STDAN](https://github.com/huicongzhang/STDAN)
 
+## Changes from the original
+
+- We save output images and visualized flow images at the time of testing.
+- We added [valid.py](core/valid.py) and split the BSD dataset into train, valid and test by [make_BSD_json.py](datasets/make_BSD_json.py).
+
+### Output examples
+Input
+
+[TODO]
+
+Deblurred output
+
+[TODO]
+
+Flow vector
+
+[TODO]
+
+Flow angle
+
+[TODO]
+
 ## Datasets
 
 We use the [GoPro](https://github.com/SeungjunNah/DeepDeblur_release), [DVD](http://www.cs.ubc.ca/labs/imager/tr/2017/DeepVideoDeblurring/) and [BSD](https://github.com/zzh-tech/ESTRNN) datasets in our experiments, which are available below:
@@ -35,19 +57,31 @@ sh install.sh
 ## Get Started
 
 
-To train STDAN, you can simply use the following command:
+To train STDAN, you can simply use the following command (e.g., BSD_3ms24ms):
 
+(Please replace [] with your path.)
 ```
-python runner.py --data_path=~/datasets/BSD_3ms24ms --json_path=./datasets/BSD_3ms24ms_train_val_test.json --data_name=BSD_3ms24ms --phase=train   
+python runner.py \
+    --data_path=/[your dataset path]/BSD_3ms24ms \
+    --json_path=./datasets/BSD_3ms24ms_train_val_test.json \
+    --data_name=BSD_3ms24ms \
+    --phase=train   
 ```
 
-To test STDAN, you can simply use the following command:
+To test STDAN, you can simply use the following command (e.g., BSD3ms24ms):
 
+(Please replace [] with your path.)
 ```
-python runner.py --data_path=~/datasets/REDS --json_path=./datasets/BSD_3ms24ms_train_val_test.json --data_name=BSD_3ms24ms --phase=test --weights=$HOME/STDAN/exp_log/train/[CKPT].pth.tar
+python runner.py \
+    --data_path=/[your dataset path]/BSD_3ms24ms \
+    --json_path=./datasets/BSD_3ms24ms_train_val_test.json \
+    --data_name=BSD_3ms24ms \
+    --phase=test \
+    --weights=./exp_log/train/[yyyy-mm-ddThhmmss_STDAN_Stack_BSD_3ms24m]/checkpoints/[saved ckpt].pth.tar  
 ```
 
-In [here](config.py), there are more settings of testing and training. 
+In [config.py](config.py), there are more settings of testing and training. 
+
 
 
 ## License
