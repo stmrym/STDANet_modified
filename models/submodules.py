@@ -93,6 +93,7 @@ class DeformableAttnBlock(nn.Module):
         return valid_ratio
     def preprocess(self,srcs):
         bs,t,c,h,w = srcs.shape
+        print(bs, t, c, h, w)
         masks = [torch.zeros((bs,h,w)).bool().to(srcs.device) for _ in range(t)]
         valid_ratios = torch.stack([self.get_valid_ratio(m) for m in masks], 1)
         src_flatten = []
@@ -111,14 +112,11 @@ class DeformableAttnBlock(nn.Module):
 
 
         qureys = self.act(self.emb_qk(torch.cat([warp_fea01,frame[:,1],warp_fea21,flow_forward.reshape(b,-1,h,w),flow_backward.reshape(b,-1,h,w)],1))).reshape(b,t,c,h,w)
-        
         value = self.act(self.emb_v(frame.reshape(b,t*c,h,w)).reshape(b,t,c,h,w))
-        
         
         spatial_shapes,valid_ratios = self.preprocess(value)
         level_start_index = torch.cat((spatial_shapes.new_zeros((1, )), spatial_shapes.prod(1).cumsum(0)[:-1]))
         reference_points = self.get_reference_points(spatial_shapes,valid_ratios,device=value.device)
-        
         
         
         output = self.defor_attn(qureys,reference_points,value,spatial_shapes,level_start_index,None,flow_forward,flow_backward)

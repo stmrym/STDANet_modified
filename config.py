@@ -12,14 +12,14 @@ cfg     = __C
 # Common
 #
 __C.CONST                               = edict()
-__C.CONST.DEVICE                        = '1'                             # gpu_ids
+__C.CONST.DEVICE                        = '0'                             # gpu_ids
 __C.CONST.NUM_WORKER                    = 8                               # number of data workers
-__C.CONST.WEIGHTS                       = 'exp_log/train/2023-11-17T084827_STDAN_Stack_BSD_3ms24ms/checkpoints/latest-ckpt.pth.tar' # data weights path
+__C.CONST.WEIGHTS                       = 'exp_log/train/2023-11-22T163558_STDAN_Stack_BSD_3ms24ms/checkpoints/ckpt-epoch-0905.pth.tar' # data weights path
 # __C.CONST.WEIGHTS                       = ''
 __C.CONST.TRAIN_BATCH_SIZE              = 4 # original: 8
 __C.CONST.VAL_BATCH_SIZE                = 4
 __C.CONST.TEST_BATCH_SIZE               = 4
-__C.CONST.DEBUG_PREFIX                  = ''  # This strings will be added to output_dir_path
+__C.CONST.DEBUG_PREFIX                  = '20231129_'  # This strings will be added to output_dir_path
 # __C.CONST.DEBUG_PREFIX                  = 'debug_'  # This strings will be added to output_dir_path
 # __C.CONST.PACKING                       = True
 #

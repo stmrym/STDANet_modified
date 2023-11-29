@@ -328,18 +328,14 @@ class MSDeformAttn(nn.Module):
         bs,t,c,h,w = query.shape
         value = self.value_proj(input_flatten.view(bs*t,c,h,w)).view(bs,t,c,h,w)
         sampling_offsets = self.sampling_offsets(query.view(bs*t,c,h,w)).reshape(bs,t,-1,h,w)
-       
-
 
         
         attention_weights = self.attention_weights(query.view(bs*t,c,h,w)).view(bs,t,-1,h,w)
         
         # query = query.flatten(3).transpose(2, 3).contiguous().view(bs,-1,c)
         query = query.flatten(3).transpose(2, 3).contiguous().view(bs,-1,c)
-        
         value = value.flatten(3).transpose(2, 3).contiguous().view(bs,-1,c)
         sampling_offsets = sampling_offsets.flatten(3).transpose(2, 3).contiguous().view(bs,-1,self.n_heads * self.n_levels * self.n_points * 2)
-        
         attention_weights = attention_weights.flatten(3).transpose(2, 3).contiguous().view(bs,-1,self.n_heads*self.n_levels * self.n_points)
         N, Len_q, _ = query.shape
         N, Len_in, _ = value.shape
