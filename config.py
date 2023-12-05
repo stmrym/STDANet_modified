@@ -69,6 +69,7 @@ elif cfg.DATASET.DATASET_NAME == 'BSD_3ms24ms':
     __C.DIR.DATASET_ROOT = '/home/hczhang/datasets/BSD/BSD_3ms24ms'
     __C.DIR.IMAGE_BLUR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/Blur/RGB/%s.png')
     __C.DIR.IMAGE_CLEAR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/Sharp/RGB/%s.png')
+
 #
 # data augmentation
 #

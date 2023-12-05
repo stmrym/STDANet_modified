@@ -195,6 +195,7 @@ class VideoDeblurDataLoader_No_Slipt:
                 phase = file['phase']
                 samples = file['sample']
                 sam_len = len(samples)
+                
                 seq_len = cfg.DATA.TEST_SEQ_LENGTH
                 seq_num = int(sam_len / seq_len)
                 for n in range(sam_len-seq_len+1):
@@ -323,6 +324,7 @@ class VideoDeblurDataLoader_No_Slipt_gopro_bsd:
 
         for sample_idx, sample_name in enumerate(samples):
             # Get file path of img
+            
             img_blur_path = self.img_blur_path_template % (phase+"/"+name, sample_name)
             img_clear_path = self.img_clear_path_template % (phase+"/"+name, sample_name)
             if os.path.exists(img_blur_path) and os.path.exists(img_clear_path):
@@ -345,5 +347,6 @@ DATASET_LOADER_MAPPING = {
     'BSD_3ms24ms': VideoDeblurDataLoader_No_Slipt_gopro_bsd,
     'BSD_1ms8ms': VideoDeblurDataLoader_No_Slipt_gopro_bsd,
     'BSD_2ms16ms': VideoDeblurDataLoader_No_Slipt_gopro_bsd,
-    'REDS_RR': VideoDeblurDataLoader_No_Slipt
+    'REDS_RR': VideoDeblurDataLoader_No_Slipt,
+    'original': VideoDeblurDataLoader_No_Slipt
 }

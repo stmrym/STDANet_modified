@@ -87,13 +87,17 @@ def main():
                 cfg.DIR.DATASET_JSON_FILE_PATH = './datasets/BSD_2ms16msDeblur.json'
             elif cfg.DATASET.DATASET_NAME == 'BSD_3ms24ms':
                 cfg.DIR.DATASET_JSON_FILE_PATH = './datasets/BSD_3ms24msDeblur.json'
-        elif cfg.DATASET.DATASET_NAME == 'REDS_RR':
+        if cfg.DATASET.DATASET_NAME == 'REDS_RR':
             # cfg.DIR.DATASET_JSON_FILE_PATH = './datasets/REDS_RR.json'
             # cfg.DIR.DATASET_JSON_FILE_PATH = './datasets/REDS_RR_train_val_test.json'
             # cfg.DIR.DATASET_JSON_FILE_PATH = './datasets/REDS_RR_val.json'
             cfg.DIR.DATASET_JSON_FILE_PATH = args.json_path
             cfg.DIR.IMAGE_BLUR_PATH = os.path.join(args.data_path,'%s/%s/input/%s.png')
-            cfg.DIR.IMAGE_CLEAR_PATH = os.path.join(args.data_path,'%s/%s/GT/%s.png')            
+            cfg.DIR.IMAGE_CLEAR_PATH = os.path.join(args.data_path,'%s/%s/GT/%s.png')   
+        if cfg.DATASET.DATASET_NAME == 'original':
+            cfg.DIR.DATASET_ROOT = args.data_path
+            cfg.DIR.IMAGE_BLUR_PATH = os.path.join(args.data_path,'%s/%s/Long/%s.png')
+            cfg.DIR.IMAGE_CLEAR_PATH = os.path.join(args.data_path,'%s/%s/Short/%s.png')
         
     cfg.DIR.DATASET_JSON_FILE_PATH = args.json_path
     if args.out_path is not None:
@@ -106,7 +110,6 @@ def main():
     
     # #####################################################################################
 
-    
     
     if cfg.NETWORK.PHASE == 'resume':
         output_dir = os.path.join(cfg.DIR.OUT_PATH,"train",cfg.CONST.WEIGHTS.split("/")[-3], '%s')
