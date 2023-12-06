@@ -96,8 +96,8 @@ def main():
             cfg.DIR.IMAGE_CLEAR_PATH = os.path.join(args.data_path,'%s/%s/GT/%s.png')   
         if cfg.DATASET.DATASET_NAME == 'original':
             cfg.DIR.DATASET_ROOT = args.data_path
-            cfg.DIR.IMAGE_BLUR_PATH = os.path.join(args.data_path,'%s/%s/Long/%s.png')
-            cfg.DIR.IMAGE_CLEAR_PATH = os.path.join(args.data_path,'%s/%s/Short/%s.png')
+            cfg.DIR.IMAGE_BLUR_PATH = os.path.join(args.data_path,'%s/Long/%s/%s.png')
+            cfg.DIR.IMAGE_CLEAR_PATH = os.path.join(args.data_path,'%s/Short/%s/%s.png')
         
     cfg.DIR.DATASET_JSON_FILE_PATH = args.json_path
     if args.out_path is not None:
