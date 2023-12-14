@@ -22,11 +22,8 @@ from utils import log
 def  bulid_net(cfg,args,output_dir):
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
 
-    
     log_dir      = output_dir % 'logs'
     ckpt_dir     = output_dir % 'checkpoints'
-    
-    
     
     torch.backends.cudnn.benchmark  = True
 

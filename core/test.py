@@ -309,7 +309,7 @@ def test(cfg, dir_dataset_name, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader
     if cfg.NETWORK.PHASE == 'test':
 
         log.info('============================ TEST RESULTS ============================')
-        log.info('[TEST] Total_Mean_PSNR:itr1:{0},itr2:{1},best:{2},ssim_it1 {3},ssim_it2 {4}'.format(img_PSNRs_iter1.avg,img_PSNRs_iter2.avg,Best_Img_PSNR,img_ssims_iter1.avg,img_ssims_iter2.avg))
+        log.info('[TEST] Total_Mean_PSNR:itr1:{0},itr2:{1},best:{2},ssim_it1 {3},ssim_it2 {4}, test_time:{5}'.format(img_PSNRs_iter1.avg,img_PSNRs_iter2.avg,Best_Img_PSNR,img_ssims_iter1.avg,img_ssims_iter2.avg, test_time.avg))
 
     
     # creating flow map from npy    
@@ -337,7 +337,7 @@ def test(cfg, dir_dataset_name, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader
         for out_flow in out_flows:  # get amin and amax for each seq
             ang_min = 0
             ang_max = 360
-            _ang_min, _ang_max = adjust_ang(ang_min, ang_max)  # 角度の表現を統一する
+            _ang_min, _ang_max = adjust_ang(ang_min, ang_max)  # adjust angle expression
             mag, ang = cv2.cartToPolar(out_flow[..., 0], out_flow[..., 1], angleInDegrees=True)
             any_mag, _ = any_angle_only(mag, ang, ang_min, ang_max)
             
@@ -360,13 +360,13 @@ def test(cfg, dir_dataset_name, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader
         print(seq)
         for img_name, out_flow in tqdm(zip(names, out_flows)):
             # saving flow_hsv
-            # 角度範囲のパラメータ
+            # parameters for angle range
             ang_min = 0
             ang_max = 360
-            _ang_min, _ang_max = adjust_ang(ang_min, ang_max)  # 角度の表現を統一する
+            _ang_min, _ang_max = adjust_ang(ang_min, ang_max)  # adjust angle expression
 
 
-            # HSV色空間の配列に入れる
+            # Insert list of HSV color space
             hsv = np.zeros_like(np.empty([height, width, 3]).astype(np.uint8), dtype='uint8')
             mag, ang = cv2.cartToPolar(out_flow[..., 0], out_flow[..., 1], angleInDegrees=True)
             any_mag, any_ang = any_angle_only(mag, ang, ang_min, ang_max)
@@ -374,11 +374,11 @@ def test(cfg, dir_dataset_name, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader
             hsv[..., 1] = 255
             # hsv[..., 2] = cv2.normalize(any_mag, None, 0, 255, cv2.NORM_MINMAX) # default
             hsv[..., 2] = (any_mag - amin)/(amax - amin) * 255 # min-max normalization (0~255)
-            # hsv[..., 2] = np.clip(any_mag, 0, 255) # 正規化なし
+            # hsv[..., 2] = np.clip(any_mag, 0, 255) # No normalization
 
             flow_rgb = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
 
-            # 画像の原点にHSV色空間を埋め込み
+            # Embedding HSV color space to the origin of the image
             flow_rgb_display = np.copy(flow_rgb)
             hsv_cmap_rgb, *_ = hsv_cmap(_ang_min, _ang_max, 51)
             flow_rgb_display[0:hsv_cmap_rgb.shape[0], 0:hsv_cmap_rgb.shape[1]] = hsv_cmap_rgb
@@ -407,8 +407,8 @@ def test(cfg, dir_dataset_name, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader
             x, y, u, v = flow_vector(flow=out_flow, spacing=10, margin=0, minlength=5)  # flow.shape must be (H, W, 2)
             im = ax.quiver(x, y, u/np.sqrt(pow(u,2)+pow(v,2)),v/np.sqrt(pow(u,2)+pow(v,2)),np.sqrt(pow(u,2)+pow(v,2)), cmap='jet', angles='xy', scale_units='xy', scale=0.1)
             
-            divider = make_axes_locatable(ax) #axに紐付いたAxesDividerを取得
-            cax = divider.append_axes("right", size="5%", pad=0.1) #append_axesで新しいaxesを作成
+            divider = make_axes_locatable(ax) # get AxesDivider
+            cax = divider.append_axes("right", size="5%", pad=0.1) # make new axes
             cb = fig.colorbar(im, cax=cax)
             cb.mappable.set_clim(0, vector_amax)
 

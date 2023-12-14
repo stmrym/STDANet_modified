@@ -2,22 +2,27 @@ import json
 import os
 import glob
 
-dataset_path = '../../dataset/night_blur/Long'
+dataset_path = '../../dataset/real_night_blur/test/input'
 phase = 'test'
+save_name = 'real_night_blur'
 
 dict_list = []
-seq_dict = {}
-seq_dict['name'] = 'night_blur'
-seq_dict['phase'] = phase
 
-sample_path_list = [
-    os.path.splitext(os.path.basename(sample_path))[0]
-    for sample_path in sorted(glob.glob(os.path.join(dataset_path, '*.png')))
-    ]
-seq_dict['sample'] = sample_path_list
+seq_list = sorted([f for f in os.listdir(dataset_path) if os.path.isdir(os.path.join(dataset_path, f))])
+for seq in seq_list:
+    print(seq)
+    seq_dict = {}
+    seq_dict['name'] = seq
+    seq_dict['phase'] = phase
 
-dict_list.append(seq_dict)
+    sample_path_list = [
+        os.path.splitext(os.path.basename(sample_path))[0]
+        for sample_path in sorted(glob.glob(os.path.join(dataset_path, seq,'*.png')))
+        ]
+    seq_dict['sample'] = sample_path_list
+
+    dict_list.append(seq_dict)
 
 
-json_file = open('night_blur.json', 'w')
+json_file = open(f'{save_name}.json', 'w')
 json.dump(dict_list, json_file, indent=4)

@@ -15,7 +15,7 @@ from time import time
 
 # from core.test import test
 # from STDAN.core.valid import valid
-from core.valid import valid
+from core.valid import valid, valid_only_inference
 # from models.VGG19 import VGG19
 # from utils.network_utils import flow2rgb
 from tqdm import tqdm
@@ -150,6 +150,7 @@ def train(cfg, init_epoch, dataset_loader, train_transforms, val_transforms,
 
         if epoch_idx%5 == 0:
             test_img_PSNR,Best_Img_PSNR = valid(cfg, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader, val_transforms, deblurnet,deblurnet_solver,val_writer)
+            valid_only_inference(cfg, epoch_idx, Best_Img_PSNR,dataset_loader, val_transforms, deblurnet,val_writer)
             
          
         

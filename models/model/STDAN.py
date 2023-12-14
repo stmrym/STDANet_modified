@@ -126,7 +126,6 @@ class STDAN(nn.Module):
         b, n, c, h, w = x.size()
         
         
-
         first_scale_inblock = self.inBlock_t(x.view(b*n,c,h,w))
         
         first_scale_encoder_first = self.encoder_first(first_scale_inblock)

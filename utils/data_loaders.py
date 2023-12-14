@@ -19,6 +19,7 @@ from utils.imgio_gen import readgen
 class DatasetType(Enum):
     TRAIN = 0
     VALID = -1
+    VALID_TEST = 2
     TEST  = 1
 
 

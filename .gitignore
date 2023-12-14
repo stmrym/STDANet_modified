@@ -136,6 +136,7 @@ models/ops/MultiScaleDeformableAttention.egg-info/
 __pycache__
 exp_log
 mmcv
+mmflow
 utils/__pycache__
 models/__pycache__
 losses/__pycache__
@@ -149,8 +150,8 @@ models/ops/modules/__pycache__
 weights/*
 
 # Training and testing code
-/run_code_train.sh
-/run_code_test.sh
+/run_train.sh
+/run_test.sh
 
 # Docker run command
 /.devcontainer/docker_run.sh

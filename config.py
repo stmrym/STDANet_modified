@@ -19,15 +19,26 @@ __C.CONST.WEIGHTS                       = 'exp_log/train/2023-11-17T084827_STDAN
 # __C.CONST.WEIGHTS                       = ''
 __C.CONST.TRAIN_BATCH_SIZE              = 4 # original: 8
 __C.CONST.VAL_BATCH_SIZE                = 4
-__C.CONST.TEST_BATCH_SIZE               = 4
-__C.CONST.DEBUG_PREFIX                  = '20231129_'  # This strings will be added to output_dir_path
-# __C.CONST.DEBUG_PREFIX                  = 'debug_'  # This strings will be added to output_dir_path
-# __C.CONST.PACKING                       = True
+__C.CONST.TEST_BATCH_SIZE               = 4 # original: 1
+# __C.CONST.DEBUG_PREFIX                  = '20231129_'  # This strings will be added to output_dir_path
+__C.CONST.DEBUG_PREFIX                  = 'debug_'  # This strings will be added to output_dir_path
+
 #
 # Dataset
 #
 __C.DATASET                             = edict()
-__C.DATASET.DATASET_NAME                = 'DVD'       # available options:  'DVD','GOPRO','BSD_1ms8ms','BSD_2ms16ms','BSD_3ms24ms'
+__C.DATASET.DATASET_NAME                = 'BSD_3ms24ms'       # available options:  'DVD','GOPRO','BSD_1ms8ms','BSD_2ms16ms','BSD_3ms24ms'
+__C.DIR.IMAGE_BLUR_PATH                 = '../dataset/BSD_3ms24ms/%s/Blur/RGB/%s.png'   # %s, %s: seq_name, image_name
+__C.DIR.IMAGE_CLEAR_PATH                = '../dataset/BSD_3ms24ms/%s/Sharp/RGB/%s.png'
+__C.DIR.DATASET_JSON_FILE_PATH          = '../STDAN_modified/datasets/BSD_3ms24ms_train_val_test.json'
+
+#
+# Network
+#
+__C.NETWORK                             = edict()
+__C.NETWORK.DEBLURNETARCH               = 'STDAN_Stack'             
+__C.NETWORK.PHASE                       = 'train'                 # available options: 'train', 'test', 'resume'
+__C.NETWORK.TAG                         = __C.DATASET.DATASET_NAME     # logs folder tag
 
 #
 # logs and checkpoint Directories
@@ -38,37 +49,37 @@ __C.DIR.OUT_PATH = './exp_log'                          # logs path
 #
 # please set the DATASET_ROOT to your path
 #
-if cfg.DATASET.DATASET_NAME == 'DVD':
-    __C.DIR.DATASET_JSON_FILE_PATH = './datasets/VideoDeblur.json'
-    __C.DIR.DATASET_ROOT = '/home/hczhang/datasets/DeepVideoDeblurring_Dataset/quantitative_datasets'
-    __C.DIR.IMAGE_BLUR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/input/%s.jpg')
-    __C.DIR.IMAGE_CLEAR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/GT/%s.jpg')
-# real
-elif cfg.DATASET.DATASET_NAME == 'DVD_Real':
-    __C.DIR.DATASET_JSON_FILE_PATH = './datasets/DVD_Real.json'
-    __C.DIR.DATASET_ROOT = '/home/hczhang/datasets/DeepVideoDeblurring_Dataset/qualitative_datasets'
-    __C.DIR.IMAGE_BLUR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/input/%s.jpg')
-    __C.DIR.IMAGE_CLEAR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/input/%s.jpg')
-elif cfg.DATASET.DATASET_NAME == 'GOPRO':
-    __C.DIR.DATASET_JSON_FILE_PATH = './datasets/GoproDeblur.json'
-    __C.DIR.DATASET_ROOT = '/home/hczhang/datasets/GOPRO_Large'
-    __C.DIR.IMAGE_BLUR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/blur_gamma/%s.png')
-    __C.DIR.IMAGE_CLEAR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/sharp/%s.png')
-elif cfg.DATASET.DATASET_NAME == 'BSD_1ms8ms':
-    __C.DIR.DATASET_JSON_FILE_PATH = './datasets/BSD_1ms8msDeblur.json'
-    __C.DIR.DATASET_ROOT = '/home/hczhang/datasets/BSD/BSD_1ms8ms'
-    __C.DIR.IMAGE_BLUR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/Blur/RGB/%s.png')
-    __C.DIR.IMAGE_CLEAR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/Sharp/RGB/%s.png')
-elif cfg.DATASET.DATASET_NAME == 'BSD_2ms16ms':
-    __C.DIR.DATASET_JSON_FILE_PATH = './datasets/BSD_2ms16msDeblur.json'
-    __C.DIR.DATASET_ROOT = '/home/hczhang/datasets/BSD/BSD_2ms16ms'
-    __C.DIR.IMAGE_BLUR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/Blur/RGB/%s.png')
-    __C.DIR.IMAGE_CLEAR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/Sharp/RGB/%s.png')
-elif cfg.DATASET.DATASET_NAME == 'BSD_3ms24ms':
-    __C.DIR.DATASET_JSON_FILE_PATH = './datasets/BSD_3ms24msDeblur.json'
-    __C.DIR.DATASET_ROOT = '/home/hczhang/datasets/BSD/BSD_3ms24ms'
-    __C.DIR.IMAGE_BLUR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/Blur/RGB/%s.png')
-    __C.DIR.IMAGE_CLEAR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/Sharp/RGB/%s.png')
+# if cfg.DATASET.DATASET_NAME == 'DVD':
+#     __C.DIR.DATASET_JSON_FILE_PATH = './datasets/VideoDeblur.json'
+#     __C.DIR.DATASET_ROOT = '/home/hczhang/datasets/DeepVideoDeblurring_Dataset/quantitative_datasets'
+#     __C.DIR.IMAGE_BLUR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/input/%s.jpg')
+#     __C.DIR.IMAGE_CLEAR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/GT/%s.jpg')
+# # real
+# elif cfg.DATASET.DATASET_NAME == 'DVD_Real':
+#     __C.DIR.DATASET_JSON_FILE_PATH = './datasets/DVD_Real.json'
+#     __C.DIR.DATASET_ROOT = '/home/hczhang/datasets/DeepVideoDeblurring_Dataset/qualitative_datasets'
+#     __C.DIR.IMAGE_BLUR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/input/%s.jpg')
+#     __C.DIR.IMAGE_CLEAR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/input/%s.jpg')
+# elif cfg.DATASET.DATASET_NAME == 'GOPRO':
+#     __C.DIR.DATASET_JSON_FILE_PATH = './datasets/GoproDeblur.json'
+#     __C.DIR.DATASET_ROOT = '/home/hczhang/datasets/GOPRO_Large'
+#     __C.DIR.IMAGE_BLUR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/blur_gamma/%s.png')
+#     __C.DIR.IMAGE_CLEAR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/sharp/%s.png')
+# elif cfg.DATASET.DATASET_NAME == 'BSD_1ms8ms':
+#     __C.DIR.DATASET_JSON_FILE_PATH = './datasets/BSD_1ms8msDeblur.json'
+#     __C.DIR.DATASET_ROOT = '/home/hczhang/datasets/BSD/BSD_1ms8ms'
+#     __C.DIR.IMAGE_BLUR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/Blur/RGB/%s.png')
+#     __C.DIR.IMAGE_CLEAR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/Sharp/RGB/%s.png')
+# elif cfg.DATASET.DATASET_NAME == 'BSD_2ms16ms':
+#     __C.DIR.DATASET_JSON_FILE_PATH = './datasets/BSD_2ms16msDeblur.json'
+#     __C.DIR.DATASET_ROOT = '/home/hczhang/datasets/BSD/BSD_2ms16ms'
+#     __C.DIR.IMAGE_BLUR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/Blur/RGB/%s.png')
+#     __C.DIR.IMAGE_CLEAR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/Sharp/RGB/%s.png')
+# elif cfg.DATASET.DATASET_NAME == 'BSD_3ms24ms':
+#     __C.DIR.DATASET_JSON_FILE_PATH = './datasets/BSD_3ms24msDeblur.json'
+#     __C.DIR.DATASET_ROOT = '/home/hczhang/datasets/BSD/BSD_3ms24ms'
+#     __C.DIR.IMAGE_BLUR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/Blur/RGB/%s.png')
+#     __C.DIR.IMAGE_CLEAR_PATH = os.path.join(__C.DIR.DATASET_ROOT,'%s/Sharp/RGB/%s.png')
 
 #
 # data augmentation
@@ -85,14 +96,7 @@ __C.DATA.VAL_SEQ_LENGTH                 = 5
 __C.DATA.TEST_SEQ_LENGTH                = 5
 
 
-#
-# Network
-#
-__C.NETWORK                             = edict()
-__C.NETWORK.DEBLURNETARCH               = 'STDAN_Stack'             
-__C.NETWORK.PHASE                       = 'test'                 # available options: 'train', 'test', 'resume'
-__C.NETWORK.TAG                         = "REDS"                  # logs folder tag
-# __C.NETWORK.TAG                         = "DVD"                  # logs folder tag
+
 
 #
 # Training
