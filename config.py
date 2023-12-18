@@ -29,8 +29,10 @@ __C.CONST.DEBUG_PREFIX                  = 'debug_'  # This strings will be added
 __C.DATASET                             = edict()
 __C.DIR                                 = edict()
 __C.DATASET.DATASET_NAME                = 'BSD_3ms24ms'       # available options:  'DVD','GOPRO','BSD_1ms8ms','BSD_2ms16ms','BSD_3ms24ms'
+__C.DIR.VAL_DATAET_LIST                 = ['BSD_3ms24ms', 'GOPRO']
 __C.DIR.IMAGE_BLUR_PATH                 = '../dataset/BSD_3ms24ms/%s/%s/Blur/RGB/%s.png'   # %s, %s, %s: phase, seq_name, image_name
 __C.DIR.IMAGE_CLEAR_PATH                = '../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png'
+# __C.DIR.VAL_IMAGE_BLUR_PATH
 __C.DIR.DATASET_JSON_FILE_PATH          = '../STDAN_modified/datasets/BSD_3ms24ms_train_val_test.json'
 __C.DIR.OUT_PATH                        = './exp_log'         # logs path
 
