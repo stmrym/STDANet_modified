@@ -97,6 +97,12 @@ def valid(cfg, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader, val_transforms,
     # test_psnr = dict()
     # g_names= 'init'
     deblurnet.eval()
+
+    total_case_num = int(len(val_data_loader)) * cfg.CONST.TRAIN_BATCH_SIZE
+    print(f'Total train case: {total_case_num}')
+    log.info(f'Total train case: {total_case_num}')
+
+
     tqdm_val = tqdm(val_data_loader)
     tqdm_val.set_description('[VALID] [Epoch {0}/{1}]'.format(epoch_idx,cfg.TRAIN.NUM_EPOCHES))
     

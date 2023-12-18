@@ -68,12 +68,12 @@ def train(cfg, init_epoch, dataset_loader, train_transforms, val_transforms,
         img_PSNRs_iter2 = utils.network_utils.AverageMeter()
         
         # Adjust learning rate
-        
-        
-
         batch_end_time = time()
         
-
+        total_case_num = int(len(train_data_loader)) * cfg.CONST.TRAIN_BATCH_SIZE
+        print(f'Total train case: {total_case_num}')
+        log.info(f'Total train case: {total_case_num}')
+        exit()
 
         log.info(' learning rate: {0}'.format(deblurnet_lr_scheduler.get_last_lr()))
         tqdm_train = tqdm(train_data_loader)

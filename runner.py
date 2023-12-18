@@ -1,7 +1,5 @@
 #!/usr/bin/python
 
-
-from numpy.lib.utils import info
 from utils import log
 import matplotlib
 """ from visualizer import get_local
@@ -11,43 +9,16 @@ import os
 import re
 
 import torch
-# Fix problem: no $DISPLAY environment variable
 matplotlib.use('Agg')
 
-# Fix problem: possible deadlock in dataloader
-# import cv2
-# cv2.setNumThreads(0)
-
-from argparse import ArgumentParser
-# from pprint import pprint
 from datetime import datetime as dt
 from config import cfg
-# from models.deformable_detr import DeformableDETR
-# from models.deformable_transformer import DeformableTransformer
 import warnings
 warnings.filterwarnings("ignore") 
 # torch.manual_seed(1)
 
-def get_args_from_command_line():
-
-    parser = ArgumentParser(description='Parser of Runner of Network')
-    parser.add_argument('--phase', dest='phase', help='phase of CNN', type=str)
-    parser.add_argument('--weights', dest='weights', help='Initialize network from the weights file', type=str)
-    parser.add_argument('--data_path', dest='data_path', help='Set dataset root_path', type=str)
-    parser.add_argument('--data_name', dest='data_name', help='Set dataset root_path', type=str)
-    parser.add_argument('--json_path', dest='json_path', help='JSON file path', type=str)
-    parser.add_argument('--out_path', dest='out_path', help='Set output path')
-    parser.add_argument('--packing', dest='packing', help='set packing')
-    
-    
-    args = parser.parse_args()
-    return args
-
 def main():
     
-    # Get args from command line
-    
-    args = get_args_from_command_line()
 
     # if args.data_path is not None:
     #     cfg.DIR.DATASET_ROOT = args.data_path
@@ -117,11 +88,10 @@ def main():
     if type(cfg.CONST.DEVICE) == str and not cfg.CONST.DEVICE == 'all':
         os.environ["CUDA_VISIBLE_DEVICES"] = cfg.CONST.DEVICE
     from core.build import bulid_net
-    import torch
     log.info('CUDA DEVICES NUMBER: '+ str(torch.cuda.device_count()))
     
     # Setup Network & Start train/test process
-    bulid_net(cfg,args,output_dir)
+    bulid_net(cfg,output_dir)
 
 if __name__ == '__main__':
 

@@ -201,7 +201,10 @@ def test(cfg, dir_dataset_name, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader
     # g_names= 'init'
     deblurnet.eval()
     
-    print(f'Total test case: {len(test_data_loader)}')
+    total_case_num = int(len(test_data_loader)) * cfg.CONST.TEST_BATCH_SIZE
+    print(f'Total test case: {total_case_num}')
+    log.info(f'Total test case: {total_case_num}')
+
     tqdm_test = tqdm(test_data_loader)
     tqdm_test.set_description('[TEST] [Epoch {0}/{1}]'.format(epoch_idx,cfg.TRAIN.NUM_EPOCHES))
     

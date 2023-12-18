@@ -19,7 +19,7 @@ from core.test import test
 import logging
 from losses.multi_loss import *
 from utils import log
-def  bulid_net(cfg,args,output_dir):
+def  bulid_net(cfg,output_dir):
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
 
     log_dir      = output_dir % 'logs'
@@ -54,10 +54,9 @@ def  bulid_net(cfg,args,output_dir):
 
     # Set up data loader
     
-    dataset_loader = utils.data_loaders.DATASET_LOADER_MAPPING[cfg.DATASET.DATASET_NAME]()
-
     # dataset_loader = utils.data_loaders.DATASET_LOADER_MAPPING[cfg.DATASET.DATASET_NAME]()
-    # dataset_loader = data.Data(args)
+    dataset_loader = utils.data_loaders.VideoDeblurDataLoader_No_Slipt()
+    
     # Set up networks
     
     deblurnet = models.__dict__[cfg.NETWORK.DEBLURNETARCH].__dict__[cfg.NETWORK.DEBLURNETARCH]()
@@ -183,6 +182,6 @@ def  bulid_net(cfg,args,output_dir):
                               ckpt_dir, train_writer, val_writer,
                               Best_Img_PSNR, Best_Epoch)
     else:
-        dir_dataset_name = args.data_path.split('/')[-1]
+        dir_dataset_name = cfg.DATASET.DATASET_NAME
         test(cfg, dir_dataset_name, init_epoch,Best_Img_PSNR,ckpt_dir,dataset_loader, test_transforms, deblurnet, deblurnet_solver,test_writer)
         
