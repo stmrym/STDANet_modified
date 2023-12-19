@@ -1,29 +1,23 @@
 from torch import gt
 import torch.backends.cudnn
 import torch.utils.data
-
+import glob
 import utils.data_loaders
 import utils.data_transforms
 import utils.network_utils
 from losses.multi_loss import *
 from utils import util
-import torchvision
 import cv2
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import re
 
 import numpy as np
-import scipy.io as io
 from utils import log
 
 from time import time
-# from visualizer import get_local
-# from utils.imgio_gen import visulize_attention_ratio
 from utils.util import ssim_calculate
 from tqdm import tqdm
-import pandas as pd
-# from mmflow.datasets import visualize_flow, write_flow
+from mmflow.datasets import visualize_flow
 from models.submodules import warp
 def warp_loss(frames_list,flow_forwards,flow_backwards):
     n, t, c, h, w = frames_list.size()
@@ -68,12 +62,43 @@ def mkdir(path):
         return
     os.mkdir(path)
 
+def flow_vector(flow, spacing, margin, minlength):
+    """Parameters:
+    input
+    flow: motion vectors 3D-array
+    spacing: pixel spacing of the flow
+    margin: pixel margins of the flow
+    minlength: minimum pixels to leave as flow
+    output
+    x: x coord 1D-array
+    y: y coord 1D-array
+    u: x direction flow vector 2D-array
+    v: y direction flow vector 2D-array
+    """
+    h, w, _ = flow.shape
 
+    x = np.arange(margin, w - margin, spacing, dtype=np.int64)
+    y = np.arange(margin, h - margin, spacing, dtype=np.int64)
 
-def valid(cfg, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader, val_transforms, deblurnet, deblurnet_solver,val_writer):
+    mesh_flow = flow[np.ix_(y, x)]
+    mag, _ = cv2.cartToPolar(mesh_flow[..., 0], mesh_flow[..., 1])
+    mesh_flow[mag < minlength] = np.nan  # replace under minlength to nan
+
+    u = mesh_flow[..., 0]
+    v = mesh_flow[..., 1]
+
+    return x, y, u, v
+
+def valid(cfg, 
+        val_dataset_name,
+        epoch_idx, init_epoch,
+        Best_Img_PSNR,
+        ckpt_dir, save_dir,
+        val_loader, val_transforms, deblurnet,
+        val_writer, val_visualize):
     # Set up data loader
     val_data_loader = torch.utils.data.DataLoader(
-        dataset=dataset_loader.get_dataset(utils.data_loaders.DatasetType.VALID, val_transforms),
+        dataset=val_loader.get_dataset(transforms = val_transforms),
         batch_size=cfg.CONST.VAL_BATCH_SIZE,
         num_workers=cfg.CONST.NUM_WORKER, pin_memory=True, shuffle=False)
 
@@ -83,25 +108,24 @@ def valid(cfg, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader, val_transforms,
     # batch_time = utils.network_utils.AverageMeter()
     test_time = utils.network_utils.AverageMeter()
     data_time = utils.network_utils.AverageMeter()
+    img_PSNRs_iter1 = utils.network_utils.AverageMeter()
     img_PSNRs_iter2 = utils.network_utils.AverageMeter()
-    # img_ssims_iter1 = utils.network_utils.AverageMeter()
-    # img_ssims_iter2 = utils.network_utils.AverageMeter()
+    img_ssims_iter1 = utils.network_utils.AverageMeter()
+    img_ssims_iter2 = utils.network_utils.AverageMeter()
     deblur_mse_losses = utils.network_utils.AverageMeter()  # added for writing test loss
     warp_mse_losses = utils.network_utils.AverageMeter()    # added for writing test loss
     deblur_losses = utils.network_utils.AverageMeter()      # added for writing test loss
-    # warp_mse_losses_iter1 = utils.network_utils.AverageMeter()
-    # warp_mse_losses_iter2 = utils.network_utils.AverageMeter()
-    # img_PSNRs_mid = utils.network_utils.AverageMeter()
-    img_PSNRs_iter1 = utils.network_utils.AverageMeter()
+
     batch_end_time = time()
     # test_psnr = dict()
     # g_names= 'init'
     deblurnet.eval()
 
-    total_case_num = int(len(val_data_loader)) * cfg.CONST.TRAIN_BATCH_SIZE
-    print(f'Total train case: {total_case_num}')
-    log.info(f'Total train case: {total_case_num}')
-
+    if epoch_idx == init_epoch:
+        total_case_num = int(len(val_data_loader)) * cfg.CONST.VAL_BATCH_SIZE
+        print(f'Total [{val_dataset_name}] valid case: {total_case_num}')
+        log.info(f'Total [{val_dataset_name}] valid case: {total_case_num}')
+        assert total_case_num != 0, f'[{val_dataset_name}] empty!'
 
     tqdm_val = tqdm(val_data_loader)
     tqdm_val.set_description('[VALID] [Epoch {0}/{1}]'.format(epoch_idx,cfg.TRAIN.NUM_EPOCHES))
@@ -111,9 +135,6 @@ def valid(cfg, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader, val_transforms,
 
         seq_blur = [utils.network_utils.var_or_cuda(img).unsqueeze(1) for img in seq_blur]
         seq_clear = [utils.network_utils.var_or_cuda(img).unsqueeze(1) for img in seq_clear]
-        # seq_len = len(seq_blur)
-        # Switch models to training mode
-        
         
         with torch.no_grad():
             input_seq = []
@@ -150,17 +171,45 @@ def valid(cfg, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader, val_transforms,
             batch_end_time = time()
             
             tqdm_val.set_postfix_str('RT {0} DT {1} imgPSNR_iter1 {2} imgPSNR_iter2 {3}'
-                        .format(test_time ,data_time, img_PSNRs_iter1,img_PSNRs_iter2))     
+                        .format(test_time ,data_time, img_PSNRs_iter1,img_PSNRs_iter2))
             
+            if val_visualize == True:
+                # saving images
+                output_image = out.cpu().detach()*255
+                gt_image = gt_seq[:,2,:,:,:].cpu().detach()*255
+
+                output_image = output_image[0].permute(1,2,0)
+                gt_image = gt_image[0].permute(1,2,0)
+
+                output_image_it1 = recons_2.cpu().detach()*255
+                output_image_it1 = output_image_it1[0].permute(1,2,0)
+                img_ssims_iter1.update(ssim_calculate(output_image_it1.numpy(),gt_image.numpy()),cfg.CONST.TEST_BATCH_SIZE)
+                img_ssims_iter2.update(ssim_calculate(output_image.numpy(),gt_image.numpy()),cfg.CONST.TEST_BATCH_SIZE)
+                seq, img_name = name[0].split('.')  # name = ['000.00000002']
+
+                # saving output image
+                if os.path.isdir(os.path.join(save_dir, 'output', seq)) == False:
+                    os.makedirs(os.path.join(save_dir, 'output', seq), exist_ok=True)
+
+                output_image = output_image.numpy().copy()
+                output_image_bgr = cv2.cvtColor(np.clip(output_image, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
+                
+                cv2.imwrite(os.path.join(save_dir, 'output', seq, img_name + '.png'), output_image_bgr)
+
+                # saving npy files
+                if os.path.isdir(os.path.join(save_dir, 'flow_npy', seq)) == False:
+                    os.makedirs(os.path.join(save_dir, 'flow_npy', seq), exist_ok=True)
+                out_flow_forward = (flow_forwards[-1])[0][1].permute(1,2,0).cpu().detach().numpy()               
+                np.save(os.path.join(save_dir, 'flow_npy', seq, img_name + '.npy'),out_flow_forward)
             
     # Output val results
     log.info('============================ VALID RESULTS ============================')
     
     # Add testing results to TensorBoard
-    val_writer.add_scalar('Loss/EpochWarpMSELoss_VAL', warp_mse_losses.avg, epoch_idx)
-    val_writer.add_scalar('Loss/EpochMSELoss_VAL', deblur_mse_losses.avg, epoch_idx)
-    val_writer.add_scalar('Loss/EpochDeblurLoss_VAL', deblur_mse_losses.avg, epoch_idx) 
-    val_writer.add_scalar('PSNR/Epoch_PSNR_VAL', img_PSNRs_iter2.avg, epoch_idx)
+    val_writer.add_scalar(f'Loss/EpochWarpMSELoss_VAL_{val_dataset_name}', warp_mse_losses.avg, epoch_idx)
+    val_writer.add_scalar(f'Loss/EpochMSELoss_VAL_{val_dataset_name}', deblur_mse_losses.avg, epoch_idx)
+    val_writer.add_scalar(f'Loss/EpochDeblurLoss_VAL_{val_dataset_name}', deblur_mse_losses.avg, epoch_idx) 
+    val_writer.add_scalar(f'PSNR/Epoch_PSNR_VAL_{val_dataset_name}', img_PSNRs_iter2.avg, epoch_idx)
 
     if img_PSNRs_iter2.avg  >= Best_Img_PSNR:
         if not os.path.exists(ckpt_dir):
@@ -168,94 +217,7 @@ def valid(cfg, epoch_idx, Best_Img_PSNR,ckpt_dir,dataset_loader, val_transforms,
 
         Best_Img_PSNR = img_PSNRs_iter2.avg
         Best_Epoch = epoch_idx
-        utils.network_utils.save_checkpoints(os.path.join(ckpt_dir, 'best-ckpt.pth.tar'), \
-                                                    epoch_idx, deblurnet,deblurnet_solver, \
-                                                    Best_Img_PSNR, Best_Epoch)
+
     log.info('[VALID] Total_Mean_PSNR:itr1:{0},itr2:{1},best:{2}'.format(img_PSNRs_iter1.avg,img_PSNRs_iter2.avg,Best_Img_PSNR))
-    
-    return img_PSNRs_iter2.avg,Best_Img_PSNR
 
-
-
-def valid_only_inference(cfg, epoch_idx, Best_Img_PSNR,dataset_loader, val_transforms, deblurnet,val_writer):
-    # Set up data loader
-    val_data_loader = torch.utils.data.DataLoader(
-        dataset=dataset_loader.get_dataset(utils.data_loaders.DatasetType.VALID_TEST, val_transforms),
-        batch_size=cfg.CONST.VAL_BATCH_SIZE,
-        num_workers=cfg.CONST.NUM_WORKER, pin_memory=True, shuffle=False)
-
-    test_time = utils.network_utils.AverageMeter()
-    data_time = utils.network_utils.AverageMeter()
-    img_PSNRs_iter2 = utils.network_utils.AverageMeter()
-    deblur_mse_losses = utils.network_utils.AverageMeter()  # added for writing test loss
-    warp_mse_losses = utils.network_utils.AverageMeter()    # added for writing test loss
-    deblur_losses = utils.network_utils.AverageMeter()      # added for writing test loss
-    img_PSNRs_iter1 = utils.network_utils.AverageMeter()
-    batch_end_time = time()
-
-    deblurnet.eval()
-    tqdm_val = tqdm(val_data_loader)
-    tqdm_val.set_description('[VALID_TEST] [Epoch {0}/{1}]'.format(epoch_idx,cfg.TRAIN.NUM_EPOCHES))
-    
-    for seq_idx, (name, seq_blur, seq_clear) in enumerate(tqdm_val):
-        data_time.update(time() - batch_end_time)
-
-        seq_blur = [utils.network_utils.var_or_cuda(img).unsqueeze(1) for img in seq_blur]
-        seq_clear = [utils.network_utils.var_or_cuda(img).unsqueeze(1) for img in seq_clear]
-        # seq_len = len(seq_blur)
-        # Switch models to training mode
-        
-        with torch.no_grad():
-            input_seq = []
-            gt_seq = []
-            input_seq += seq_blur
-            input_seq = torch.cat(input_seq,1)
-            gt_seq = torch.cat(seq_clear,1)
-            b,t,c,h,w = gt_seq.shape
-            torch.cuda.synchronize()
-            test_time_start = time()
-            recons_1, recons_2, recons_3, out,flow_forwards,flow_backwards = deblurnet(input_seq)
-            torch.cuda.synchronize()
-            test_time.update((time() - test_time_start)/t)
-
-            # calculate test loss
-            output_img = torch.cat([recons_1, recons_2, recons_3, out],dim=1)
-            
-            down_simple_gt = F.interpolate(gt_seq.reshape(-1,c,h,w), size=(h//4, w//4),mode='bilinear', align_corners=True).reshape(b,t,c,h//4,w//4)
-            
-            warploss = warp_loss_train(down_simple_gt, flow_forwards, flow_backwards)*0.05 
-            warp_mse_losses.update(warploss.item(), cfg.CONST.VAL_BATCH_SIZE)
-
-            t_gt_seq = torch.cat([gt_seq[:,1,:,:,:],gt_seq[:,2,:,:,:],gt_seq[:,3,:,:,:],gt_seq[:,2,:,:,:]],dim=1)
-            deblur_mse_loss = l1Loss(output_img, t_gt_seq)
-            deblur_mse_losses.update(deblur_mse_loss.item(), cfg.CONST.VAL_BATCH_SIZE)
-
-            deblur_loss = deblur_mse_loss + warploss  
-            deblur_losses.update(deblur_loss.item(), cfg.CONST.VAL_BATCH_SIZE)
-
-            img_PSNR2 = util.calc_psnr(out.detach(),gt_seq[:,2,:,:,:].detach())
-            img_PSNRs_iter2.update(img_PSNR2, cfg.CONST.VAL_BATCH_SIZE)
-            img_PSNR = util.calc_psnr(recons_2.detach(),gt_seq[:,2,:,:,:].detach())
-            img_PSNRs_iter1.update(img_PSNR, cfg.CONST.VAL_BATCH_SIZE)
-            batch_end_time = time()
-            
-            tqdm_val.set_postfix_str('RT {0} DT {1} imgPSNR_iter1 {2} imgPSNR_iter2 {3}'
-                        .format(test_time ,data_time, img_PSNRs_iter1,img_PSNRs_iter2))     
-            
-            
-    # Output val results
-    log.info('============================ VALID RESULTS ============================')
-    
-    # Add testing results to TensorBoard
-    val_writer.add_scalar('Loss/EpochWarpMSELoss_VAL_TEST', warp_mse_losses.avg, epoch_idx)
-    val_writer.add_scalar('Loss/EpochMSELoss_VAL_TEST', deblur_mse_losses.avg, epoch_idx)
-    val_writer.add_scalar('Loss/EpochDeblurLoss_VAL_TEST', deblur_mse_losses.avg, epoch_idx) 
-    val_writer.add_scalar('PSNR/Epoch_PSNR_VAL_TEST', img_PSNRs_iter2.avg, epoch_idx)
-
-    if img_PSNRs_iter2.avg  >= Best_Img_PSNR:
-
-        Best_Img_PSNR = img_PSNRs_iter2.avg
-        
-    log.info('[VALID_TEST] Total_Mean_PSNR:itr1:{0},itr2:{1},best:{2}'.format(img_PSNRs_iter1.avg,img_PSNRs_iter2.avg,Best_Img_PSNR))
-    
-    
+    return img_PSNRs_iter2.avg, Best_Img_PSNR

@@ -2,9 +2,9 @@ import json
 import os
 import glob
 
-dataset_path = '../../dataset/real_night_blur/test/input'
+dataset_path = '../../dataset/ADAS/test/input'
 phase = 'test'
-save_name = 'real_night_blur'
+save_name = 'ADAS'
 
 dict_list = []
 
@@ -17,7 +17,7 @@ for seq in seq_list:
 
     sample_path_list = [
         os.path.splitext(os.path.basename(sample_path))[0]
-        for sample_path in sorted(glob.glob(os.path.join(dataset_path, seq,'*.png')))
+        for sample_path in sorted(glob.glob(os.path.join(dataset_path, seq,'*.jpg')))
         ]
     seq_dict['sample'] = sample_path_list
 

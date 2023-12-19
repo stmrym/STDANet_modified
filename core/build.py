@@ -21,10 +21,6 @@ from losses.multi_loss import *
 from utils import log
 def  bulid_net(cfg,output_dir):
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
-
-    log_dir      = output_dir % 'logs'
-    ckpt_dir     = output_dir % 'checkpoints'
-    
     torch.backends.cudnn.benchmark  = True
 
     # Set up data augmentation
@@ -51,11 +47,6 @@ def  bulid_net(cfg,output_dir):
         utils.data_transforms.Normalize(mean=cfg.DATA.MEAN, std=cfg.DATA.STD),
         utils.data_transforms.ToTensor(),
         ])
-
-    # Set up data loader
-    
-    # dataset_loader = utils.data_loaders.DATASET_LOADER_MAPPING[cfg.DATASET.DATASET_NAME]()
-    dataset_loader = utils.data_loaders.VideoDeblurDataLoader_No_Slipt()
     
     # Set up networks
     
@@ -71,8 +62,7 @@ def  bulid_net(cfg,output_dir):
     base_params = []
     motion_branch_params = []
     attention_params = []
-    # pretrain_params = []
-    # ['reference_points', 'sampling_offsets']
+
     for name,param in deblurnet.named_parameters():
         if 'reference_points' in name or 'sampling_offsets' in name:
             if param.requires_grad == True:
@@ -96,7 +86,7 @@ def  bulid_net(cfg,output_dir):
         ]
     # a =  filter(lambda p: p.requires_grad, deblurnet.parameters())
     deblurnet_solver = torch.optim.Adam(optim_param,lr=cfg.TRAIN.LEARNING_RATE,
-                                         betas=(cfg.TRAIN.MOMENTUM, cfg.TRAIN.BETA))
+                                        betas=(cfg.TRAIN.MOMENTUM, cfg.TRAIN.BETA))
 
     
 
@@ -132,14 +122,6 @@ def  bulid_net(cfg,output_dir):
         
         checkpoint = torch.load(os.path.join(cfg.CONST.WEIGHTS),map_location='cpu')
         
-        # weights = {}
-        # for k,v in checkpoint.items():
-        #     if 'flow_net' not in k:
-        #         weights.update({k.replace('module.','').replace('Defattn1.','MMA.').replace('Defattn3.','MSA.'):v})
-
-        # print('----------')
-        # print(checkpoint['deblurnet_state_dict'].keys())
-        # deblurnet.load_state_dict(weights)
         deblurnet.load_state_dict({k.replace('module.',''):v for k,v in checkpoint['deblurnet_state_dict'].items()})
         deblurnet_solver.load_state_dict(checkpoint['deblurnet_solver_state_dict'])
         
@@ -148,8 +130,8 @@ def  bulid_net(cfg,output_dir):
         Best_Epoch = 0
         
         log.info('{0} Recover complete. Current epoch #{1}, Best_Img_PSNR = {2} at epoch #{3}.' \
-              .format(dt.now(), init_epoch, Best_Img_PSNR, Best_Epoch))
-       
+            .format(dt.now(), init_epoch, Best_Img_PSNR, Best_Epoch))
+
     
     deblurnet_lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(deblurnet_solver,
                                                                 milestones=cfg.TRAIN.LR_MILESTONES,
@@ -157,31 +139,50 @@ def  bulid_net(cfg,output_dir):
     
     if torch.cuda.is_available():
         deblurnet = torch.nn.DataParallel(deblurnet).cuda()
-    
-
-
-
-    
-    if cfg.NETWORK.PHASE in ["train","resume"]:
-        train_writer = SummaryWriter(os.path.join(log_dir, 'train'))
-        val_writer  = SummaryWriter(os.path.join(log_dir, 'val'))
-    else:
-        train_writer = None
-        test_writer  = None
-    
-    """ if cfg.CONST.PACKING == True and cfg.NETWORK.PHASE in ['train']:
-        utils.packing.packing(os.path.join(code_dir,"code.tar"),".") """
-        
-    log.info(' Output_dir： {0}'.format(output_dir[:-2]))
-    
 
 
     if cfg.NETWORK.PHASE in ['train','resume']:
-        train(cfg, init_epoch, dataset_loader, train_transforms, val_transforms,
-                              deblurnet, deblurnet_solver, deblurnet_lr_scheduler,
-                              ckpt_dir, train_writer, val_writer,
-                              Best_Img_PSNR, Best_Epoch)
-    else:
-        dir_dataset_name = cfg.DATASET.DATASET_NAME
-        test(cfg, dir_dataset_name, init_epoch,Best_Img_PSNR,ckpt_dir,dataset_loader, test_transforms, deblurnet, deblurnet_solver,test_writer)
-        
+
+        log_dir       = os.path.join(output_dir, 'logs')
+        ckpt_dir      = os.path.join(output_dir, 'checkpoints')
+        visualize_dir = os.path.join(output_dir, 'visualization')
+
+        # Training
+
+        train_writer = SummaryWriter(os.path.join(log_dir, 'train'))
+        val_writer  = SummaryWriter(os.path.join(log_dir, 'val'))
+
+        train(cfg = cfg, 
+            init_epoch = init_epoch,
+            train_transforms = train_transforms, val_transforms = val_transforms,
+            deblurnet = deblurnet, deblurnet_solver = deblurnet_solver, 
+            deblurnet_lr_scheduler = deblurnet_lr_scheduler,
+            ckpt_dir = ckpt_dir, visualize_dir = visualize_dir,
+            train_writer = train_writer, val_writer = val_writer,
+            Best_Img_PSNR = Best_Img_PSNR, Best_Epoch = Best_Epoch)
+    
+    elif cfg.NETWORK.PHASE in ['test']:
+
+        # Test for each dataset list
+        for test_dataset_name,\
+            test_image_blur_path,\
+            test_image_clear_path,\
+            test_json_file_path in zip(cfg.DATASET.TEST_DATASET_LIST,
+                                        cfg.DIR.TEST_IMAGE_BLUR_PATH_LIST,
+                                        cfg.DIR.TEST_IMAGE_CLEAR_PATH_LIST,
+                                        cfg.DIR.TEST_JSON_FILE_PATH_LIST):
+            test_loader = utils.data_loaders.VideoDeblurDataLoader_No_Slipt(
+                image_blur_path = test_image_blur_path, 
+                image_clear_path = test_image_clear_path,
+                json_file_path = test_json_file_path)
+            
+            save_dir = os.path.join(output_dir, test_dataset_name)
+
+            test(cfg = cfg, 
+                test_dataset_name = test_dataset_name,
+                out_dir = save_dir,
+                epoch_idx = init_epoch,
+                Best_Img_PSNR = Best_Img_PSNR,
+                test_loader = test_loader,
+                test_transforms = test_transforms,
+                deblurnet = deblurnet)        

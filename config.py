@@ -14,12 +14,12 @@ cfg     = __C
 __C.CONST                               = edict()
 __C.CONST.DEVICE                        = '0'                             # gpu_ids
 __C.CONST.NUM_WORKER                    = 8                               # number of data workers
-__C.CONST.WEIGHTS                       = 'exp_log/train/2023-11-17T084827_STDAN_Stack_BSD_3ms24ms/checkpoints/latest-ckpt.pth.tar'
-# __C.CONST.WEIGHTS                       = 'exp_log/train/2023-11-22T163558_STDAN_Stack_BSD_3ms24ms/checkpoints/ckpt-epoch-0905.pth.tar' # data weights path
+# __C.CONST.WEIGHTS                       = 'exp_log/train/2023-11-17T084827_STDAN_Stack_BSD_3ms24ms/checkpoints/latest-ckpt.pth.tar'
+__C.CONST.WEIGHTS                       = 'exp_log/train/2023-11-22T163558_STDAN_Stack_BSD_3ms24ms/checkpoints/ckpt-epoch-0905.pth.tar' # data weights path
 # __C.CONST.WEIGHTS                       = ''
 __C.CONST.TRAIN_BATCH_SIZE              = 4 # original: 8
-__C.CONST.VAL_BATCH_SIZE                = 4
-__C.CONST.TEST_BATCH_SIZE               = 4 # original: 1
+__C.CONST.VAL_BATCH_SIZE                = 1
+__C.CONST.TEST_BATCH_SIZE               = 1 # original: 1
 # __C.CONST.DEBUG_PREFIX                  = '20231129_'  # This strings will be added to output_dir_path
 __C.CONST.DEBUG_PREFIX                  = 'debug_'  # This strings will be added to output_dir_path
 
@@ -28,12 +28,36 @@ __C.CONST.DEBUG_PREFIX                  = 'debug_'  # This strings will be added
 #
 __C.DATASET                             = edict()
 __C.DIR                                 = edict()
-__C.DATASET.DATASET_NAME                = 'BSD_3ms24ms'       # available options:  'DVD','GOPRO','BSD_1ms8ms','BSD_2ms16ms','BSD_3ms24ms'
-__C.DIR.VAL_DATAET_LIST                 = ['BSD_3ms24ms', 'GOPRO']
-__C.DIR.IMAGE_BLUR_PATH                 = '../dataset/BSD_3ms24ms/%s/%s/Blur/RGB/%s.png'   # %s, %s, %s: phase, seq_name, image_name
-__C.DIR.IMAGE_CLEAR_PATH                = '../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png'
-# __C.DIR.VAL_IMAGE_BLUR_PATH
-__C.DIR.DATASET_JSON_FILE_PATH          = '../STDAN_modified/datasets/BSD_3ms24ms_train_val_test.json'
+__C.DATASET.TRAIN_DATASET_NAME          = 'GOPRO'       # available options:  'DVD','GOPRO','BSD_1ms8ms','BSD_2ms16ms','BSD_3ms24ms'
+__C.DIR.TRAIN_IMAGE_BLUR_PATH           = '../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png'   # %s, %s, %s: phase, seq_name, image_name
+__C.DIR.TRAIN_IMAGE_CLEAR_PATH          = '../dataset/GOPRO_Large/%s/%s/sharp/%s.png'
+__C.DIR.TRAIN_JSON_FILE_PATH            = '../STDAN_modified/datasets/GOPRO_train.json'
+
+__C.DATASET.VAL_DATAET_LIST             = ['BSD_3ms24ms', 'GOPRO']
+__C.DIR.VAL_IMAGE_BLUR_PATH_LIST        = [
+                                                '../dataset/BSD_3ms24ms/%s/%s/Blur/RGB/%s.png',
+                                                '../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png'
+                                            ]   # %s, %s, %s: phase, seq_name, image_name
+__C.DIR.VAL_IMAGE_CLEAR_PATH_LIST       = [
+                                                '../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png',
+                                                '../dataset/GOPRO_Large/%s/%s/sharp/%s.png'
+                                            ]
+__C.DIR.VAL_JSON_FILE_PATH_LIST         = [
+                                                '../STDAN_modified/datasets/BSD_3ms24ms_valid.json',
+                                                '../STDAN_modified/datasets/GOPRO_valid.json'
+                                            ]
+
+__C.DATASET.TEST_DATASET_LIST           = ['ADAS']       # Arbitary output name
+__C.DIR.TEST_IMAGE_BLUR_PATH_LIST       = [
+                                                '../dataset/ADAS/%s/target/%s/%s.jpg',
+                                            ]   # %s, %s, %s: phase, seq_name, image_name
+__C.DIR.TEST_IMAGE_CLEAR_PATH_LIST      = [
+                                                '../dataset/ADAS/%s/target/%s/%s.jpg'
+                                            ]
+__C.DIR.TEST_JSON_FILE_PATH_LIST        = [
+                                                '../STDAN_modified/datasets/ADAS.json',
+                                            ]
+
 __C.DIR.OUT_PATH                        = './exp_log'         # logs path
 
 #
@@ -42,7 +66,7 @@ __C.DIR.OUT_PATH                        = './exp_log'         # logs path
 __C.NETWORK                             = edict()
 __C.NETWORK.DEBLURNETARCH               = 'STDAN_Stack'             
 __C.NETWORK.PHASE                       = 'train'                 # available options: 'train', 'test', 'resume'
-__C.NETWORK.TAG                         = __C.DATASET.DATASET_NAME     # logs folder tag
+__C.NETWORK.TAG                         = __C.DATASET.TRAIN_DATASET_NAME     # logs folder tag
 
 
 #
@@ -54,10 +78,7 @@ __C.DATA.MEAN                           = [0.0, 0.0, 0.0]
 __C.DATA.CROP_IMG_SIZE                  = [256, 256]              # Crop image size: height, width
 __C.DATA.GAUSSIAN                       = [0, 1e-4]               # mu, std_var
 __C.DATA.COLOR_JITTER                   = [0.2, 0.15, 0.3, 0.1]   # brightness, contrast, saturation, hue
-__C.DATA.TRAIN_SEQ_LENGTH               = 5
-__C.DATA.FRAME_LENGTH                   = 5
-__C.DATA.VAL_SEQ_LENGTH                 = 5
-__C.DATA.TEST_SEQ_LENGTH                = 5
+__C.DATA.INPUT_LENGTH                   = 5
 
 #
 # Training
@@ -76,7 +97,12 @@ __C.TRAIN.BIAS_DECAY                    = 0.0                    # regularizatio
 __C.TRAIN.WEIGHT_DECAY                  = 0.0                    # regularization of weight, default: 0
 __C.TRAIN.PRINT_FREQ                    = 100                    # print step
 __C.TRAIN.SAVE_FREQ                     = 5                     # weights will be overwritten every save_freq epoch
-__C.TRAIN.VISUALIZE_FREQ                = 100                    # frequency of vilidation visualization
+
+#
+# Val options
+#
+__C.VAL                                 = edict()
+__C.VAL.VISUALIZE_FREQ                  = 100                    # frequency of vilidation visualization
 
 #
 # Testing options
