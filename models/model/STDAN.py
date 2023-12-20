@@ -15,23 +15,11 @@ def make_model(args):
 class STDAN(nn.Module):
 
     def __init__(self, in_channels=3, n_sequence=3, out_channels=3, n_resblock=3, n_feat=32,
-                 kernel_size=5, extra_channels=0, feat_in=False, n_in_feat=32):
+                 kernel_size=5, feat_in=False, n_in_feat=32):
         super(STDAN, self).__init__()
-        print("Creating Recons-Video Net")
 
         self.feat_in = feat_in
 
-        if not extra_channels == 0:
-            print("SRN Video Net extra in channels: {}".format(extra_channels))
-        
-        """  Deform_blocks = []
-        Deform_blocks.extend([nn.Sequential(
-                nn.Conv2d(in_channels, n_feat, kernel_size=kernel_size, stride=1,
-                          padding=kernel_size // 2),
-                nn.LeakyReLU(0.1,inplace=True)
-            )])
-        Deform_blocks.extend([blocks.ResBlock(n_feat, n_feat, kernel_size=kernel_size, stride=1)
-                        for _ in range(5)]) """
         InBlock = []
         if not feat_in:
             InBlock.extend([nn.Sequential(
@@ -39,13 +27,13 @@ class STDAN(nn.Module):
                           padding=3 // 2),
                 nn.LeakyReLU(0.1,inplace=True)
             )])
-            print("The input of SRN is image")
+            print("The input of STDAN is image")
         else:
             InBlock.extend([nn.Sequential(
                 nn.Conv2d(n_in_feat, n_feat, kernel_size=3, stride=1, padding=3 // 2),
                 nn.LeakyReLU(0.1,inplace=True)
             )])
-            print("The input of SRN is feature")
+            print("The input of STDAN is feature")
         InBlock.extend([blocks.ResBlock(n_feat, n_feat, kernel_size=3, stride=1)
                         for _ in range(3)])
         # encoder1

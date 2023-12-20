@@ -2,8 +2,15 @@ import random
 import torch
 import torch.nn.functional as F
 import numpy as np
+import cv2
+import os
+import glob
 import math
+from tqdm import tqdm
 from skimage.metrics import structural_similarity as compare_ssim
+from mmflow.datasets import visualize_flow
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+import matplotlib.pyplot as plt
 
 def get_patch(*args, patch_size=17, scale=1):
     """
@@ -116,3 +123,102 @@ def ssim_calculate(x, y, val_range=255.0):
     ssim = compare_ssim(y, x, multichannel=True, gaussian_weights=True, sigma=1.5, use_sample_covariance=False,
                         data_range=val_range)
     return ssim
+
+
+def flow_vector(flow, spacing, margin, minlength):
+    """Parameters:
+    input
+    flow: motion vectors 3D-array
+    spacing: pixel spacing of the flow
+    margin: pixel margins of the flow
+    minlength: minimum pixels to leave as flow
+    output
+    x: x coord 1D-array
+    y: y coord 1D-array
+    u: x direction flow vector 2D-array
+    v: y direction flow vector 2D-array
+    """
+    h, w, _ = flow.shape
+
+    x = np.arange(margin, w - margin, spacing, dtype=np.int64)
+    y = np.arange(margin, h - margin, spacing, dtype=np.int64)
+
+    mesh_flow = flow[np.ix_(y, x)]
+    mag, _ = cv2.cartToPolar(mesh_flow[..., 0], mesh_flow[..., 1])
+    mesh_flow[mag < minlength] = np.nan  # replace under minlength to nan
+
+    u = mesh_flow[..., 0]
+    v = mesh_flow[..., 1]
+
+    return x, y, u, v
+
+
+def save_hsv_flow(save_dir, flow_type='out_flow', save_vector_map=False):
+
+    seqs = sorted([f for f in os.listdir(os.path.join(save_dir, flow_type + '_npy')) if os.path.isdir(os.path.join(save_dir, flow_type + '_npy', f))])
+    tqdm_seqs = tqdm(seqs)
+    tqdm_seqs.set_description(f'[SAVE]')
+
+    for seq in tqdm_seqs:
+        npy_files = sorted(glob.glob(os.path.join(save_dir, flow_type + '_npy', seq, '*.npy')))
+        out_flows = []
+        names = []
+        for npy_file in npy_files:
+            npy = np.load(npy_file)
+            H, W, _ = npy.shape
+            npy = cv2.resize(npy, (W*4, H*4))
+            out_flows.append(npy)
+            names.append(os.path.splitext((os.path.basename(npy_file)))[0])
+
+        if save_vector_map == True:
+            firstLoop = True
+            for out_flow in out_flows:  # get vector_max for each seq       
+                _, _, u, v = flow_vector(flow=out_flow, spacing=10, margin=0, minlength=1)  # flow.shape must be (H, W, 2)
+                vector_mag = np.nanmax(np.sqrt(pow(u,2)+pow(v,2)))
+
+                if firstLoop == True:
+                    vector_amax = vector_mag
+                    firstLoop = False
+                else:
+                    if vector_amax < vector_mag:
+                        vector_amax = vector_mag
+        
+
+        for img_name, out_flow in zip(names, out_flows):
+            
+            ############################
+            # saving flow_hsv using mmcv
+            ############################
+
+            flow_map = visualize_flow(out_flow, None)
+            # visualize_flow return flow map with RGB order
+            flow_map = cv2.cvtColor(flow_map, cv2.COLOR_RGB2BGR)
+
+            if os.path.isdir(os.path.join(save_dir, flow_type, seq)) == False:
+                os.makedirs(os.path.join(save_dir, flow_type, seq), exist_ok=True)
+            
+            cv2.imwrite(os.path.join(save_dir, flow_type, seq, img_name + '.png'), flow_map) 
+
+            if save_vector_map == True:
+                ####################
+                # saving flow_vector
+                ####################
+
+                fig, ax = plt.subplots(figsize=(8,6), dpi=350)
+                ax.axis("off")
+                output_image = cv2.imread(os.path.join(save_dir, 'output', seq, img_name + '.png'), cv2.IMREAD_GRAYSCALE)
+
+                ax.imshow(output_image.astype(np.uint8),cmap='gray', alpha=0.8)
+                
+                x, y, u, v = flow_vector(flow=out_flow, spacing=10, margin=0, minlength=5)  # flow.shape must be (H, W, 2)
+                im = ax.quiver(x, y, u/np.sqrt(pow(u,2)+pow(v,2)),v/np.sqrt(pow(u,2)+pow(v,2)),np.sqrt(pow(u,2)+pow(v,2)), cmap='jet', angles='xy', scale_units='xy', scale=0.1)
+                
+                divider = make_axes_locatable(ax) # get AxesDivider
+                cax = divider.append_axes("right", size="5%", pad=0.1) # make new axes
+                cb = fig.colorbar(im, cax=cax)
+                cb.mappable.set_clim(0, vector_amax)
+
+                forward_path = os.path.join(save_dir, 'flow_forward', seq)
+                if os.path.isdir(forward_path) == False:
+                    os.makedirs(forward_path)
+                plt.savefig(os.path.join(forward_path, img_name + '.png'), bbox_inches = "tight")

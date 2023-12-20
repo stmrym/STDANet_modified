@@ -1,45 +1,22 @@
 from torch import gt
 import torch.backends.cudnn
 import torch.utils.data
-import glob
 import utils.data_loaders
 import utils.data_transforms
 import utils.network_utils
 from losses.multi_loss import *
 from utils import util
 import cv2
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-
 import numpy as np
 from utils import log
 
 from time import time
 from utils.util import ssim_calculate
 from tqdm import tqdm
-from mmflow.datasets import visualize_flow
-from models.submodules import warp
-def warp_loss(frames_list,flow_forwards,flow_backwards):
-    n, t, c, h, w = frames_list.size()
-    
-    forward_loss = 0
-    backward_loss = 0
-    for flag,idx in enumerate([[1,2,3]]):
-        frames = frames_list[:,idx,:,:,:]
-        # for flow_forward,flow_backward in zip(flow_forwards,flow_backwards):
-        flow_forward = flow_forwards
-        flow_backward = flow_backwards
-        # flow_forward = torch.zeros_like(flow_forwards)
-        # flow_backward = torch.zeros_like(flow_backwards)
-        frames_1 = frames[:, :-1, :, :, :].reshape(-1, c, h, w)
-        frames_2 = frames[:, 1:, :, :, :].reshape(-1, c, h, w)
-        backward_frames = warp(frames_1,flow_backward.reshape(-1, 2, h, w))
-        forward_frames = warp(frames_2,flow_forward.reshape(-1, 2, h, w))
-        forward_loss += l1Loss(forward_frames,frames_1)
-        backward_loss += l1Loss(backward_frames,frames_2)
-    return (0.5*forward_loss + 0.5*backward_loss)
 
-def warp_loss_train(frames_list,flow_forwards,flow_backwards):  # copied from train.py
+from models.submodules import warp
+
+def warp_loss(frames_list,flow_forwards,flow_backwards):  # copied from train.py
     n, t, c, h, w = frames_list.size()
     
     forward_loss = 0
@@ -55,40 +32,6 @@ def warp_loss_train(frames_list,flow_forwards,flow_backwards):  # copied from tr
             backward_loss += l1Loss(backward_frames,frames_2)
     return (0.5*forward_loss + 0.5*backward_loss)/len(flow_forwards)
 
-def mkdir(path):
-    if not os.path.isdir(path):
-        mkdir(os.path.split(path)[0])
-    else:
-        return
-    os.mkdir(path)
-
-def flow_vector(flow, spacing, margin, minlength):
-    """Parameters:
-    input
-    flow: motion vectors 3D-array
-    spacing: pixel spacing of the flow
-    margin: pixel margins of the flow
-    minlength: minimum pixels to leave as flow
-    output
-    x: x coord 1D-array
-    y: y coord 1D-array
-    u: x direction flow vector 2D-array
-    v: y direction flow vector 2D-array
-    """
-    h, w, _ = flow.shape
-
-    x = np.arange(margin, w - margin, spacing, dtype=np.int64)
-    y = np.arange(margin, h - margin, spacing, dtype=np.int64)
-
-    mesh_flow = flow[np.ix_(y, x)]
-    mag, _ = cv2.cartToPolar(mesh_flow[..., 0], mesh_flow[..., 1])
-    mesh_flow[mag < minlength] = np.nan  # replace under minlength to nan
-
-    u = mesh_flow[..., 0]
-    v = mesh_flow[..., 1]
-
-    return x, y, u, v
-
 def valid(cfg, 
         val_dataset_name,
         epoch_idx, init_epoch,
@@ -96,46 +39,41 @@ def valid(cfg,
         ckpt_dir, save_dir,
         val_loader, val_transforms, deblurnet,
         val_writer, val_visualize):
+    
     # Set up data loader
     val_data_loader = torch.utils.data.DataLoader(
         dataset=val_loader.get_dataset(transforms = val_transforms),
         batch_size=cfg.CONST.VAL_BATCH_SIZE,
         num_workers=cfg.CONST.NUM_WORKER, pin_memory=True, shuffle=False)
 
-    # test_data_loader = dataset_loader.loader_test
-    # seq_num = len(test_data_loader)
-    # Batch average meterics
-    # batch_time = utils.network_utils.AverageMeter()
-    test_time = utils.network_utils.AverageMeter()
-    data_time = utils.network_utils.AverageMeter()
-    img_PSNRs_iter1 = utils.network_utils.AverageMeter()
-    img_PSNRs_iter2 = utils.network_utils.AverageMeter()
-    img_ssims_iter1 = utils.network_utils.AverageMeter()
-    img_ssims_iter2 = utils.network_utils.AverageMeter()
-    deblur_mse_losses = utils.network_utils.AverageMeter()  # added for writing test loss
-    warp_mse_losses = utils.network_utils.AverageMeter()    # added for writing test loss
-    deblur_losses = utils.network_utils.AverageMeter()      # added for writing test loss
+    inference_time = utils.network_utils.AverageMeter()
+    process_time   = utils.network_utils.AverageMeter()
+    img_PSNRs_mid = utils.network_utils.AverageMeter()
+    img_PSNRs_out = utils.network_utils.AverageMeter()
+    img_ssims_mid = utils.network_utils.AverageMeter()
+    img_ssims_out = utils.network_utils.AverageMeter()
+    deblur_mse_losses = utils.network_utils.AverageMeter()
+    warp_mse_losses = utils.network_utils.AverageMeter()    
+    deblur_losses = utils.network_utils.AverageMeter()    
 
-    batch_end_time = time()
-    # test_psnr = dict()
-    # g_names= 'init'
     deblurnet.eval()
 
     if epoch_idx == init_epoch:
         total_case_num = int(len(val_data_loader)) * cfg.CONST.VAL_BATCH_SIZE
-        print(f'Total [{val_dataset_name}] valid case: {total_case_num}')
-        log.info(f'Total [{val_dataset_name}] valid case: {total_case_num}')
+        log.info(f'[VALID] Total [{val_dataset_name}] valid case: {total_case_num}')
         assert total_case_num != 0, f'[{val_dataset_name}] empty!'
 
     tqdm_val = tqdm(val_data_loader)
-    tqdm_val.set_description('[VALID] [Epoch {0}/{1}]'.format(epoch_idx,cfg.TRAIN.NUM_EPOCHES))
+    tqdm_val.set_description(f'[VALID] [Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}]')
     
     for seq_idx, (name, seq_blur, seq_clear) in enumerate(tqdm_val):
-        data_time.update(time() - batch_end_time)
-
+        
         seq_blur = [utils.network_utils.var_or_cuda(img).unsqueeze(1) for img in seq_blur]
         seq_clear = [utils.network_utils.var_or_cuda(img).unsqueeze(1) for img in seq_clear]
         
+        torch.cuda.synchronize()
+        process_start_time = time()
+
         with torch.no_grad():
             input_seq = []
             gt_seq = []
@@ -143,18 +81,22 @@ def valid(cfg,
             input_seq = torch.cat(input_seq,1)
             gt_seq = torch.cat(seq_clear,1)
             b,t,c,h,w = gt_seq.shape
+
             torch.cuda.synchronize()
-            test_time_start = time()
+            inference_start_time = time()
+
+            # Inference
             recons_1, recons_2, recons_3, out,flow_forwards,flow_backwards = deblurnet(input_seq)
+            
             torch.cuda.synchronize()
-            test_time.update((time() - test_time_start)/t)
+            inference_time.update((time() - inference_start_time))
 
             # calculate test loss
             output_img = torch.cat([recons_1, recons_2, recons_3, out],dim=1)
             
             down_simple_gt = F.interpolate(gt_seq.reshape(-1,c,h,w), size=(h//4, w//4),mode='bilinear', align_corners=True).reshape(b,t,c,h//4,w//4)
             
-            warploss = warp_loss_train(down_simple_gt, flow_forwards, flow_backwards)*0.05 
+            warploss = warp_loss(down_simple_gt, flow_forwards, flow_backwards)*0.05 
             warp_mse_losses.update(warploss.item(), cfg.CONST.VAL_BATCH_SIZE)
 
             t_gt_seq = torch.cat([gt_seq[:,1,:,:,:],gt_seq[:,2,:,:,:],gt_seq[:,3,:,:,:],gt_seq[:,2,:,:,:]],dim=1)
@@ -164,14 +106,15 @@ def valid(cfg,
             deblur_loss = deblur_mse_loss + warploss  
             deblur_losses.update(deblur_loss.item(), cfg.CONST.VAL_BATCH_SIZE)
 
-            img_PSNR2 = util.calc_psnr(out.detach(),gt_seq[:,2,:,:,:].detach())
-            img_PSNRs_iter2.update(img_PSNR2, cfg.CONST.VAL_BATCH_SIZE)
-            img_PSNR = util.calc_psnr(recons_2.detach(),gt_seq[:,2,:,:,:].detach())
-            img_PSNRs_iter1.update(img_PSNR, cfg.CONST.VAL_BATCH_SIZE)
-            batch_end_time = time()
+            img_PSNR_out = util.calc_psnr(out.detach(),gt_seq[:,2,:,:,:].detach())
+            img_PSNRs_out.update(img_PSNR_out, cfg.CONST.VAL_BATCH_SIZE)
+            img_PSNR_mid = util.calc_psnr(recons_2.detach(),gt_seq[:,2,:,:,:].detach())
+            img_PSNRs_mid.update(img_PSNR_mid, cfg.CONST.VAL_BATCH_SIZE)
+
+            torch.cuda.synchronize()
+            process_time.update((time() - process_start_time))
             
-            tqdm_val.set_postfix_str('RT {0} DT {1} imgPSNR_iter1 {2} imgPSNR_iter2 {3}'
-                        .format(test_time ,data_time, img_PSNRs_iter1,img_PSNRs_iter2))
+            tqdm_val.set_postfix_str(f'Inference Time {inference_time} Process Time {process_time} PSNR_mid {img_PSNRs_mid} PSNR_out {img_PSNRs_out}')
             
             if val_visualize == True:
                 # saving images
@@ -183,8 +126,8 @@ def valid(cfg,
 
                 output_image_it1 = recons_2.cpu().detach()*255
                 output_image_it1 = output_image_it1[0].permute(1,2,0)
-                img_ssims_iter1.update(ssim_calculate(output_image_it1.numpy(),gt_image.numpy()),cfg.CONST.TEST_BATCH_SIZE)
-                img_ssims_iter2.update(ssim_calculate(output_image.numpy(),gt_image.numpy()),cfg.CONST.TEST_BATCH_SIZE)
+                img_ssims_mid.update(ssim_calculate(output_image_it1.numpy(),gt_image.numpy()),cfg.CONST.VAL_BATCH_SIZE)
+                img_ssims_out.update(ssim_calculate(output_image.numpy(),gt_image.numpy()),cfg.CONST.VAL_BATCH_SIZE)
                 seq, img_name = name[0].split('.')  # name = ['000.00000002']
 
                 # saving output image
@@ -196,28 +139,41 @@ def valid(cfg,
                 
                 cv2.imwrite(os.path.join(save_dir, 'output', seq, img_name + '.png'), output_image_bgr)
 
-                # saving npy files
-                if os.path.isdir(os.path.join(save_dir, 'flow_npy', seq)) == False:
-                    os.makedirs(os.path.join(save_dir, 'flow_npy', seq), exist_ok=True)
+                # saving mid flow npy files
+                if os.path.isdir(os.path.join(save_dir, 'mid_flow_npy', seq)) == False:
+                    os.makedirs(os.path.join(save_dir, 'mid_flow_npy', seq), exist_ok=True)
+                mid_flow_forward = (flow_forwards[1])[0][1].permute(1,2,0).cpu().detach().numpy()               
+                np.save(os.path.join(save_dir, 'mid_flow_npy', seq, img_name + '.npy'),mid_flow_forward)
+
+                # saving out flow npy files
+                if os.path.isdir(os.path.join(save_dir, 'out_flow_npy', seq)) == False:
+                    os.makedirs(os.path.join(save_dir, 'out_flow_npy', seq), exist_ok=True)
                 out_flow_forward = (flow_forwards[-1])[0][1].permute(1,2,0).cpu().detach().numpy()               
-                np.save(os.path.join(save_dir, 'flow_npy', seq, img_name + '.npy'),out_flow_forward)
+                np.save(os.path.join(save_dir, 'out_flow_npy', seq, img_name + '.npy'),out_flow_forward)
             
     # Output val results
     log.info('============================ VALID RESULTS ============================')
     
     # Add testing results to TensorBoard
-    val_writer.add_scalar(f'Loss/EpochWarpMSELoss_VAL_{val_dataset_name}', warp_mse_losses.avg, epoch_idx)
-    val_writer.add_scalar(f'Loss/EpochMSELoss_VAL_{val_dataset_name}', deblur_mse_losses.avg, epoch_idx)
-    val_writer.add_scalar(f'Loss/EpochDeblurLoss_VAL_{val_dataset_name}', deblur_mse_losses.avg, epoch_idx) 
-    val_writer.add_scalar(f'PSNR/Epoch_PSNR_VAL_{val_dataset_name}', img_PSNRs_iter2.avg, epoch_idx)
+    val_writer.add_scalar(f'Loss_VALID/WarpMSELoss_{val_dataset_name}', warp_mse_losses.avg, epoch_idx)
+    val_writer.add_scalar(f'Loss_VALID/MSELoss_{val_dataset_name}', deblur_mse_losses.avg, epoch_idx)
+    val_writer.add_scalar(f'Loss_VALID/DeblurLoss_{val_dataset_name}', deblur_mse_losses.avg, epoch_idx) 
+    val_writer.add_scalar(f'PSNR/VAL_{val_dataset_name}', img_PSNRs_out.avg, epoch_idx)
 
-    if img_PSNRs_iter2.avg  >= Best_Img_PSNR:
+    if img_PSNRs_out.avg  >= Best_Img_PSNR:
         if not os.path.exists(ckpt_dir):
             os.makedirs(ckpt_dir)
 
-        Best_Img_PSNR = img_PSNRs_iter2.avg
-        Best_Epoch = epoch_idx
+        Best_Img_PSNR = img_PSNRs_out.avg
 
-    log.info('[VALID] Total_Mean_PSNR:itr1:{0},itr2:{1},best:{2}'.format(img_PSNRs_iter1.avg,img_PSNRs_iter2.avg,Best_Img_PSNR))
+    log.info(f'[VALID] Total PSNR_mid: {img_PSNRs_mid.avg}, PSNR_out: {img_PSNRs_out.avg}, PSNR_best: {Best_Img_PSNR}')
+    log.info(f'[VALID] Total SSIM_mid: {img_ssims_mid.avg}, SSIM_out: {img_ssims_out.avg}, Inference time: {inference_time}, Process time: {process_time}')
 
-    return img_PSNRs_iter2.avg, Best_Img_PSNR
+        # Creating flow map from npy    
+    log.info('========================== SAVING FLOW MAP ===========================')
+    
+    if cfg.VAL.SAVE_FLOW == True and val_visualize == True:
+        util.save_hsv_flow(save_dir=save_dir, flow_type='mid_flow', save_vector_map=False)
+        util.save_hsv_flow(save_dir=save_dir, flow_type='out_flow', save_vector_map=False)
+
+    return img_PSNRs_out.avg, Best_Img_PSNR

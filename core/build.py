@@ -12,6 +12,7 @@ import utils.network_utils
 import utils.packing
 import models
 from models.STDAN_Stack import STDAN_Stack
+from models.STDAN_RAFT_Stack import STDAN_RAFT_Stack
 from datetime import datetime as dt
 from tensorboardX import SummaryWriter
 from core.train import train
@@ -52,8 +53,7 @@ def  bulid_net(cfg,output_dir):
     
     deblurnet = models.__dict__[cfg.NETWORK.DEBLURNETARCH].__dict__[cfg.NETWORK.DEBLURNETARCH]()
 
-    log.info('%s Parameters in %s: %d.' % (dt.now(), cfg.NETWORK.DEBLURNETARCH,
-                                                utils.network_utils.count_parameters(deblurnet)))
+    log.info(f'{dt.now()} Parameters in {cfg.NETWORK.DEBLURNETARCH}: {utils.network_utils.count_parameters(deblurnet)}.')
 
     # Initialize weights of networks
     # deblurnet.apply()
@@ -84,27 +84,20 @@ def  bulid_net(cfg,output_dir):
             {'params':motion_branch_params,'initial_lr':cfg.TRAIN.LEARNING_RATE,"lr":cfg.TRAIN.LEARNING_RATE},
             {'params':attention_params,'initial_lr':cfg.TRAIN.LEARNING_RATE*0.01,"lr":cfg.TRAIN.LEARNING_RATE*0.01},
         ]
-    # a =  filter(lambda p: p.requires_grad, deblurnet.parameters())
     deblurnet_solver = torch.optim.Adam(optim_param,lr=cfg.TRAIN.LEARNING_RATE,
                                         betas=(cfg.TRAIN.MOMENTUM, cfg.TRAIN.BETA))
-
-    
 
     # Load pretrained model if exists
     init_epoch       = 0
     Best_Epoch       = -1
     Best_Img_PSNR    = 0
     
-    
     if cfg.NETWORK.PHASE in ['resume']:
-        log.info(' %s Recovering from %s ...' % (dt.now(), cfg.CONST.WEIGHTS))
+        log.info(f'{dt.now()} Recovering from {cfg.CONST.WEIGHTS} ...')
         
         checkpoint = torch.load(os.path.join(cfg.CONST.WEIGHTS),map_location='cpu')
-        # net_state_dict = deblurnet.state_dict()
+
         deblurnet.load_state_dict({k.replace('module.',''):v for k,v in checkpoint['deblurnet_state_dict'].items()})
-        # deblurnet.load_state_dict(checkpoint['deblurnet_state_dict'])
-        # state_dict = checkpoint['deblurnet_state_dict']
-        # net_state_dict = deblurnet.state_dict()
         deblurnet_solver.load_state_dict(checkpoint['deblurnet_solver_state_dict'])
         for state in deblurnet_solver.state.values():
                 for k, v in state.items():
@@ -116,10 +109,9 @@ def  bulid_net(cfg,output_dir):
         Best_Epoch = checkpoint['Best_Epoch']
         
     
-    
     elif cfg.NETWORK.PHASE in ['test']:
-        log.info(' %s Recovering from %s ...' % (dt.now(), cfg.CONST.WEIGHTS))
-        
+        log.info(f'{dt.now()} Recovering from {cfg.CONST.WEIGHTS} ...')     
+
         checkpoint = torch.load(os.path.join(cfg.CONST.WEIGHTS),map_location='cpu')
         
         deblurnet.load_state_dict({k.replace('module.',''):v for k,v in checkpoint['deblurnet_state_dict'].items()})
@@ -129,8 +121,7 @@ def  bulid_net(cfg,output_dir):
         Best_Img_PSNR = 0
         Best_Epoch = 0
         
-        log.info('{0} Recover complete. Current epoch #{1}, Best_Img_PSNR = {2} at epoch #{3}.' \
-            .format(dt.now(), init_epoch, Best_Img_PSNR, Best_Epoch))
+        log.info(f'{dt.now()} Recover complete. Current epoch #{init_epoch}, Best_Img_PSNR = {Best_Img_PSNR} at epoch #{Best_Epoch}.')
 
     
     deblurnet_lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(deblurnet_solver,
@@ -164,13 +155,8 @@ def  bulid_net(cfg,output_dir):
     elif cfg.NETWORK.PHASE in ['test']:
 
         # Test for each dataset list
-        for test_dataset_name,\
-            test_image_blur_path,\
-            test_image_clear_path,\
-            test_json_file_path in zip(cfg.DATASET.TEST_DATASET_LIST,
-                                        cfg.DIR.TEST_IMAGE_BLUR_PATH_LIST,
-                                        cfg.DIR.TEST_IMAGE_CLEAR_PATH_LIST,
-                                        cfg.DIR.TEST_JSON_FILE_PATH_LIST):
+        for test_dataset_name, test_image_blur_path, test_image_clear_path, test_json_file_path\
+            in zip(cfg.DATASET.TEST_DATASET_LIST, cfg.DIR.TEST_IMAGE_BLUR_PATH_LIST, cfg.DIR.TEST_IMAGE_CLEAR_PATH_LIST, cfg.DIR.TEST_JSON_FILE_PATH_LIST):
             test_loader = utils.data_loaders.VideoDeblurDataLoader_No_Slipt(
                 image_blur_path = test_image_blur_path, 
                 image_clear_path = test_image_clear_path,

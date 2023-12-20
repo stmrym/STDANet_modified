@@ -2,8 +2,10 @@
 
 from utils import log
 import matplotlib
-# from models import deformable_transformer
 import os
+os.environ["NUMEXPR_MAX_THREADS"] = "8"
+""" from visualizer import get_local
+get_local.activate() """
 import re
 
 import torch
@@ -14,7 +16,6 @@ from config import cfg
 from core.build import bulid_net
 import warnings
 warnings.filterwarnings("ignore") 
-# torch.manual_seed(1)
 
 def main():
     
@@ -23,13 +24,14 @@ def main():
         print_log  = os.path.join(output_dir, 'print.log')
 
     elif  cfg.NETWORK.PHASE == 'test':
-        output_dir = os.path.join(cfg.DIR.OUT_PATH,'test', cfg.CONST.DEBUG_PREFIX + cfg.NETWORK.DEBLURNETARCH + "_" + cfg.NETWORK.TAG + '_' + re.split('[/.]', cfg.CONST.WEIGHTS)[-3])
+        output_dir = os.path.join(cfg.DIR.OUT_PATH,'test', cfg.CONST.DEBUG_PREFIX + cfg.NETWORK.DEBLURNETARCH + '_' + '_'.join(cfg.DIR.TRAIN_DATASET_LIST) + '_' + re.split('[/.]', cfg.CONST.WEIGHTS)[-3])
         print_log    = os.path.join(output_dir, 'print.log')
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
     elif cfg.NETWORK.PHASE == 'train':
         timestr = dt.now().isoformat(timespec='seconds').replace(':', '')
-        output_dir = os.path.join(cfg.DIR.OUT_PATH,'train', cfg.CONST.DEBUG_PREFIX + timestr + '_' + cfg.NETWORK.DEBLURNETARCH + "_" + cfg.NETWORK.TAG) # changed to use timestr
+        output_dir = os.path.join(cfg.DIR.OUT_PATH,'train', cfg.CONST.DEBUG_PREFIX + timestr + '_' + cfg.NETWORK.DEBLURNETARCH + '_' + '_'.join(cfg.DATASET.TRAIN_DATASET_LIST)) # changed to use timestr
+
         log_dir      = os.path.join(output_dir, 'logs')
         ckpt_dir     = os.path.join(output_dir, 'checkpoints')
         print_log    = os.path.join(output_dir, 'print.log')

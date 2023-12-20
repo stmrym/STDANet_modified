@@ -2,8 +2,6 @@
 
 from pickle import FALSE
 from easydict import EasyDict as edict
-import os
-import socket
 
 __C     = edict()
 cfg     = __C
@@ -20,42 +18,42 @@ __C.CONST.WEIGHTS                       = 'exp_log/train/2023-11-22T163558_STDAN
 __C.CONST.TRAIN_BATCH_SIZE              = 4 # original: 8
 __C.CONST.VAL_BATCH_SIZE                = 1
 __C.CONST.TEST_BATCH_SIZE               = 1 # original: 1
-# __C.CONST.DEBUG_PREFIX                  = '20231129_'  # This strings will be added to output_dir_path
-__C.CONST.DEBUG_PREFIX                  = 'debug_'  # This strings will be added to output_dir_path
+__C.CONST.DEBUG_PREFIX                  = '20231220_'  # This strings will be added to output_dir_path
+# __C.CONST.DEBUG_PREFIX                  = 'debug_'  # This strings will be added to output_dir_path
 
 #
 # Dataset, logs and checkpoint Directories
 #
 __C.DATASET                             = edict()
 __C.DIR                                 = edict()
-__C.DATASET.TRAIN_DATASET_NAME          = 'GOPRO'       # available options:  'DVD','GOPRO','BSD_1ms8ms','BSD_2ms16ms','BSD_3ms24ms'
-__C.DIR.TRAIN_IMAGE_BLUR_PATH           = '../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png'   # %s, %s, %s: phase, seq_name, image_name
-__C.DIR.TRAIN_IMAGE_CLEAR_PATH          = '../dataset/GOPRO_Large/%s/%s/sharp/%s.png'
-__C.DIR.TRAIN_JSON_FILE_PATH            = '../STDAN_modified/datasets/GOPRO_train.json'
-
-__C.DATASET.VAL_DATAET_LIST             = ['BSD_3ms24ms', 'GOPRO']
-__C.DIR.VAL_IMAGE_BLUR_PATH_LIST        = [
-                                                '../dataset/BSD_3ms24ms/%s/%s/Blur/RGB/%s.png',
-                                                '../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png'
-                                            ]   # %s, %s, %s: phase, seq_name, image_name
-__C.DIR.VAL_IMAGE_CLEAR_PATH_LIST       = [
-                                                '../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png',
-                                                '../dataset/GOPRO_Large/%s/%s/sharp/%s.png'
+__C.DATASET.TRAIN_DATASET_LIST          = ['BSD_3ms24ms', 'GOPRO']       # available options:  'DVD','GOPRO','BSD_1ms8ms','BSD_2ms16ms','BSD_3ms24ms'
+__C.DIR.TRAIN_IMAGE_BLUR_PATH_LIST      = [ '../dataset/BSD_3ms24ms/%s/%s/Blur/RGB/%s.png',     # %s, %s, %s: phase, seq_name, image_name template
+                                            '../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png'
                                             ]
-__C.DIR.VAL_JSON_FILE_PATH_LIST         = [
-                                                '../STDAN_modified/datasets/BSD_3ms24ms_valid.json',
-                                                '../STDAN_modified/datasets/GOPRO_valid.json'
+__C.DIR.TRAIN_IMAGE_CLEAR_PATH_LIST     = [ '../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png',    # %s, %s, %s: phase, seq_name, image_name template
+                                            '../dataset/GOPRO_Large/%s/%s/sharp/%s.png'
+                                            ]
+__C.DIR.TRAIN_JSON_FILE_PATH_LIST       = [ '../STDAN_modified/datasets/BSD_3ms24ms_train.json',
+                                            '../STDAN_modified/datasets/GOPRO_train.json'
+                                            ]
+
+__C.DATASET.VAL_DATAET_LIST             = ['BSD_3ms24ms', 'GOPRO']       # available options:  'DVD','GOPRO','BSD_1ms8ms','BSD_2ms16ms','BSD_3ms24ms'
+__C.DIR.VAL_IMAGE_BLUR_PATH_LIST        = [ '../dataset/BSD_3ms24ms/%s/%s/Blur/RGB/%s.png',     # %s, %s, %s: phase, seq_name, image_name
+                                            '../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png'    
+                                            ]   
+__C.DIR.VAL_IMAGE_CLEAR_PATH_LIST       = [ '../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png',    # %s, %s, %s: phase, seq_name, image_name
+                                            '../dataset/GOPRO_Large/%s/%s/sharp/%s.png'
+                                            ]
+__C.DIR.VAL_JSON_FILE_PATH_LIST         = [ '../STDAN_modified/datasets/BSD_3ms24ms_valid.json',    
+                                            '../STDAN_modified/datasets/GOPRO_valid.json'
                                             ]
 
 __C.DATASET.TEST_DATASET_LIST           = ['ADAS']       # Arbitary output name
-__C.DIR.TEST_IMAGE_BLUR_PATH_LIST       = [
-                                                '../dataset/ADAS/%s/target/%s/%s.jpg',
-                                            ]   # %s, %s, %s: phase, seq_name, image_name
-__C.DIR.TEST_IMAGE_CLEAR_PATH_LIST      = [
-                                                '../dataset/ADAS/%s/target/%s/%s.jpg'
+__C.DIR.TEST_IMAGE_BLUR_PATH_LIST       = [ '../dataset/ADAS/%s/target/%s/%s.jpg',              # %s, %s, %s: phase, seq_name, image_name
+                                            ]   
+__C.DIR.TEST_IMAGE_CLEAR_PATH_LIST      = [ '../dataset/ADAS/%s/target/%s/%s.jpg'
                                             ]
-__C.DIR.TEST_JSON_FILE_PATH_LIST        = [
-                                                '../STDAN_modified/datasets/ADAS.json',
+__C.DIR.TEST_JSON_FILE_PATH_LIST        = [ '../STDAN_modified/datasets/ADAS.json',
                                             ]
 
 __C.DIR.OUT_PATH                        = './exp_log'         # logs path
@@ -64,10 +62,15 @@ __C.DIR.OUT_PATH                        = './exp_log'         # logs path
 # Network
 #
 __C.NETWORK                             = edict()
-__C.NETWORK.DEBLURNETARCH               = 'STDAN_Stack'             
+__C.NETWORK.DEBLURNETARCH               = 'STDAN_RAFT_Stack'             
 __C.NETWORK.PHASE                       = 'train'                 # available options: 'train', 'test', 'resume'
-__C.NETWORK.TAG                         = __C.DATASET.TRAIN_DATASET_NAME     # logs folder tag
 
+#
+# RAFT options
+#
+__C.RAFT                                = edict()
+__C.RAFT.CONFIG_FILE                    = '../STDAN_modified/mmflow/configs/raft/raft_8x2_100k_mixed_368x768.py'
+__C.RAFT.CHECKPOINT                     = '../STDAN_modified/mmflow/checkpoints/raft_8x2_100k_mixed_368x768.pth'
 
 #
 # data augmentation
@@ -102,10 +105,6 @@ __C.TRAIN.SAVE_FREQ                     = 5                     # weights will b
 # Val options
 #
 __C.VAL                                 = edict()
-__C.VAL.VISUALIZE_FREQ                  = 100                    # frequency of vilidation visualization
-
-#
-# Testing options
-#
-__C.TEST                                = edict()
-__C.TEST.PRINT_FREQ                     = 5
+__C.VAL.VALID_FREQ                      = 10
+__C.VAL.VISUALIZE_FREQ                  = 50                    # frequency of vilidation visualization
+__C.VAL.SAVE_FLOW                       = True

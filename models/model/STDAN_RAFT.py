@@ -1,37 +1,30 @@
 import torch.nn as nn
 import torch
+import numpy as np
+from torch.nn import functional as F
 import models.model.blocks as blocks
+from config import cfg
 from models.submodules import DeformableAttnBlock, DeformableAttnBlock_FUSION
 # from positional_encodings import PositionalEncodingPermute3D
 from torch.nn.init import xavier_uniform_, constant_
+from mmflow.apis import inference_model, init_model
+
 def make_model(args):
-    return STDAN_PWC(in_channels=args.n_colors,
+    return STDAN_RAFT(in_channels=args.n_colors,
                         n_sequence=args.n_sequence,
                         out_channels=args.n_colors,
                         n_resblock=args.n_resblock,
                         n_feat=args.n_feat)
 
 
-class STDAN_PWC(nn.Module):
+class STDAN_RAFT(nn.Module):
 
     def __init__(self, in_channels=3, n_sequence=3, out_channels=3, n_resblock=3, n_feat=32,
-                 kernel_size=5, extra_channels=0, feat_in=False, n_in_feat=32):
-        super(STDAN_PWC, self).__init__()
-        print("Creating Recons-Video Net")
+                 kernel_size=5, feat_in=False, n_in_feat=32, use_raft_flow=False):
+        super(STDAN_RAFT, self).__init__()
 
         self.feat_in = feat_in
 
-        if not extra_channels == 0:
-            print("SRN Video Net extra in channels: {}".format(extra_channels))
-        
-        """  Deform_blocks = []
-        Deform_blocks.extend([nn.Sequential(
-                nn.Conv2d(in_channels, n_feat, kernel_size=kernel_size, stride=1,
-                          padding=kernel_size // 2),
-                nn.LeakyReLU(0.1,inplace=True)
-            )])
-        Deform_blocks.extend([blocks.ResBlock(n_feat, n_feat, kernel_size=kernel_size, stride=1)
-                        for _ in range(5)]) """
         InBlock = []
         if not feat_in:
             InBlock.extend([nn.Sequential(
@@ -39,13 +32,13 @@ class STDAN_PWC(nn.Module):
                           padding=3 // 2),
                 nn.LeakyReLU(0.1,inplace=True)
             )])
-            print("The input of SRN is image")
+            print("The input of STDAN_RAFT is image")
         else:
             InBlock.extend([nn.Sequential(
                 nn.Conv2d(n_in_feat, n_feat, kernel_size=3, stride=1, padding=3 // 2),
                 nn.LeakyReLU(0.1,inplace=True)
             )])
-            print("The input of SRN is feature")
+            print("The input of STDAN_RAFT is feature")
         InBlock.extend([blocks.ResBlock(n_feat, n_feat, kernel_size=3, stride=1)
                         for _ in range(3)])
         # encoder1
@@ -98,6 +91,12 @@ class STDAN_PWC(nn.Module):
         self.MSA = DeformableAttnBlock_FUSION(n_heads=4,d_model=128,n_levels=3,n_points=12)
         
         # self.pos_em  = PositionalEncodingPermute3D(3)
+        self.RAFT_net = init_model(
+                        config=cfg.RAFT.CONFIG_FILE,
+                        checkpoint=cfg.RAFT.CHECKPOINT,
+                        device='cuda')
+        
+                # self.pos_em  = PositionalEncodingPermute3D(3)
         self.motion_branch = torch.nn.Sequential(
                     torch.nn.Conv2d(in_channels=2*n_feat * 4, out_channels=96//2, kernel_size=3, stride=1, padding=8, dilation=8),
                     nn.LeakyReLU(0.1,inplace=True),
@@ -121,12 +120,43 @@ class STDAN_PWC(nn.Module):
 
         return flows_forward,flows_backward
     
+    def compute_raft_flow(self, frames):
+        b, t, c, h, w = frames.size()
+        # (7, 3, 3, 64, 64)
+
+        frames_01 = frames[:, :-1, :, :, :] # (b, 2, c, h, w)
+        frames_12 = frames[:, 1:,  :, :, :]
+
+        concated_forward = torch.concat([frames_01, frames_12], dim = 2).reshape(-1, 2*c, h, w) # (b, 2, 2*c, h, w) -> (2*b, 2*c, h, w)
+        concated_backward = torch.concat([frames_12, frames_01], dim = 2).reshape(-1, 2*c, h, w)
+        
+        flow_forward = self.estimate_raft_flow(concated_forward) # flow list whose len is 2*b
+        flow_backward = self.estimate_raft_flow(concated_backward)
+
+        return flow_forward, flow_backward
+
+
+    def estimate_raft_flow(self, concated_frames):
+        # Inference optical flow
+        raft_result = self.RAFT_net(concated_frames)
+        flow_list = []
+        for flow_dict in raft_result:
+            flow_list.append(flow_dict['flow'])
+
+        concated_flow = torch.tensor(np.array(flow_list)).cuda().permute(0, 3, 1, 2) # (2*b, h, w, 2) -> (2*b, 2, h, w)
+
+        n, _, h, w = concated_flow.size()
+        flows = torch.reshape(concated_flow, [-1, 2, 2, h, w]) # (b, 2, 2, h, w)
+        
+        return flows
+
+
     def estimate_flow(self,frames_1, frames_2):
         return self.motion_out(self.motion_branch(torch.cat([frames_1, frames_2],1)))
+
         
-    def forward(self, x):
+    def forward(self, x, use_raft_flow):
         b, n, c, h, w = x.size()
-        
         
         first_scale_inblock = self.inBlock_t(x.view(b*n,c,h,w))
         
@@ -135,8 +165,16 @@ class STDAN_PWC(nn.Module):
         first_scale_encoder_second = self.encoder_second(first_scale_encoder_first)
         first_scale_encoder_second = first_scale_encoder_second.view(b,n,128,h//4,w//4)
         
-        flow_forward,flow_backward = self.compute_flow(first_scale_encoder_second)
-        
+        if use_raft_flow == True: # Use RAFT flow
+            # downsampled_x = F.interpolate(x.reshape(-1,c,h,w), size=(h//4, w//4),mode='bilinear', align_corners=True).reshape(b,n,c,h//4,w//4)
+            # flow_forward, flow_backward = self.compute_raft_flow(downsampled_x)
+            flow_forward, flow_backward = self.compute_raft_flow(x)
+            flow_forward = F.interpolate(flow_forward.reshape(-1,2,h,w), size=(h//4, w//4),mode='bilinear', align_corners=True).reshape(b,2,2,h//4,w//4)
+            flow_backward = F.interpolate(flow_backward.reshape(-1,2,h,w), size=(h//4, w//4),mode='bilinear', align_corners=True).reshape(b,2,2,h//4,w//4)
+
+        else: # Use lightweight flow
+            flow_forward,flow_backward = self.compute_flow(first_scale_encoder_second)
+
         frame,srcframe = self.MMA(first_scale_encoder_second,first_scale_encoder_second,flow_forward,flow_backward)
         
         first_scale_encoder_second = self.MSA(frame,srcframe,flow_forward,flow_backward)
