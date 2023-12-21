@@ -9,7 +9,7 @@ class STDAN_RAFT_Stack(nn.Module):
 
     def __init__(self, in_channels=3, n_sequence=5, out_channels=3, n_resblock=3, n_feat=32,
                     load_flow_net=True, load_recons_net=False, use_raft_flow=False, flow_pretrain_fn='/home/hczhang/CODE/CDVD-TSP/pretrain_models/network-default.pytorch', recons_pretrain_fn='',
-                    device='cuda'):
+                    cfg=None, device='cuda'):
         super(STDAN_RAFT_Stack, self).__init__()
 
         self.n_sequence = n_sequence
@@ -18,7 +18,8 @@ class STDAN_RAFT_Stack(nn.Module):
         assert n_sequence == 5, "Only support args.n_sequence=5; but get args.n_sequence={}".format(n_sequence)
 
         self.recons_net = STDAN_RAFT.STDAN_RAFT(in_channels=in_channels, n_sequence=3, out_channels=out_channels,
-                                                    n_resblock=n_resblock, n_feat=n_feat, use_raft_flow=use_raft_flow)
+                                                    n_resblock=n_resblock, n_feat=n_feat, use_raft_flow=use_raft_flow,
+                                                    cfg=cfg)
         if load_recons_net:
             self.recons_net.load_state_dict(torch.load(recons_pretrain_fn))
             print('Loading reconstruction pretrain model from {}'.format(recons_pretrain_fn))
@@ -48,4 +49,5 @@ class STDAN_RAFT_Stack(nn.Module):
         
         flow_forwards = [flow_forward_recons_1,flow_forward_recons_2,flow_forward_recons_3,flow_forward_out]
         flow_backwards = [flow_backward_recons_1,flow_backward_recons_2,flow_backward_recons_3,flow_backward_out]
-        return recons_1, recons_2, recons_3, out,flow_forwards,flow_backwards
+        return {'recons_1':recons_1, 'recons_2':recons_2, 'recons_3':recons_3, 
+                'out':out, 'flow_fowards':flow_forwards, 'flow_backwards':flow_backwards}

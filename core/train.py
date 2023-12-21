@@ -15,22 +15,8 @@ from core.valid import valid
 # from models.VGG19 import VGG19
 # from utils.network_utils import flow2rgb
 from tqdm import tqdm
-from models.submodules import warp
-def warp_loss(frames_list,flow_forwards,flow_backwards):
-    n, t, c, h, w = frames_list.size()
-    
-    forward_loss = 0
-    backward_loss = 0
-    for idx in [[0,1,2],[1,2,3],[2,3,4],[1,2,3]]:
-        frames = frames_list[:,idx,:,:,:]
-        for flow_forward,flow_backward in zip(flow_forwards,flow_backwards):
-            frames_1 = frames[:, :-1, :, :, :].reshape(-1, c, h, w)
-            frames_2 = frames[:, 1:, :, :, :].reshape(-1, c, h, w)
-            backward_frames = warp(frames_1,flow_backward.reshape(-1, 2, h, w))
-            forward_frames = warp(frames_2,flow_forward.reshape(-1, 2, h, w))
-            forward_loss += l1Loss(forward_frames,frames_1)
-            backward_loss += l1Loss(backward_frames,frames_2)
-    return (0.5*forward_loss + 0.5*backward_loss)/len(flow_forwards)
+
+
 
 def train(cfg, init_epoch, 
         train_transforms, val_transforms,
@@ -52,7 +38,8 @@ def train(cfg, init_epoch,
             dataset_loader = utils.data_loaders.VideoDeblurDataLoader_No_Slipt(
                 image_blur_path = train_image_blur_path, 
                 image_clear_path = train_image_clear_path,
-                json_file_path = train_json_file_path)
+                json_file_path = train_json_file_path,
+                input_length = cfg.DATA.INPUT_LENGTH)
             
             dataset = dataset_loader.get_dataset(transforms = train_transforms)
             dataset_list.append(dataset)
@@ -77,10 +64,14 @@ def train(cfg, init_epoch,
     for epoch_idx in range(init_epoch, cfg.TRAIN.NUM_EPOCHES):
 
         # Batch average meterics
-        deblur_mse_losses = utils.network_utils.AverageMeter()
-        warp_mse_losses = utils.network_utils.AverageMeter()
-        deblur_losses = utils.network_utils.AverageMeter()
-        
+        losses_dict_list = []
+        for loss_config_dict in cfg.LOSS_DICT_LIST:
+            losses_dict = loss_config_dict.copy()
+            losses_dict['avg_meter'] = utils.network_utils.AverageMeter()
+            losses_dict_list.append(losses_dict)
+
+        total_losses = utils.network_utils.AverageMeter()
+
         img_PSNRs_mid = utils.network_utils.AverageMeter()
         img_PSNRs_out    = utils.network_utils.AverageMeter()
 
@@ -99,42 +90,46 @@ def train(cfg, init_epoch,
             input_seq = torch.cat(seq_blur,1)
             gt_seq = torch.cat(seq_clear,1)
             
-            b,t,c,h,w = gt_seq.shape
-            recons_1, recons_2, recons_3, out,flow_forwards,flow_backwards = deblurnet(input_seq)
-
-            output_img = torch.cat([recons_1, recons_2, recons_3, out],dim=1)
             
-            down_simple_gt = F.interpolate(gt_seq.reshape(-1,c,h,w), size=(h//4, w//4),mode='bilinear', align_corners=True).reshape(b,t,c,h//4,w//4)
-
-            warploss = warp_loss(down_simple_gt, flow_forwards, flow_backwards)*0.05 
-            warp_mse_losses.update(warploss.item(), cfg.CONST.TRAIN_BATCH_SIZE)
+            # recons_1, recons_2, recons_3, out, flow_forward, flow_backward = deblurnet(input_seq)
+            output_dict = deblurnet(input_seq) # {'recons_1': first output, 'recons_2': second output, 'recons_3': third output, 'out': final output, 'flow_fowards': fowards_list, 'flow_backwards': backwards_list}
             
-            t_gt_seq = torch.cat([gt_seq[:,1,:,:,:],gt_seq[:,2,:,:,:],gt_seq[:,3,:,:,:],gt_seq[:,2,:,:,:]],dim=1)
-            deblur_mse_loss = l1Loss(output_img, t_gt_seq)
-            deblur_mse_losses.update(deblur_mse_loss.item(), cfg.CONST.TRAIN_BATCH_SIZE)
-            
-            deblur_loss = deblur_mse_loss + warploss  
-            deblur_losses.update(deblur_loss.item(), cfg.CONST.TRAIN_BATCH_SIZE)
+            # Calculate & update loss
+            total_loss, total_losses, losses_dict_list = calc_update_losses(output_dict=output_dict, gt_seq=gt_seq, losses_dict_list=losses_dict_list, total_losses=total_losses, batch_size=cfg.CONST.TRAIN_BATCH_SIZE)
 
-            img_PSNR_out = util.calc_psnr(out.detach(),gt_seq[:,2,:,:,:].detach())
+
+            # down_simple_gt = F.interpolate(gt_seq.reshape(-1,c,h,w), size=(h//4, w//4),mode='bilinear', align_corners=True).reshape(b,t,c,h//4,w//4)
+
+            # warploss = warp_loss(down_simple_gt, flow_forwards, flow_backwards)*0.05 
+            # warp_mse_losses.update(warploss.item(), cfg.CONST.TRAIN_BATCH_SIZE)
+            
+            # t_gt_seq = torch.cat([gt_seq[:,1,:,:,:],gt_seq[:,2,:,:,:],gt_seq[:,3,:,:,:],gt_seq[:,2,:,:,:]],dim=1)
+            # deblur_mse_loss = l1Loss(output_img, t_gt_seq)
+            # deblur_mse_losses.update(deblur_mse_loss.item(), cfg.CONST.TRAIN_BATCH_SIZE)
+            
+            # deblur_loss = deblur_mse_loss + warploss  
+            # deblur_losses.update(deblur_loss.item(), cfg.CONST.TRAIN_BATCH_SIZE)
+
+            img_PSNR_out = util.calc_psnr(output_dict['out'].detach(),gt_seq[:,2,:,:,:].detach())
             img_PSNRs_out.update(img_PSNR_out, cfg.CONST.TRAIN_BATCH_SIZE)
 
-            img_PSNR_mid = util.calc_psnr(recons_2.detach(),gt_seq[:,2,:,:,:].detach())
+            img_PSNR_mid = util.calc_psnr(output_dict['recons_2'].detach(),gt_seq[:,2,:,:,:].detach())
             img_PSNRs_mid.update(img_PSNR_mid, cfg.CONST.TRAIN_BATCH_SIZE)
 
             deblurnet_solver.zero_grad()
-            deblur_loss.backward()
+            total_loss.backward()
             deblurnet_solver.step()
             
             n_itr = n_itr + 1
 
             # Tick / tock
-            tqdm_train.set_postfix_str(f'  DeblurLoss {deblur_losses} [{deblur_mse_losses}, {warp_mse_losses}] PSNR_mid {img_PSNRs_mid} PSNR_out {img_PSNRs_out}')        
+            tqdm_train.set_postfix_str(f'  TotalLoss {total_losses} PSNR_mid {img_PSNRs_mid} PSNR_out {img_PSNRs_out}')        
             
         # Append epoch loss to TensorBoard
-        train_writer.add_scalar('Loss_TRAIN/WarpMSELoss', warp_mse_losses.avg, epoch_idx)
-        train_writer.add_scalar('Loss_TRAIN/MSELoss', deblur_mse_losses.avg, epoch_idx)
-        train_writer.add_scalar('Loss_TRAIN/DeblurLoss', deblur_losses.avg, epoch_idx)
+        for losses_dict in losses_dict_list:
+            train_writer.add_scalar(f'Loss_TRAIN/{losses_dict["name"]}', losses_dict["avg_meter"].avg, epoch_idx)
+        
+        train_writer.add_scalar('Loss_TRAIN/TotalLoss', total_losses.avg, epoch_idx)
         train_writer.add_scalar('PSNR/TRAIN', img_PSNRs_out.avg, epoch_idx)
         train_writer.add_scalar('lr/lr', deblurnet_lr_scheduler.get_last_lr()[0], epoch_idx)
         deblurnet_lr_scheduler.step()
@@ -147,7 +142,8 @@ def train(cfg, init_epoch,
                 val_loader = utils.data_loaders.VideoDeblurDataLoader_No_Slipt(
                     image_blur_path = val_image_blur_path, 
                     image_clear_path = val_image_clear_path,
-                    json_file_path = val_json_file_path)
+                    json_file_path = val_json_file_path,
+                    input_length = cfg.DATA.INPUT_LENGTH)
 
                 # Visualization for validation results
                 if epoch_idx % cfg.VAL.VISUALIZE_FREQ == 0:

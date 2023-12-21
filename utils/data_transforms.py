@@ -9,7 +9,6 @@ import cv2
 import numpy as np
 import torch
 import torchvision.transforms.functional as F
-from config import cfg
 from PIL import Image
 import random
 import numbers

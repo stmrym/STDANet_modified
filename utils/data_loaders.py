@@ -10,7 +10,6 @@ import scipy.io
 import sys
 import torch.utils.data.dataset
 
-from config import cfg
 from datetime import datetime as dt
 from enum import Enum, unique
 from utils.imgio_gen import readgen
@@ -61,87 +60,88 @@ class VideoDeblurDataset(torch.utils.data.dataset.Dataset):
         return name, seq_blur, seq_clear
 # //////////////////////////////// = End of VideoDeblurDataset Class Definition = ///////////////////////////////// #
 
-class VideoDeblurDataLoader:
-    def __init__(self):
-        self.img_blur_path_template = cfg.DIR.IMAGE_BLUR_PATH
-        self.img_clear_path_template = cfg.DIR.IMAGE_CLEAR_PATH
+# class VideoDeblurDataLoader:
+#     def __init__(self):
+#         self.img_blur_path_template = cfg.DIR.IMAGE_BLUR_PATH
+#         self.img_clear_path_template = cfg.DIR.IMAGE_CLEAR_PATH
 
-        # Load all files of the dataset
-        with io.open(cfg.DIR.DATASET_JSON_FILE_PATH, encoding='utf-8') as file:
-            self.files_list = json.loads(file.read())
+#         # Load all files of the dataset
+#         with io.open(cfg.DIR.DATASET_JSON_FILE_PATH, encoding='utf-8') as file:
+#             self.files_list = json.loads(file.read())
 
-    def get_dataset(self, dataset_type, transforms=None):
-        sequences = []
-        # Load data for each sequence
-        for file in self.files_list:
-            if dataset_type == DatasetType.TRAIN and file['phase'] == 'train':
-                name = file['name']
-                phase = file['phase']
-                samples = file['sample']
-                sam_len = len(samples)
-                seq_len = cfg.DATA.TRAIN_SEQ_LENGTH
-                seq_num = int(sam_len/seq_len)
-                for n in range(seq_num):
-                    sequence = self.get_files_of_taxonomy(phase, name, samples[seq_len*n: seq_len*(n+1)])
-                    sequences.extend(sequence)
+#     def get_dataset(self, dataset_type, transforms=None):
+#         sequences = []
+#         # Load data for each sequence
+#         for file in self.files_list:
+#             if dataset_type == DatasetType.TRAIN and file['phase'] == 'train':
+#                 name = file['name']
+#                 phase = file['phase']
+#                 samples = file['sample']
+#                 sam_len = len(samples)
+#                 seq_len = cfg.DATA.TRAIN_SEQ_LENGTH
+#                 seq_num = int(sam_len/seq_len)
+#                 for n in range(seq_num):
+#                     sequence = self.get_files_of_taxonomy(phase, name, samples[seq_len*n: seq_len*(n+1)])
+#                     sequences.extend(sequence)
 
-                if not seq_len%seq_len == 0:
-                    sequence = self.get_files_of_taxonomy(phase, name, samples[-seq_len:])
-                    sequences.extend(sequence)
-                    seq_num += 1
+#                 if not seq_len%seq_len == 0:
+#                     sequence = self.get_files_of_taxonomy(phase, name, samples[-seq_len:])
+#                     sequences.extend(sequence)
+#                     seq_num += 1
 
-                # # print('[INFO] %s Collecting files of Taxonomy [Name = %s]' % (dt.now(), name + ': ' + str(seq_num)))
+#                 # # print('[INFO] %s Collecting files of Taxonomy [Name = %s]' % (dt.now(), name + ': ' + str(seq_num)))
 
 
-            elif dataset_type == DatasetType.TEST and file['phase'] == 'test':
-                name = file['name']
-                phase = file['phase']
-                samples = file['sample']
-                sam_len = len(samples)
-                seq_len = cfg.DATA.TEST_SEQ_LENGTH
-                seq_num = int(sam_len / seq_len)
-                for n in range(seq_num):
-                    sequence = self.get_files_of_taxonomy(phase, name, samples[seq_len*n: seq_len*(n+1)])
-                    sequences.extend(sequence)
+#             elif dataset_type == DatasetType.TEST and file['phase'] == 'test':
+#                 name = file['name']
+#                 phase = file['phase']
+#                 samples = file['sample']
+#                 sam_len = len(samples)
+#                 seq_len = cfg.DATA.TEST_SEQ_LENGTH
+#                 seq_num = int(sam_len / seq_len)
+#                 for n in range(seq_num):
+#                     sequence = self.get_files_of_taxonomy(phase, name, samples[seq_len*n: seq_len*(n+1)])
+#                     sequences.extend(sequence)
 
-                if not seq_len % seq_len == 0:
-                    sequence = self.get_files_of_taxonomy(phase, name, samples[-seq_len:])
-                    sequences.extend(sequence)
-                    seq_num += 1
+#                 if not seq_len % seq_len == 0:
+#                     sequence = self.get_files_of_taxonomy(phase, name, samples[-seq_len:])
+#                     sequences.extend(sequence)
+#                     seq_num += 1
 
-                # # print('[INFO] %s Collecting files of Taxonomy [Name = %s]' % (dt.now(), name + ': ' + str(seq_num)))
+#                 # # print('[INFO] %s Collecting files of Taxonomy [Name = %s]' % (dt.now(), name + ': ' + str(seq_num)))
 
-        # print('[INFO] %s Complete collecting files of the dataset for %s. Seq Number: %d.\n' % (dt.now(), dataset_type.name, len(sequences)))
-        return VideoDeblurDataset(sequences, transforms)
+#         # print('[INFO] %s Complete collecting files of the dataset for %s. Seq Number: %d.\n' % (dt.now(), dataset_type.name, len(sequences)))
+#         return VideoDeblurDataset(sequences, transforms)
 
-    def get_files_of_taxonomy(self, phase, name, samples):
-        n_samples = len(samples)
-        seq_blur_paths = []
-        seq_clear_paths = []
-        sequence = []
+#     def get_files_of_taxonomy(self, phase, name, samples):
+#         n_samples = len(samples)
+#         seq_blur_paths = []
+#         seq_clear_paths = []
+#         sequence = []
        
-        for sample_idx, sample_name in enumerate(samples):
-            # Get file path of img
-            img_blur_path = self.img_blur_path_template % (phase, name, sample_name)
-            img_clear_path = self.img_clear_path_template % (phase, name, sample_name)
-            if os.path.exists(img_blur_path) and os.path.exists(img_clear_path):
-                seq_blur_paths.append(img_blur_path)
-                seq_clear_paths.append(img_clear_path)
+#         for sample_idx, sample_name in enumerate(samples):
+#             # Get file path of img
+#             img_blur_path = self.img_blur_path_template % (phase, name, sample_name)
+#             img_clear_path = self.img_clear_path_template % (phase, name, sample_name)
+#             if os.path.exists(img_blur_path) and os.path.exists(img_clear_path):
+#                 seq_blur_paths.append(img_blur_path)
+#                 seq_clear_paths.append(img_clear_path)
 
-        if not seq_blur_paths == [] and not seq_clear_paths == []:
-            sequence.append({
-                'name': name,
-                'phase': phase,
-                'length': n_samples,
-                'seq_blur': seq_blur_paths,
-                'seq_clear': seq_clear_paths,
-            })
-        return sequence
+#         if not seq_blur_paths == [] and not seq_clear_paths == []:
+#             sequence.append({
+#                 'name': name,
+#                 'phase': phase,
+#                 'length': n_samples,
+#                 'seq_blur': seq_blur_paths,
+#                 'seq_clear': seq_clear_paths,
+#             })
+#         return sequence
 # /////////////////////////////// = End of VideoDeblurDataLoader Class Definition = /////////////////////////////// #
 class VideoDeblurDataLoader_No_Slipt:
-    def __init__(self, image_blur_path, image_clear_path, json_file_path):
+    def __init__(self, image_blur_path, image_clear_path, json_file_path, input_length):
         self.img_blur_path_template = image_blur_path
         self.img_clear_path_template = image_clear_path
+        self.imput_length = input_length
 
         # Load all files of the dataset
         with io.open(json_file_path, encoding='utf-8') as file:
@@ -155,7 +155,7 @@ class VideoDeblurDataLoader_No_Slipt:
             phase = file['phase']
             samples = file['sample']
             sam_len = len(samples)
-            seq_len = cfg.DATA.INPUT_LENGTH
+            seq_len = self.imput_length
             seq_num = int(sam_len/seq_len)
             for n in range(sam_len-seq_len+1):
                 sequence = self.get_files_of_taxonomy(phase, name, samples[n:n+ seq_len])
@@ -185,7 +185,7 @@ class VideoDeblurDataLoader_No_Slipt:
 
         if not seq_blur_paths == [] and not seq_clear_paths == []:
             sequence.append({
-                'name': name+"."+samples[cfg.DATA.INPUT_LENGTH//2],
+                'name': name+"."+samples[self.imput_length//2],
                 'phase': phase,
                 'length': n_samples,
                 'seq_blur': seq_blur_paths,

@@ -3,7 +3,6 @@ import torch
 import numpy as np
 from torch.nn import functional as F
 import models.model.blocks as blocks
-from config import cfg
 from models.submodules import DeformableAttnBlock, DeformableAttnBlock_FUSION
 # from positional_encodings import PositionalEncodingPermute3D
 from torch.nn.init import xavier_uniform_, constant_
@@ -20,11 +19,12 @@ def make_model(args):
 class STDAN_RAFT(nn.Module):
 
     def __init__(self, in_channels=3, n_sequence=3, out_channels=3, n_resblock=3, n_feat=32,
-                 kernel_size=5, feat_in=False, n_in_feat=32, use_raft_flow=False):
+                 kernel_size=5, feat_in=False, n_in_feat=32, use_raft_flow=False, cfg = None):
         super(STDAN_RAFT, self).__init__()
 
         self.feat_in = feat_in
 
+        assert cfg != None, 'cfg does not exist!'
         InBlock = []
         if not feat_in:
             InBlock.extend([nn.Sequential(

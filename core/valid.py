@@ -52,9 +52,14 @@ def valid(cfg,
     img_PSNRs_out = utils.network_utils.AverageMeter()
     img_ssims_mid = utils.network_utils.AverageMeter()
     img_ssims_out = utils.network_utils.AverageMeter()
-    deblur_mse_losses = utils.network_utils.AverageMeter()
-    warp_mse_losses = utils.network_utils.AverageMeter()    
-    deblur_losses = utils.network_utils.AverageMeter()    
+
+    losses_dict_list = []
+    for loss_config_dict in cfg.LOSS_DICT_LIST:
+        losses_dict = loss_config_dict.copy()
+        losses_dict['avg_meter'] = utils.network_utils.AverageMeter()
+        losses_dict_list.append(losses_dict)
+
+    total_losses = utils.network_utils.AverageMeter()    
 
     deblurnet.eval()
 
@@ -86,29 +91,17 @@ def valid(cfg,
             inference_start_time = time()
 
             # Inference
-            recons_1, recons_2, recons_3, out,flow_forwards,flow_backwards = deblurnet(input_seq)
+            output_dict = deblurnet(input_seq) # {'recons_1': first output, 'recons_2': second output, 'recons_3': third output, 'out': final output, 'flow_fowards': fowards_list, 'flow_backwards': backwards_list}
             
             torch.cuda.synchronize()
             inference_time.update((time() - inference_start_time))
 
             # calculate test loss
-            output_img = torch.cat([recons_1, recons_2, recons_3, out],dim=1)
-            
-            down_simple_gt = F.interpolate(gt_seq.reshape(-1,c,h,w), size=(h//4, w//4),mode='bilinear', align_corners=True).reshape(b,t,c,h//4,w//4)
-            
-            warploss = warp_loss(down_simple_gt, flow_forwards, flow_backwards)*0.05 
-            warp_mse_losses.update(warploss.item(), cfg.CONST.VAL_BATCH_SIZE)
+            total_loss, total_losses, losses_dict_list = calc_update_losses(output_dict=output_dict, gt_seq=gt_seq, losses_dict_list=losses_dict_list, total_losses=total_losses, batch_size=cfg.CONST.VAL_BATCH_SIZE)
 
-            t_gt_seq = torch.cat([gt_seq[:,1,:,:,:],gt_seq[:,2,:,:,:],gt_seq[:,3,:,:,:],gt_seq[:,2,:,:,:]],dim=1)
-            deblur_mse_loss = l1Loss(output_img, t_gt_seq)
-            deblur_mse_losses.update(deblur_mse_loss.item(), cfg.CONST.VAL_BATCH_SIZE)
-
-            deblur_loss = deblur_mse_loss + warploss  
-            deblur_losses.update(deblur_loss.item(), cfg.CONST.VAL_BATCH_SIZE)
-
-            img_PSNR_out = util.calc_psnr(out.detach(),gt_seq[:,2,:,:,:].detach())
+            img_PSNR_out = util.calc_psnr(output_dict['out'].detach(),gt_seq[:,2,:,:,:].detach())
             img_PSNRs_out.update(img_PSNR_out, cfg.CONST.VAL_BATCH_SIZE)
-            img_PSNR_mid = util.calc_psnr(recons_2.detach(),gt_seq[:,2,:,:,:].detach())
+            img_PSNR_mid = util.calc_psnr(output_dict['recons_2'].detach(),gt_seq[:,2,:,:,:].detach())
             img_PSNRs_mid.update(img_PSNR_mid, cfg.CONST.VAL_BATCH_SIZE)
 
             torch.cuda.synchronize()
@@ -116,6 +109,8 @@ def valid(cfg,
             
             tqdm_val.set_postfix_str(f'Inference Time {inference_time} Process Time {process_time} PSNR_mid {img_PSNRs_mid} PSNR_out {img_PSNRs_out}')
             
+            recons_2, out, flow_forwards = output_dict['recons_2'], output_dict['out'], output_dict['flow_fowards']
+
             if val_visualize == True:
                 # saving images
                 output_image = out.cpu().detach()*255
@@ -155,10 +150,11 @@ def valid(cfg,
     log.info('============================ VALID RESULTS ============================')
     
     # Add testing results to TensorBoard
-    val_writer.add_scalar(f'Loss_VALID/WarpMSELoss_{val_dataset_name}', warp_mse_losses.avg, epoch_idx)
-    val_writer.add_scalar(f'Loss_VALID/MSELoss_{val_dataset_name}', deblur_mse_losses.avg, epoch_idx)
-    val_writer.add_scalar(f'Loss_VALID/DeblurLoss_{val_dataset_name}', deblur_mse_losses.avg, epoch_idx) 
-    val_writer.add_scalar(f'PSNR/VAL_{val_dataset_name}', img_PSNRs_out.avg, epoch_idx)
+    for losses_dict in losses_dict_list:
+        val_writer.add_scalar(f'Loss_VALID/{losses_dict["name"]}', losses_dict["avg_meter"].avg, epoch_idx)
+
+    val_writer.add_scalar('Loss_VALID/TotalLoss', total_losses.avg, epoch_idx)
+    val_writer.add_scalar(f'PSNR/VALID_{val_dataset_name}', img_PSNRs_out.avg, epoch_idx)
 
     if img_PSNRs_out.avg  >= Best_Img_PSNR:
         if not os.path.exists(ckpt_dir):

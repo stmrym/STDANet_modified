@@ -12,7 +12,6 @@ import torch.nn as nn
 import torch
 from torch.nn.init import xavier_uniform_, constant_, uniform_, normal_
 import numpy as np
-from config import cfg
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
 from torch import einsum, rand

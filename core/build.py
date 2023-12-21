@@ -51,8 +51,8 @@ def  bulid_net(cfg,output_dir):
     
     # Set up networks
     
-    deblurnet = models.__dict__[cfg.NETWORK.DEBLURNETARCH].__dict__[cfg.NETWORK.DEBLURNETARCH]()
-
+    deblurnet = models.__dict__[cfg.NETWORK.DEBLURNETARCH].__dict__[cfg.NETWORK.DEBLURNETARCH](cfg = cfg)
+    
     log.info(f'{dt.now()} Parameters in {cfg.NETWORK.DEBLURNETARCH}: {utils.network_utils.count_parameters(deblurnet)}.')
 
     # Initialize weights of networks
@@ -160,7 +160,8 @@ def  bulid_net(cfg,output_dir):
             test_loader = utils.data_loaders.VideoDeblurDataLoader_No_Slipt(
                 image_blur_path = test_image_blur_path, 
                 image_clear_path = test_image_clear_path,
-                json_file_path = test_json_file_path)
+                json_file_path = test_json_file_path,
+                input_length = cfg.DATA.INPUT_LENGTH)
             
             save_dir = os.path.join(output_dir, test_dataset_name)
 

@@ -8,7 +8,6 @@ import numpy as np
 from datetime import datetime as dt
 import math
 from torch import chunk, nn,einsum, select
-from config import cfg
 import torch.nn.functional as F
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
