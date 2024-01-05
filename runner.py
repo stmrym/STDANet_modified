@@ -9,7 +9,6 @@ get_local.activate() """
 import re
 import importlib
 import argparse
-import torch
 matplotlib.use('Agg')
 
 from datetime import datetime as dt
@@ -30,7 +29,7 @@ def main():
     cfg = config.cfg
 
     if cfg.NETWORK.PHASE == 'resume':
-        output_dir = os.path.join(cfg.DIR.OUT_PATH,'train',cfg.CONST.WEIGHTS.split("/")[-3])
+        output_dir = os.path.join(cfg.DIR.OUT_PATH,'train',cfg.CONST.WEIGHTS.split('/')[-3])
         print_log  = os.path.join(output_dir, 'print.log')
 
     elif  cfg.NETWORK.PHASE == 'test':
@@ -62,6 +61,9 @@ def main():
     if type(cfg.CONST.DEVICE) == str and not cfg.CONST.DEVICE == 'all':
         os.environ["CUDA_VISIBLE_DEVICES"] = cfg.CONST.DEVICE
     
+    
+
+    import torch
     log.info('CUDA DEVICES NUMBER: '+ str(torch.cuda.device_count()))
     log.info(f' Output_dir： {output_dir}')
 

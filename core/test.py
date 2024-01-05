@@ -150,8 +150,8 @@ def test(cfg,
 
             mid_image = recons_2.cpu().detach()*255
             mid_image = mid_image[0].permute(1,2,0)
-            img_ssims_mid.update(ssim_calculate(mid_image.numpy(),gt_image.numpy()),cfg.CONST.TEST_BATCH_SIZE)
-            img_ssims_out.update(ssim_calculate(output_image.numpy(),gt_image.numpy()),cfg.CONST.TEST_BATCH_SIZE)
+            # img_ssims_mid.update(ssim_calculate(mid_image.numpy(),gt_image.numpy()),cfg.CONST.TEST_BATCH_SIZE)
+            # img_ssims_out.update(ssim_calculate(output_image.numpy(),gt_image.numpy()),cfg.CONST.TEST_BATCH_SIZE)
 
             # Saving images
             seq, img_name = name[0].split('.')  # name = ['000.00000002']

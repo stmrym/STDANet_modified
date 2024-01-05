@@ -1,8 +1,11 @@
 import cv2
 import torch
+import torchvision
 import torch.nn as nn
+import torch.nn.functional as F
 from utils.network_utils import *
 from models.submodules import warp
+from torchvision import transforms
 
 def mseLoss(output, target):
     mse_loss = nn.MSELoss()
@@ -70,18 +73,26 @@ def perceptualLoss(fakeIm, realIm, vggnet):
 
     return loss
 
-def tensor_image_canny(save_name, tensor_image):
-    tensor_image = tensor_image[0].permute(1,2,0).cpu().detach()*255
 
-    np_image = tensor_image.numpy()
-    gray_image = cv2.cvtColor(np.clip(np_image, 0, 255).astype(np.uint8), cv2.COLOR_RGB2GRAY)
-    med_val = np.median(gray_image)
-    sigma = 0.11  # 0.33
-    min_val = int(max(0, (1.0 - sigma) * med_val))
-    max_val = int(max(255, (1.0 + sigma) * med_val))
-    np_edge = cv2.Canny(gray_image, threshold1=min_val, threshold2=max_val)
-    
-    cv2.imwrite(f'{save_name}_edge.png', np_edge)
+def edge_detection(save_name, img_tensor):
+
+    kernel = torch.cuda.FloatTensor([[-1, -1, -1], 
+                                     [-1, 8, -1], 
+                                     [-1, -1, -1]])
+    edge_k = kernel.expand(1, 1, 3, 3)
+
+
+
+    with torch.no_grad():
+        # [out_ch, in_ch, .., ..] : channel wiseに計算
+
+        # エッジ検出はグレースケール化してからやる
+        gray = 0.114*img_tensor[:,0,:,:] + 0.587*img_tensor[:,1,:,:] + 0.299*img_tensor[:,2,:,:]
+        gray = torch.unsqueeze(gray,1)
+        # エッジ検出
+        edge_image = F.conv2d(gray, edge_k, padding=1)
+        torchvision.utils.save_image(edge_image, save_name + '_edge.png')
+
 
 
 
@@ -95,15 +106,24 @@ def save_image(save_name, out_tensor):
         
         cv2.imwrite(f'{save_name}.png', output_image_bgr)
 
+i = 0
 def motion_edge_loss(output_dict:dict, gt_seq:torch.tensor):
     
     recons_1, recons_2, recons_3, out = output_dict['recons_1'], output_dict['recons_2'], output_dict['recons_3'], output_dict['out']
     flow_fowards, flow_backwards = output_dict['flow_fowards'], output_dict['flow_backwards']
 
-    tensor_image_canny('recons_1', recons_1)
-    save_image('recons_2', recons_2)
-    save_image('recons_3', recons_3)
-    save_image('rout', out)
+    edge_detection(f'debug_results/recons_{str(i)}_1', recons_1)
+    save_image(f'debug_results/recons_{str(i)}_1', recons_1)
+    save_image(f'debug_results/recons_{str(i)}_2', recons_2)
+    save_image(f'debug_results/recons_{str(i)}_3', recons_3)
+    save_image(f'debug_results/rout_{str(i)}', out)
+    # print('saved')
+    output_imgs = torch.cat([output_dict['recons_1'], output_dict['recons_2'], output_dict['recons_3'], output_dict['out']],dim=1)
+    t_gt_seq = torch.cat([gt_seq[:,1,:,:,:],gt_seq[:,2,:,:,:],gt_seq[:,3,:,:,:],gt_seq[:,2,:,:,:]],dim=1)
+
+    l1_loss = nn.L1Loss()
+    l1 = l1_loss(output_imgs, t_gt_seq)
+    return l1
 
 
 def calc_update_losses(output_dict:dict, gt_seq:torch.tensor, losses_dict_list:list, total_losses, batch_size:int):
