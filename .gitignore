@@ -155,3 +155,6 @@ weights/*
 
 # Docker run command
 /.devcontainer/docker_run.sh
+
+# Debug
+debug_results

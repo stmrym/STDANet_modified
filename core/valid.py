@@ -151,7 +151,7 @@ def valid(cfg,
     
     # Add testing results to TensorBoard
     for losses_dict in losses_dict_list:
-        val_writer.add_scalar(f'Loss_VALID/{losses_dict["name"]}', losses_dict["avg_meter"].avg, epoch_idx)
+        val_writer.add_scalar(f'Loss_VALID_{val_dataset_name}/{losses_dict["name"]}', losses_dict["avg_meter"].avg, epoch_idx)
 
     val_writer.add_scalar('Loss_VALID/TotalLoss', total_losses.avg, epoch_idx)
     val_writer.add_scalar(f'PSNR/VALID_{val_dataset_name}', img_PSNRs_out.avg, epoch_idx)

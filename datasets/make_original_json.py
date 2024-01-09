@@ -2,9 +2,9 @@ import json
 import os
 import glob
 
-dataset_path = '../../dataset/ADAS_15fps/test/input'
+dataset_path = '../../dataset/ADAS/test/'
 phase = 'test'
-save_name = 'ADAS_15fps'
+save_name = 'ADAS'
 
 dict_list = []
 

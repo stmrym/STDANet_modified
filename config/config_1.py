@@ -14,13 +14,13 @@ __C.CONST.CONFIG_NAME                   = 'my_config_1'
 __C.CONST.DEVICE                        = '0'                             # gpu_ids
 __C.CONST.NUM_WORKER                    = 8                               # number of data workers
 # __C.CONST.WEIGHTS                       = 'exp_log/train/2023-11-17T084827_STDAN_Stack_BSD_3ms24ms/checkpoints/latest-ckpt.pth.tar'
-__C.CONST.WEIGHTS                       = 'exp_log/train/debug_2023-12-21T153637_STDAN_RAFT_Stack_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-0495.pth.tar' # data weights path
+__C.CONST.WEIGHTS                       = 'exp_log/train/2023-11-22T163558_STDAN_Stack_BSD_3ms24ms/checkpoints/ckpt-epoch-0050.pth.tar' # data weights path
 # __C.CONST.WEIGHTS                       = ''
 __C.CONST.TRAIN_BATCH_SIZE              = 4 # original: 8
 __C.CONST.VAL_BATCH_SIZE                = 1
 __C.CONST.TEST_BATCH_SIZE               = 1 # original: 1
 # __C.CONST.DEBUG_PREFIX                  = '20231220_'  # This strings will be added to output_dir_path
-__C.CONST.DEBUG_PREFIX                  = '20231221_'  # This strings will be added to output_dir_path
+__C.CONST.DEBUG_PREFIX                  = ''  # This strings will be added to output_dir_path
 
 #
 # Dataset, logs and checkpoint Directories
@@ -55,21 +55,13 @@ __C.DIR.VAL_JSON_FILE_PATH_LIST         = [ '../STDAN_modified/datasets/BSD_3ms2
 #                                             '../STDAN_modified/datasets/GOPRO_valid_debug.json'
 #                                             ]
 
-__C.DATASET.TEST_DATASET_LIST           = ['ADAS_30fps', 'ADAS_15fps', 'ADAS_30fps_resized', 'ADAS_15fps_resized']       # Arbitary output name
-__C.DIR.TEST_IMAGE_BLUR_PATH_LIST       = [ '../dataset/ADAS_30fps/%s/input/%s/%s.jpg',
-                                            '../dataset/ADAS_15fps/%s/input/%s/%s.jpg',
-                                            '../dataset/ADAS_30fps_resized/%s/input/%s/%s.jpg',
-                                            '../dataset/ADAS_15fps_resized/%s/input/%s/%s.jpg'              # %s, %s, %s: phase, seq_name, image_name
+__C.DATASET.TEST_DATASET_LIST           = ['ADAS']       # Arbitary output name
+__C.DIR.TEST_IMAGE_BLUR_PATH_LIST       = [
+                                            '../dataset/ADAS/%s/%s/%s.jpg'              # %s, %s, %s: phase, seq_name, image_name
                                             ]   
-__C.DIR.TEST_IMAGE_CLEAR_PATH_LIST      = [ '../dataset/ADAS_30fps/%s/target/%s/%s.jpg',
-                                            '../dataset/ADAS_15fps/%s/target/%s/%s.jpg',
-                                            '../dataset/ADAS_30fps_resized/%s/target/%s/%s.jpg',
-                                            '../dataset/ADAS_15fps_resized/%s/target/%s/%s.jpg',
+__C.DIR.TEST_IMAGE_CLEAR_PATH_LIST      = [ '../dataset/ADAS/%s/%s/%s.jpg'
                                             ]
-__C.DIR.TEST_JSON_FILE_PATH_LIST        = [ '../STDAN_modified/datasets/ADAS_30fps.json',
-                                            '../STDAN_modified/datasets/ADAS_15fps.json',
-                                            '../STDAN_modified/datasets/ADAS_30fps.json',
-                                            '../STDAN_modified/datasets/ADAS_15fps.json'
+__C.DIR.TEST_JSON_FILE_PATH_LIST        = [ '../STDAN_modified/datasets/ADAS.json'
                                             ]
 
 __C.DIR.OUT_PATH                        = './exp_log'         # logs path
@@ -79,7 +71,7 @@ __C.DIR.OUT_PATH                        = './exp_log'         # logs path
 #
 __C.NETWORK                             = edict()
 __C.NETWORK.DEBLURNETARCH               = 'STDAN_Stack'             
-__C.NETWORK.PHASE                       = 'train'                 # available options: 'train', 'test', 'resume'
+__C.NETWORK.PHASE                       = 'test'                 # available options: 'train', 'test', 'resume'
 
 __C.LOSS                                = edict()
 __C.LOSS_DICT_LIST                      = [
