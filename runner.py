@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
+from numpy.lib.utils import info
 from utils import log
+
 import matplotlib
 import os
 os.environ["NUMEXPR_MAX_THREADS"] = "8"

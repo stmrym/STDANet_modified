@@ -11,6 +11,7 @@ from skimage.metrics import structural_similarity as compare_ssim
 from mmflow.datasets import visualize_flow
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.pyplot as plt
+from losses.multi_loss import *
 
 def get_patch(*args, patch_size=17, scale=1):
     """
@@ -153,6 +154,24 @@ def flow_vector(flow, spacing, margin, minlength):
     return x, y, u, v
 
 
+def save_edge(savename:str, out_image:torch.tensor, flow_tensor:torch.tensor, key:str, use_bilateral:bool):
+    output_dict = motion_weighted_edge_extraction(out_image, flow_tensor, use_bilateral=use_bilateral)
+
+    # key: 'weighted', 'edge', or 'flow_magnitude'
+    output = output_dict[key]
+
+    if key == 'flow_magnitude':
+        print(f'{torch.max(output)} {torch.min(output)}')
+        output = (output - torch.min(output))/(torch.max(output) - torch.min(output))
+    # output = torch.clamp(input=output, min=0, max=1)
+
+    
+    # print(f'{torch.max(output)} {torch.min(output)}')
+
+    torchvision.utils.save_image(output, savename)
+
+
+
 def save_hsv_flow(save_dir, flow_type='out_flow', save_vector_map=False):
 
     seqs = sorted([f for f in os.listdir(os.path.join(save_dir, flow_type + '_npy')) if os.path.isdir(os.path.join(save_dir, flow_type + '_npy', f))])
@@ -189,7 +208,7 @@ def save_hsv_flow(save_dir, flow_type='out_flow', save_vector_map=False):
             ############################
             # saving flow_hsv using mmcv
             ############################
-
+            
             flow_map = visualize_flow(out_flow, None)
             # visualize_flow return flow map with RGB order
             flow_map = cv2.cvtColor(flow_map, cv2.COLOR_RGB2BGR)

@@ -12,7 +12,7 @@ import utils.network_utils
 import utils.packing
 import models
 from models.STDAN_Stack import STDAN_Stack
-from models.STDAN_RAFT_Stack import STDAN_RAFT_Stack
+# from models.STDAN_RAFT_Stack import STDAN_RAFT_Stack
 from datetime import datetime as dt
 from tensorboardX import SummaryWriter
 from core.train import train

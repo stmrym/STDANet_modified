@@ -50,4 +50,4 @@ class STDAN_RAFT_Stack(nn.Module):
         flow_forwards = [flow_forward_recons_1,flow_forward_recons_2,flow_forward_recons_3,flow_forward_out]
         flow_backwards = [flow_backward_recons_1,flow_backward_recons_2,flow_backward_recons_3,flow_backward_out]
         return {'recons_1':recons_1, 'recons_2':recons_2, 'recons_3':recons_3, 
-                'out':out, 'flow_fowards':flow_forwards, 'flow_backwards':flow_backwards}
+                'out':out, 'flow_forwards':flow_forwards, 'flow_backwards':flow_backwards}

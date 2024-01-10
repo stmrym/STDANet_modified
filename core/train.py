@@ -92,23 +92,10 @@ def train(cfg, init_epoch,
             
             
             # recons_1, recons_2, recons_3, out, flow_forward, flow_backward = deblurnet(input_seq)
-            output_dict = deblurnet(input_seq) # {'recons_1': first output, 'recons_2': second output, 'recons_3': third output, 'out': final output, 'flow_fowards': fowards_list, 'flow_backwards': backwards_list}
+            output_dict = deblurnet(input_seq) # {'recons_1': first output, 'recons_2': second output, 'recons_3': third output, 'out': final output, 'flow_forwards': fowards_list, 'flow_backwards': backwards_list}
             
             # Calculate & update loss
             total_loss, total_losses, losses_dict_list = calc_update_losses(output_dict=output_dict, gt_seq=gt_seq, losses_dict_list=losses_dict_list, total_losses=total_losses, batch_size=cfg.CONST.TRAIN_BATCH_SIZE)
-
-
-            # down_simple_gt = F.interpolate(gt_seq.reshape(-1,c,h,w), size=(h//4, w//4),mode='bilinear', align_corners=True).reshape(b,t,c,h//4,w//4)
-
-            # warploss = warp_loss(down_simple_gt, flow_forwards, flow_backwards)*0.05 
-            # warp_mse_losses.update(warploss.item(), cfg.CONST.TRAIN_BATCH_SIZE)
-            
-            # t_gt_seq = torch.cat([gt_seq[:,1,:,:,:],gt_seq[:,2,:,:,:],gt_seq[:,3,:,:,:],gt_seq[:,2,:,:,:]],dim=1)
-            # deblur_mse_loss = l1Loss(output_img, t_gt_seq)
-            # deblur_mse_losses.update(deblur_mse_loss.item(), cfg.CONST.TRAIN_BATCH_SIZE)
-            
-            # deblur_loss = deblur_mse_loss + warploss  
-            # deblur_losses.update(deblur_loss.item(), cfg.CONST.TRAIN_BATCH_SIZE)
 
             img_PSNR_out = util.calc_psnr(output_dict['out'].detach(),gt_seq[:,2,:,:,:].detach())
             img_PSNRs_out.update(img_PSNR_out, cfg.CONST.TRAIN_BATCH_SIZE)
@@ -145,12 +132,6 @@ def train(cfg, init_epoch,
                     json_file_path = val_json_file_path,
                     input_length = cfg.DATA.INPUT_LENGTH)
 
-                # Visualization for validation results
-                if epoch_idx % cfg.VAL.VISUALIZE_FREQ == 0:
-                    val_visualize = True
-                else:
-                    val_visualize = False
-
                 save_dir = os.path.join(visualize_dir, val_dataset_name, 'epoch-' + str(epoch_idx).zfill(4))
 
                 # Validation
@@ -164,8 +145,7 @@ def train(cfg, init_epoch,
                     val_loader = val_loader, 
                     val_transforms = val_transforms,
                     deblurnet = deblurnet,
-                    val_writer = val_writer,
-                    val_visualize = val_visualize)
+                    val_writer = val_writer)
                 
         
         if epoch_idx % cfg.TRAIN.SAVE_FREQ == 0:

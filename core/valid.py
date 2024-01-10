@@ -38,7 +38,7 @@ def valid(cfg,
         Best_Img_PSNR,
         ckpt_dir, save_dir,
         val_loader, val_transforms, deblurnet,
-        val_writer, val_visualize):
+        val_writer):
     
     # Set up data loader
     val_data_loader = torch.utils.data.DataLoader(
@@ -91,14 +91,14 @@ def valid(cfg,
             inference_start_time = time()
 
             # Inference
-            output_dict = deblurnet(input_seq) # {'recons_1': first output, 'recons_2': second output, 'recons_3': third output, 'out': final output, 'flow_fowards': fowards_list, 'flow_backwards': backwards_list}
+            output_dict = deblurnet(input_seq) # {'recons_1': first output, 'recons_2': second output, 'recons_3': third output, 'out': final output, 'flow_forwards': fowards_list, 'flow_backwards': backwards_list}
             
             torch.cuda.synchronize()
             inference_time.update((time() - inference_start_time))
 
             # calculate test loss
             total_loss, total_losses, losses_dict_list = calc_update_losses(output_dict=output_dict, gt_seq=gt_seq, losses_dict_list=losses_dict_list, total_losses=total_losses, batch_size=cfg.CONST.VAL_BATCH_SIZE)
-
+        
             img_PSNR_out = util.calc_psnr(output_dict['out'].detach(),gt_seq[:,2,:,:,:].detach())
             img_PSNRs_out.update(img_PSNR_out, cfg.CONST.VAL_BATCH_SIZE)
             img_PSNR_mid = util.calc_psnr(output_dict['recons_2'].detach(),gt_seq[:,2,:,:,:].detach())
@@ -109,9 +109,9 @@ def valid(cfg,
             
             tqdm_val.set_postfix_str(f'Inference Time {inference_time} Process Time {process_time} PSNR_mid {img_PSNRs_mid} PSNR_out {img_PSNRs_out}')
             
-            recons_2, out, flow_forwards = output_dict['recons_2'], output_dict['out'], output_dict['flow_fowards']
+            recons_2, out, flow_forwards = output_dict['recons_2'], output_dict['out'], output_dict['flow_forwards']
 
-            if val_visualize == True:
+            if (epoch_idx % cfg.VAL.VISUALIZE_FREQ == 0):
                 # saving images
                 output_image = out.cpu().detach()*255
                 gt_image = gt_seq[:,2,:,:,:].cpu().detach()*255
@@ -166,9 +166,11 @@ def valid(cfg,
     log.info(f'[VALID] Total SSIM_mid: {img_ssims_mid.avg}, SSIM_out: {img_ssims_out.avg}, Inference time: {inference_time}, Process time: {process_time}')
 
         # Creating flow map from npy    
-    log.info('========================== SAVING FLOW MAP ===========================')
     
-    if cfg.VAL.SAVE_FLOW == True and val_visualize == True:
+    if (cfg.VAL.SAVE_FLOW == True) and (epoch_idx % cfg.VAL.VISUALIZE_FREQ == 0):
+
+        log.info('========================== SAVING FLOW MAP ===========================')
+    
         util.save_hsv_flow(save_dir=save_dir, flow_type='mid_flow', save_vector_map=False)
         util.save_hsv_flow(save_dir=save_dir, flow_type='out_flow', save_vector_map=False)
 

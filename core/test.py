@@ -10,6 +10,7 @@ import cv2
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mmflow.datasets import visualize_flow
+from kornia.filters import bilateral_blur
 
 import numpy as np
 from utils import log
@@ -125,7 +126,7 @@ def test(cfg,
             inference_start_time = time()
 
             # Inference
-            output_dict = deblurnet(input_seq) # {'recons_1': first output, 'recons_2': second output, 'recons_3': third output, 'out': final output, 'flow_fowards': fowards_list, 'flow_backwards': backwards_list}
+            output_dict = deblurnet(input_seq) # {'recons_1': first output, 'recons_2': second output, 'recons_3': third output, 'out': final output, 'flow_forwards': fowards_list, 'flow_backwards': backwards_list}
 
             torch.cuda.synchronize()
             inference_time.update((time() - inference_start_time))
@@ -133,14 +134,13 @@ def test(cfg,
             # calculate test loss
             total_loss, total_losses, losses_dict_list = calc_update_losses(output_dict=output_dict, gt_seq=gt_seq, losses_dict_list=losses_dict_list, total_losses=total_losses, batch_size=cfg.CONST.TEST_BATCH_SIZE)
 
-
             img_PSNR_out = util.calc_psnr(output_dict['out'].detach(),gt_seq[:,2,:,:,:].detach())
             img_PSNRs_out.update(img_PSNR_out, cfg.CONST.TEST_BATCH_SIZE)
             img_PSNR_mid = util.calc_psnr(output_dict['recons_2'].detach(),gt_seq[:,2,:,:,:].detach())
             img_PSNRs_mid.update(img_PSNR_mid, cfg.CONST.TEST_BATCH_SIZE)
 
             # Calculating SSIM
-            recons_2, out, flow_forwards = output_dict['recons_2'], output_dict['out'], output_dict['flow_fowards']
+            recons_2, out, flow_forwards = output_dict['recons_2'], output_dict['out'], output_dict['flow_forwards']
 
             output_image = out.cpu().detach()*255
             gt_image = gt_seq[:,2,:,:,:].cpu().detach()*255
@@ -150,8 +150,9 @@ def test(cfg,
 
             mid_image = recons_2.cpu().detach()*255
             mid_image = mid_image[0].permute(1,2,0)
-            # img_ssims_mid.update(ssim_calculate(mid_image.numpy(),gt_image.numpy()),cfg.CONST.TEST_BATCH_SIZE)
-            # img_ssims_out.update(ssim_calculate(output_image.numpy(),gt_image.numpy()),cfg.CONST.TEST_BATCH_SIZE)
+            img_ssims_mid.update(ssim_calculate(mid_image.numpy(),gt_image.numpy()),cfg.CONST.TEST_BATCH_SIZE)
+            img_ssims_out.update(ssim_calculate(output_image.numpy(),gt_image.numpy()),cfg.CONST.TEST_BATCH_SIZE)
+
 
             # Saving images
             seq, img_name = name[0].split('.')  # name = ['000.00000002']
@@ -164,6 +165,18 @@ def test(cfg,
             
             cv2.imwrite(os.path.join(out_dir, 'output', seq, img_name + '.png'), output_image_bgr)
 
+            for loss_dict in cfg.LOSS_DICT_LIST:
+                if 'motion_edge_loss' in loss_dict.values():
+                    
+                    if os.path.isdir(os.path.join(out_dir, 'weighted_edge_out', seq)) == False:
+                        os.makedirs(os.path.join(out_dir, 'weighted_edge_out', seq), exist_ok=True)
+                    if os.path.isdir(os.path.join(out_dir, 'weighted_edge_gt', seq)) == False:
+                        os.makedirs(os.path.join(out_dir, 'weighted_edge_gt', seq), exist_ok=True)
+                    
+                    util.save_edge(savename=os.path.join(out_dir, 'weighted_edge_out', seq, img_name + '.png'), out_image=out, flow_tensor=output_dict['flow_forwards'][-1][:,1,:,:,:], key='weighted', use_bilateral=False)
+                    util.save_edge(savename=os.path.join(out_dir, 'weighted_edge_gt', seq, img_name + '.png'), out_image=gt_seq[:,2,:,:,:], flow_tensor=output_dict['flow_forwards'][-1][:,1,:,:,:], key='weighted', use_bilateral=True)
+
+
             torch.cuda.synchronize()
             process_time.update((time() - process_start_time))
             
@@ -174,7 +187,7 @@ def test(cfg,
             np.save(os.path.join(out_dir, 'out_flow_npy', seq, img_name + '.npy'),out_flow_forward)
             
             tqdm_test.set_postfix_str(f'Inference Time {inference_time} Process Time {process_time} PSNR_mid {img_PSNRs_mid} PSNR_out {img_PSNRs_out}')
-            
+    
 
     # Output testing results
     log.info('============================ TEST RESULTS ============================')

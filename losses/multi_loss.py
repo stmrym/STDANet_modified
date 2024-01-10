@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from utils.network_utils import *
 from models.submodules import warp
 from torchvision import transforms
+from kornia.filters import bilateral_blur
 
 def mseLoss(output, target):
     mse_loss = nn.MSELoss()
@@ -20,7 +21,7 @@ def warp_loss(output_dict:dict, gt_seq:torch.tensor):
     frames_list = down_simple_gt
     
     n, t, c, h, w = frames_list.size()
-    flow_forwards = output_dict['flow_fowards']
+    flow_forwards = output_dict['flow_forwards']
     flow_backwards = output_dict['flow_backwards']
 
     forward_loss = 0
@@ -74,56 +75,95 @@ def perceptualLoss(fakeIm, realIm, vggnet):
     return loss
 
 
-def edge_detection(save_name, img_tensor):
+def edge_extraction(img_tensor:torch.tensor):
 
-    kernel = torch.cuda.FloatTensor([[-1, -1, -1], 
-                                     [-1, 8, -1], 
-                                     [-1, -1, -1]])
+    # Laplacian filter
+    kernel = torch.cuda.FloatTensor([[1, 1, 1], 
+                                     [1, -8, 1], 
+                                     [1, 1, 1]])
     edge_k = kernel.expand(1, 1, 3, 3)
 
-
-
     with torch.no_grad():
-        # [out_ch, in_ch, .., ..] : channel wiseに計算
 
-        # エッジ検出はグレースケール化してからやる
+        # grayscale
         gray = 0.114*img_tensor[:,0,:,:] + 0.587*img_tensor[:,1,:,:] + 0.299*img_tensor[:,2,:,:]
         gray = torch.unsqueeze(gray,1)
-        # エッジ検出
-        edge_image = F.conv2d(gray, edge_k, padding=1)
-        torchvision.utils.save_image(edge_image, save_name + '_edge.png')
-
-
-
-
-def save_image(save_name, out_tensor):
-        output_image = out_tensor.cpu().detach()*255
-        output_image = output_image[0].permute(1,2,0)
-
-
-        output_image = output_image.numpy().copy()
-        output_image_bgr = cv2.cvtColor(np.clip(output_image, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
         
-        cv2.imwrite(f'{save_name}.png', output_image_bgr)
+        # edge detection by convolution filter
+        edge_tensor = F.conv2d(gray, edge_k, padding='same')
+    
+        # Clamp to >= 0
+        edge_tensor = torch.clamp(input=edge_tensor, min=0)
+        # edge_tensor = (edge_tensor - torch.min(edge_tensor))/(torch.max(edge_tensor) - torch.min(edge_tensor))
 
-i = 0
+    return edge_tensor
+
+
+def motion_weighted_edge_extraction(img_tensor:torch.tensor, flow_tensor:torch.tensor, use_bilateral:bool) -> dict:
+    #################### 
+    # Input shape   
+    # img_tensor -> (B, C, H, W)
+    # flow_tensor -> (B, 2, H, W)
+    ####################
+
+    #  use bilateral filter to extract GT edge
+    if use_bilateral == True:
+        img_tensor = bilateral_blur(input=img_tensor, kernel_size=(5, 5), sigma_color=0.1, sigma_space=(1.5, 1.5))
+        img_tensor = bilateral_blur(input=img_tensor, kernel_size=(5, 5), sigma_color=0.1, sigma_space=(1.5, 1.5))
+    
+    # edge_tensor -> (B, 1, H, W)
+    edge_tensor = edge_extraction(img_tensor)
+
+    edge_h, edge_w = edge_tensor[0,0,:,:].size()
+    flow_h, flow_w = flow_tensor[0,0,:,:].size()
+    
+    # if input size is different, upsampling
+    if (edge_h, edge_w) != (flow_h, flow_w):
+        upsample = nn.Upsample(size=(edge_h, edge_w), mode='bilinear')
+        flow_tensor = upsample(flow_tensor)
+
+        assert flow_tensor[:,0,:,:].shape == edge_tensor[:,0,:,:].shape, f'flow_tensor size {flow_tensor.shape}, edge_tensor size {edge_tensor.shape} do not match!'
+
+    # calculate flow magnitude from delta-x ([:,0,:,:]) and delta-y ([:,1,:,:])
+    # flow_magnitude_tensor -> (B, 1, H, W)
+    flow_magnitude_tensor = torch.sqrt(flow_tensor[:,0,:,:]**2 + flow_tensor[:,1,:,:]**2 + 1e-6).unsqueeze(dim=1)
+
+    # element-wise product
+    weighted_edge_tensor = torch.mul(edge_tensor, flow_magnitude_tensor)
+    
+    # (B, 1, H, W)
+    return {'weighted':weighted_edge_tensor, 'edge':edge_tensor, 'flow_magnitude':flow_magnitude_tensor}
+
+
+def calc_weighted_edge_loss(output_tensor:torch.tensor, gt_tensor:torch.tensor, flow_tensor:torch.tensor):
+    # calculating weighted edge loss for each output and GT
+    output_dict = motion_weighted_edge_extraction(img_tensor=output_tensor, flow_tensor=flow_tensor, use_bilateral=False)
+    gt_dict = motion_weighted_edge_extraction(img_tensor=gt_tensor, flow_tensor=flow_tensor, use_bilateral=True)
+    # print(f'output {torch.max(output_dict["weighted"])} {torch.min(output_dict["weighted"])}')
+    # print(f'gt {torch.max(gt_dict["weighted"])} {torch.min(gt_dict["weighted"])}')
+    l1_loss = nn.L1Loss()
+    loss = l1_loss(output_dict['weighted'], gt_dict['weighted'])
+    return loss
+
+
 def motion_edge_loss(output_dict:dict, gt_seq:torch.tensor):
     
     recons_1, recons_2, recons_3, out = output_dict['recons_1'], output_dict['recons_2'], output_dict['recons_3'], output_dict['out']
-    flow_fowards, flow_backwards = output_dict['flow_fowards'], output_dict['flow_backwards']
+    recons_1_ff, recons_2_ff, recons_3_ff, output_ff = output_dict['flow_forwards']
+    recons_1_fb, recons_2_fb, recons_3_fb, output_fb = output_dict['flow_backwards']
+    # ff, fb -> (B, 2, 2, H, W)
 
-    edge_detection(f'debug_results/recons_{str(i)}_1', recons_1)
-    save_image(f'debug_results/recons_{str(i)}_1', recons_1)
-    save_image(f'debug_results/recons_{str(i)}_2', recons_2)
-    save_image(f'debug_results/recons_{str(i)}_3', recons_3)
-    save_image(f'debug_results/rout_{str(i)}', out)
-    # print('saved')
-    output_imgs = torch.cat([output_dict['recons_1'], output_dict['recons_2'], output_dict['recons_3'], output_dict['out']],dim=1)
-    t_gt_seq = torch.cat([gt_seq[:,1,:,:,:],gt_seq[:,2,:,:,:],gt_seq[:,3,:,:,:],gt_seq[:,2,:,:,:]],dim=1)
+    # losses weighted by flow_forward
+    loss  = calc_weighted_edge_loss(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=output_ff[:,1,:,:,:])
+    loss += calc_weighted_edge_loss(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_2_ff[:,1,:,:,:])
+    loss += calc_weighted_edge_loss(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_3_ff[:,0,:,:,:])
 
-    l1_loss = nn.L1Loss()
-    l1 = l1_loss(output_imgs, t_gt_seq)
-    return l1
+    # losses weighted by flow_backward
+    loss += calc_weighted_edge_loss(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_1_fb[:,1,:,:,:])
+    loss += calc_weighted_edge_loss(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_2_fb[:,0,:,:,:])
+    loss += calc_weighted_edge_loss(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=output_fb[:,0,:,:,:])
+    
+    return loss
 
 
 def calc_update_losses(output_dict:dict, gt_seq:torch.tensor, losses_dict_list:list, total_losses, batch_size:int):
