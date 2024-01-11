@@ -1,6 +1,7 @@
-from models.STDAN_Stack import STDAN_Stack
+from models.STDAN_RAFT_Stack import STDAN_RAFT_Stack
 from torchinfo import summary
 from mmcv.cnn.utils import flops_counter
+from config.config_debug import cfg
 
 def main():
     B = 1
@@ -8,7 +9,8 @@ def main():
     C = 3
     H = 256
     W = 256
-    model = STDAN_Stack()
+
+    model = STDAN_RAFT_Stack(cfg=cfg)
     summary(
         model,
         input_size=(B,T,C,H,W),
@@ -23,7 +25,7 @@ def main():
             model,
             input_size=(B,T,C,H,W),
             col_names=['input_size', 'output_size', 'num_params'],
-            depth = 20
+            depth = 2
         )))
 
 

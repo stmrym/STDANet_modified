@@ -54,6 +54,7 @@ def  bulid_net(cfg,output_dir):
     deblurnet = models.__dict__[cfg.NETWORK.DEBLURNETARCH].__dict__[cfg.NETWORK.DEBLURNETARCH](cfg = cfg)
     
     log.info(f'{dt.now()} Parameters in {cfg.NETWORK.DEBLURNETARCH}: {utils.network_utils.count_parameters(deblurnet)}.')
+    log.info(f'Loss: {cfg.LOSS_DICT_LIST} ')
 
     # Initialize weights of networks
     # deblurnet.apply()
@@ -134,14 +135,12 @@ def  bulid_net(cfg,output_dir):
 
     if cfg.NETWORK.PHASE in ['train','resume']:
 
-        log_dir       = os.path.join(output_dir, 'logs')
         ckpt_dir      = os.path.join(output_dir, 'checkpoints')
         visualize_dir = os.path.join(output_dir, 'visualization')
 
         # Training
 
-        train_writer = SummaryWriter(os.path.join(log_dir, 'train'))
-        val_writer  = SummaryWriter(os.path.join(log_dir, 'val'))
+        train_writer = SummaryWriter(output_dir)
 
         train(cfg = cfg, 
             init_epoch = init_epoch,
@@ -149,8 +148,7 @@ def  bulid_net(cfg,output_dir):
             deblurnet = deblurnet, deblurnet_solver = deblurnet_solver, 
             deblurnet_lr_scheduler = deblurnet_lr_scheduler,
             ckpt_dir = ckpt_dir, visualize_dir = visualize_dir,
-            train_writer = train_writer, val_writer = val_writer,
-            Best_Img_PSNR = Best_Img_PSNR, Best_Epoch = Best_Epoch)
+            tb_writer = train_writer, Best_Img_PSNR = Best_Img_PSNR, Best_Epoch = Best_Epoch)
     
     elif cfg.NETWORK.PHASE in ['test']:
 

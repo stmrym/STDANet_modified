@@ -141,7 +141,7 @@ def calc_weighted_edge_loss(output_tensor:torch.tensor, gt_tensor:torch.tensor, 
     gt_dict = motion_weighted_edge_extraction(img_tensor=gt_tensor, flow_tensor=flow_tensor, use_bilateral=True)
     # print(f'output {torch.max(output_dict["weighted"])} {torch.min(output_dict["weighted"])}')
     # print(f'gt {torch.max(gt_dict["weighted"])} {torch.min(gt_dict["weighted"])}')
-    l1_loss = nn.L1Loss()
+    l1_loss = nn.SmoothL1Loss()
     loss = l1_loss(output_dict['weighted'], gt_dict['weighted'])
     return loss
 

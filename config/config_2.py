@@ -10,7 +10,7 @@ cfg     = __C
 # Common
 #
 __C.CONST                               = edict()
-__C.CONST.CONFIG_NAME                   = 'my_config_1'
+__C.CONST.CONFIG_NAME                   = 'my_config_2'
 __C.CONST.DEVICE                        = '0'                             # gpu_ids
 __C.CONST.NUM_WORKER                    = 8                               # number of data workers
 # __C.CONST.WEIGHTS                       = 'exp_log/train/2023-11-17T084827_STDAN_Stack_BSD_3ms24ms/checkpoints/latest-ckpt.pth.tar'
@@ -20,7 +20,7 @@ __C.CONST.TRAIN_BATCH_SIZE              = 4 # original: 8
 __C.CONST.VAL_BATCH_SIZE                = 1
 __C.CONST.TEST_BATCH_SIZE               = 1 # original: 1
 # __C.CONST.DEBUG_PREFIX                  = '20231220_'  # This strings will be added to output_dir_path
-__C.CONST.DEBUG_PREFIX                  = 'W_Motion_'  # This strings will be added to output_dir_path
+__C.CONST.DEBUG_PREFIX                  = 'WO_Motion_'  # This strings will be added to output_dir_path
 
 #
 # Dataset, logs and checkpoint Directories
@@ -75,8 +75,8 @@ __C.NETWORK.PHASE                       = 'train'                 # available op
 
 __C.LOSS                                = edict()
 __C.LOSS_DICT_LIST                      = [ {'name': 'L1Loss',          'func': 'l1Loss',           'weight': 1},
-                                            {'name': 'WarpMSELoss',     'func': 'warp_loss',        'weight': 0.05},
-                                            {'name': 'MotionEdgeLoss',  'func': 'motion_edge_loss', 'weight': 0.05}
+                                            {'name': 'WarpMSELoss',     'func': 'warp_loss',        'weight': 0.05}
+                                            # {'name': 'MotionEdgeLoss',  'func': 'motion_edge_loss', 'weight': 0.05}
                                             ]
 #
 # RAFT options

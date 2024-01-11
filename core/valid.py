@@ -38,7 +38,7 @@ def valid(cfg,
         Best_Img_PSNR,
         ckpt_dir, save_dir,
         val_loader, val_transforms, deblurnet,
-        val_writer):
+        tb_writer):
     
     # Set up data loader
     val_data_loader = torch.utils.data.DataLoader(
@@ -134,6 +134,17 @@ def valid(cfg,
                 
                 cv2.imwrite(os.path.join(save_dir, 'output', seq, img_name + '.png'), output_image_bgr)
 
+                for loss_dict in cfg.LOSS_DICT_LIST:
+                    if 'motion_edge_loss' in loss_dict.values():
+                        
+                        if os.path.isdir(os.path.join(save_dir, 'weighted_edge_out', seq)) == False:
+                            os.makedirs(os.path.join(save_dir, 'weighted_edge_out', seq), exist_ok=True)
+                        if os.path.isdir(os.path.join(save_dir, 'weighted_edge_gt', seq)) == False:
+                            os.makedirs(os.path.join(save_dir, 'weighted_edge_gt', seq), exist_ok=True)
+                        
+                        util.save_edge(savename=os.path.join(save_dir, 'weighted_edge_out', seq, img_name + '.png'), out_image=out, flow_tensor=output_dict['flow_forwards'][-1][:,1,:,:,:], key='weighted', use_bilateral=False)
+                        util.save_edge(savename=os.path.join(save_dir, 'weighted_edge_gt', seq, img_name + '.png'), out_image=gt_seq[:,2,:,:,:], flow_tensor=output_dict['flow_forwards'][-1][:,1,:,:,:], key='weighted', use_bilateral=True)
+                        
                 # saving mid flow npy files
                 if os.path.isdir(os.path.join(save_dir, 'mid_flow_npy', seq)) == False:
                     os.makedirs(os.path.join(save_dir, 'mid_flow_npy', seq), exist_ok=True)
@@ -147,14 +158,13 @@ def valid(cfg,
                 np.save(os.path.join(save_dir, 'out_flow_npy', seq, img_name + '.npy'),out_flow_forward)
             
     # Output val results
-    log.info('============================ VALID RESULTS ============================')
     
     # Add testing results to TensorBoard
     for losses_dict in losses_dict_list:
-        val_writer.add_scalar(f'Loss_VALID_{val_dataset_name}/{losses_dict["name"]}', losses_dict["avg_meter"].avg, epoch_idx)
+        tb_writer.add_scalar(f'Loss_VALID_{val_dataset_name}/{losses_dict["name"]}', losses_dict["avg_meter"].avg, epoch_idx)
 
-    val_writer.add_scalar('Loss_VALID/TotalLoss', total_losses.avg, epoch_idx)
-    val_writer.add_scalar(f'PSNR/VALID_{val_dataset_name}', img_PSNRs_out.avg, epoch_idx)
+    tb_writer.add_scalar(f'Loss_VALID_{val_dataset_name}/TotalLoss', total_losses.avg, epoch_idx)
+    tb_writer.add_scalar(f'PSNR/VALID_{val_dataset_name}', img_PSNRs_out.avg, epoch_idx)
 
     if img_PSNRs_out.avg  >= Best_Img_PSNR:
         if not os.path.exists(ckpt_dir):
@@ -162,8 +172,8 @@ def valid(cfg,
 
         Best_Img_PSNR = img_PSNRs_out.avg
 
-    log.info(f'[VALID] Total PSNR_mid: {img_PSNRs_mid.avg}, PSNR_out: {img_PSNRs_out.avg}, PSNR_best: {Best_Img_PSNR}')
-    log.info(f'[VALID] Total SSIM_mid: {img_ssims_mid.avg}, SSIM_out: {img_ssims_out.avg}, Inference time: {inference_time}, Process time: {process_time}')
+    log.info(f'[VALID][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{val_dataset_name}] PSNR_mid: {img_PSNRs_mid.avg}, PSNR_out: {img_PSNRs_out.avg}, PSNR_best: {Best_Img_PSNR}')
+    log.info(f'[VALID][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{val_dataset_name}] Inference time: {inference_time}, Process time: {process_time} SSIM_mid: {img_ssims_mid.avg}, SSIM_out: {img_ssims_out.avg}')
 
         # Creating flow map from npy    
     
@@ -171,7 +181,6 @@ def valid(cfg,
 
         log.info('========================== SAVING FLOW MAP ===========================')
     
-        util.save_hsv_flow(save_dir=save_dir, flow_type='mid_flow', save_vector_map=False)
         util.save_hsv_flow(save_dir=save_dir, flow_type='out_flow', save_vector_map=False)
 
     return img_PSNRs_out.avg, Best_Img_PSNR

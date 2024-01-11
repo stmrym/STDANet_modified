@@ -160,11 +160,12 @@ def save_edge(savename:str, out_image:torch.tensor, flow_tensor:torch.tensor, ke
     # key: 'weighted', 'edge', or 'flow_magnitude'
     output = output_dict[key]
 
-    if key == 'flow_magnitude':
-        print(f'{torch.max(output)} {torch.min(output)}')
-        output = (output - torch.min(output))/(torch.max(output) - torch.min(output))
-    # output = torch.clamp(input=output, min=0, max=1)
+    # Min-max normalization
+    output = (output - torch.min(output))/(torch.max(output) - torch.min(output))
 
+    # Edge enhancing
+    if key in ['edge', 'weighted']:
+        output *= 5
     
     # print(f'{torch.max(output)} {torch.min(output)}')
 

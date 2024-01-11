@@ -16,7 +16,7 @@ __C.CONST.NUM_WORKER                    = 8                               # numb
 # __C.CONST.WEIGHTS                       = 'exp_log/train/2023-11-17T084827_STDAN_Stack_BSD_3ms24ms/checkpoints/ckpt-epoch-0100.pth.tar'
 __C.CONST.WEIGHTS                       = 'exp_log/train/20231221_2023-12-21T185537_STDAN_Stack_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-0700.pth.tar' # data weights path
 # __C.CONST.WEIGHTS                       = ''
-__C.CONST.TRAIN_BATCH_SIZE              = 1 # original: 8
+__C.CONST.TRAIN_BATCH_SIZE              = 4 # original: 8
 __C.CONST.VAL_BATCH_SIZE                = 1
 __C.CONST.TEST_BATCH_SIZE               = 1 # original: 1
 # __C.CONST.DEBUG_PREFIX                  = '20231220_'  # This strings will be added to output_dir_path
@@ -27,18 +27,18 @@ __C.CONST.DEBUG_PREFIX                  = 'debug_'  # This strings will be added
 #
 __C.DATASET                             = edict()
 __C.DIR                                 = edict()
-__C.DATASET.TRAIN_DATASET_LIST          = ['BSD_3ms24ms']       # available options:  'DVD','GOPRO','BSD_1ms8ms','BSD_2ms16ms','BSD_3ms24ms'
-__C.DIR.TRAIN_IMAGE_BLUR_PATH_LIST      = [ '../dataset/BSD_3ms24ms/%s/%s/Blur/RGB/%s.png'     # %s, %s, %s: phase, seq_name, image_name template
-                                            # '../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png'
+__C.DATASET.TRAIN_DATASET_LIST          = ['BSD_3ms24ms', 'GOPRO']       # available options:  'DVD','GOPRO','BSD_1ms8ms','BSD_2ms16ms','BSD_3ms24ms'
+__C.DIR.TRAIN_IMAGE_BLUR_PATH_LIST      = [ '../dataset/BSD_3ms24ms/%s/%s/Blur/RGB/%s.png',     # %s, %s, %s: phase, seq_name, image_name template
+                                            '../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png'
                                             ]
-__C.DIR.TRAIN_IMAGE_CLEAR_PATH_LIST     = [ '../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png'    # %s, %s, %s: phase, seq_name, image_name template
-                                            # '../dataset/GOPRO_Large/%s/%s/sharp/%s.png'
+__C.DIR.TRAIN_IMAGE_CLEAR_PATH_LIST     = [ '../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png',    # %s, %s, %s: phase, seq_name, image_name template
+                                            '../dataset/GOPRO_Large/%s/%s/sharp/%s.png'
                                             ]
 # __C.DIR.TRAIN_JSON_FILE_PATH_LIST       = [ '../STDAN_modified/datasets/BSD_3ms24ms_train.json',
                                             # '../STDAN_modified/datasets/GOPRO_train.json'
                                             # ]
-__C.DIR.TRAIN_JSON_FILE_PATH_LIST       = [ '../STDAN_modified/datasets/BSD_3ms24ms_train_debug.json'
-                                            # '../STDAN_modified/datasets/GOPRO_train_debug.json'
+__C.DIR.TRAIN_JSON_FILE_PATH_LIST       = [ '../STDAN_modified/datasets/BSD_3ms24ms_train_debug.json',
+                                            '../STDAN_modified/datasets/GOPRO_train_debug.json'
                                             ]
 
 __C.DATASET.VAL_DATAET_LIST             = ['BSD_3ms24ms', 'GOPRO']       # available options:  'DVD','GOPRO','BSD_1ms8ms','BSD_2ms16ms','BSD_3ms24ms'
@@ -74,17 +74,17 @@ __C.NETWORK.PHASE                       = 'train'                 # available op
 
 __C.LOSS                                = edict()
 __C.LOSS_DICT_LIST                      = [
-                                            {   'name': 'MSELoss',     
+                                            {   'name': 'L1Loss',     
                                                 'func': 'l1Loss',   
                                                 'weight': 1},
                                             
                                             {   'name': 'WarpMSELoss', 
                                                 'func': 'warp_loss',
-                                                'weight': 0.05},
-                                            
-                                            {   'name': 'MotionEdgeLoss',
-                                                'func': 'motion_edge_loss',
                                                 'weight': 0.05}
+                                            
+                                            # {   'name': 'MotionEdgeLoss',
+                                                # 'func': 'motion_edge_loss',
+                                                # 'weight': 0.05}
                                             ]
 #
 # RAFT options
@@ -113,7 +113,7 @@ __C.TRAIN.USE_PERCET_LOSS               = False
 __C.TRAIN.NUM_EPOCHES                   = 800   # original: 1200                   # maximum number of epoches
 __C.TRAIN.LEARNING_RATE                 = 1e-4 # original: 1e-4
 # __C.TRAIN.LR_MILESTONES                 = [400,600,800,1000]   
-__C.TRAIN.LR_MILESTONES                 = [800]   
+__C.TRAIN.LR_MILESTONES                 = [1000]   
 __C.TRAIN.LR_DECAY                      = 0.5                   # Multiplicative factor of learning rate decay
 __C.TRAIN.MOMENTUM                      = 0.9
 __C.TRAIN.BETA                          = 0.999

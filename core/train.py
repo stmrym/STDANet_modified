@@ -22,8 +22,7 @@ def train(cfg, init_epoch,
         train_transforms, val_transforms,
         deblurnet, deblurnet_solver, deblurnet_lr_scheduler,
         ckpt_dir, visualize_dir, 
-        train_writer, val_writer,
-        Best_Img_PSNR, Best_Epoch):
+        tb_writer, Best_Img_PSNR, Best_Epoch):
 
     n_itr = 0
     # Training loop
@@ -114,11 +113,11 @@ def train(cfg, init_epoch,
             
         # Append epoch loss to TensorBoard
         for losses_dict in losses_dict_list:
-            train_writer.add_scalar(f'Loss_TRAIN/{losses_dict["name"]}', losses_dict["avg_meter"].avg, epoch_idx)
+            tb_writer.add_scalar(f'Loss_TRAIN/{losses_dict["name"]}', losses_dict["avg_meter"].avg, epoch_idx)
         
-        train_writer.add_scalar('Loss_TRAIN/TotalLoss', total_losses.avg, epoch_idx)
-        train_writer.add_scalar('PSNR/TRAIN', img_PSNRs_out.avg, epoch_idx)
-        train_writer.add_scalar('lr/lr', deblurnet_lr_scheduler.get_last_lr()[0], epoch_idx)
+        tb_writer.add_scalar('Loss_TRAIN/TotalLoss', total_losses.avg, epoch_idx)
+        tb_writer.add_scalar('PSNR/TRAIN', img_PSNRs_out.avg, epoch_idx)
+        tb_writer.add_scalar('lr/lr', deblurnet_lr_scheduler.get_last_lr()[0], epoch_idx)
         deblurnet_lr_scheduler.step()
 
         if epoch_idx % cfg.VAL.VALID_FREQ == 0:
@@ -145,7 +144,7 @@ def train(cfg, init_epoch,
                     val_loader = val_loader, 
                     val_transforms = val_transforms,
                     deblurnet = deblurnet,
-                    val_writer = val_writer)
+                    tb_writer = tb_writer)
                 
         
         if epoch_idx % cfg.TRAIN.SAVE_FREQ == 0:
@@ -159,5 +158,4 @@ def train(cfg, init_epoch,
                                                     Best_Img_PSNR, Best_Epoch)
         
     # Close SummaryWriter for TensorBoard
-    train_writer.close()
-    val_writer.close()
+    tb_writer.close()

@@ -19,7 +19,7 @@ def make_model(args):
 class STDAN_RAFT(nn.Module):
 
     def __init__(self, in_channels=3, n_sequence=3, out_channels=3, n_resblock=3, n_feat=32,
-                 kernel_size=5, feat_in=False, n_in_feat=32, use_raft_flow=False, cfg = None):
+                 kernel_size=5, feat_in=False, n_in_feat=32, cfg = None):
         super(STDAN_RAFT, self).__init__()
 
         self.feat_in = feat_in
@@ -97,17 +97,17 @@ class STDAN_RAFT(nn.Module):
                         device='cuda')
         
                 # self.pos_em  = PositionalEncodingPermute3D(3)
-        self.motion_branch = torch.nn.Sequential(
-                    torch.nn.Conv2d(in_channels=2*n_feat * 4, out_channels=96//2, kernel_size=3, stride=1, padding=8, dilation=8),
-                    nn.LeakyReLU(0.1,inplace=True),
-                    torch.nn.Conv2d(in_channels=96//2, out_channels=64//2, kernel_size=3, stride=1, padding=16, dilation=16),
-                    nn.LeakyReLU(0.1,inplace=True),
-                    torch.nn.Conv2d(in_channels=64//2, out_channels=32//2, kernel_size=3, stride=1, padding=1, dilation=1),
-                    nn.LeakyReLU(0.1,inplace=True),
-        )
-        self.motion_out = torch.nn.Conv2d(in_channels=32//2, out_channels=2, kernel_size=3, stride=1, padding=1, dilation=1)
-        constant_(self.motion_out.weight.data, 0.)
-        constant_(self.motion_out.bias.data, 0.)
+        # self.motion_branch = torch.nn.Sequential(
+        #             torch.nn.Conv2d(in_channels=2*n_feat * 4, out_channels=96//2, kernel_size=3, stride=1, padding=8, dilation=8),
+        #             nn.LeakyReLU(0.1,inplace=True),
+        #             torch.nn.Conv2d(in_channels=96//2, out_channels=64//2, kernel_size=3, stride=1, padding=16, dilation=16),
+        #             nn.LeakyReLU(0.1,inplace=True),
+        #             torch.nn.Conv2d(in_channels=64//2, out_channels=32//2, kernel_size=3, stride=1, padding=1, dilation=1),
+        #             nn.LeakyReLU(0.1,inplace=True),
+        # )
+        # self.motion_out = torch.nn.Conv2d(in_channels=32//2, out_channels=2, kernel_size=3, stride=1, padding=1, dilation=1)
+        # constant_(self.motion_out.weight.data, 0.)
+        # constant_(self.motion_out.bias.data, 0.)
 
     def compute_flow(self, frames):
         n, t, c, h, w = frames.size()
@@ -155,7 +155,7 @@ class STDAN_RAFT(nn.Module):
         return self.motion_out(self.motion_branch(torch.cat([frames_1, frames_2],1)))
 
         
-    def forward(self, x, use_raft_flow):
+    def forward(self, x):
         b, n, c, h, w = x.size()
         
         first_scale_inblock = self.inBlock_t(x.view(b*n,c,h,w))
@@ -165,15 +165,11 @@ class STDAN_RAFT(nn.Module):
         first_scale_encoder_second = self.encoder_second(first_scale_encoder_first)
         first_scale_encoder_second = first_scale_encoder_second.view(b,n,128,h//4,w//4)
         
-        if use_raft_flow == True: # Use RAFT flow
-            # downsampled_x = F.interpolate(x.reshape(-1,c,h,w), size=(h//4, w//4),mode='bilinear', align_corners=True).reshape(b,n,c,h//4,w//4)
-            # flow_forward, flow_backward = self.compute_raft_flow(downsampled_x)
-            flow_forward, flow_backward = self.compute_raft_flow(x)
-            flow_forward = F.interpolate(flow_forward.reshape(-1,2,h,w), size=(h//4, w//4),mode='bilinear', align_corners=True).reshape(b,2,2,h//4,w//4)
-            flow_backward = F.interpolate(flow_backward.reshape(-1,2,h,w), size=(h//4, w//4),mode='bilinear', align_corners=True).reshape(b,2,2,h//4,w//4)
+        # Use RAFT flow
+        flow_forward, flow_backward = self.compute_raft_flow(x)
+        flow_forward = F.interpolate(flow_forward.reshape(-1,2,h,w), size=(h//4, w//4),mode='bilinear', align_corners=True).reshape(b,2,2,h//4,w//4)
+        flow_backward = F.interpolate(flow_backward.reshape(-1,2,h,w), size=(h//4, w//4),mode='bilinear', align_corners=True).reshape(b,2,2,h//4,w//4)
 
-        else: # Use lightweight flow
-            flow_forward,flow_backward = self.compute_flow(first_scale_encoder_second)
 
         frame,srcframe = self.MMA(first_scale_encoder_second,first_scale_encoder_second,flow_forward,flow_backward)
         

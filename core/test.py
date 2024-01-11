@@ -190,12 +190,11 @@ def test(cfg,
     
 
     # Output testing results
-    log.info('============================ TEST RESULTS ============================')
     log.info(f'[TEST] Total PSNR_mid: {img_PSNRs_mid.avg}, PSNR_out: {img_PSNRs_out.avg}')
     log.info(f'[TEST] Total SSIM_mid: {img_ssims_mid.avg}, SSIM_out: {img_ssims_out.avg}, Inference time: {inference_time}, Process time: {process_time}')
     
     # Creating flow map from npy    
     log.info('========================== SAVING FLOW MAP ===========================')
     
-    util.save_hsv_flow(out_dir, flow_type='out_flow', save_vector_map=True)
+    util.save_hsv_flow(out_dir, flow_type='out_flow', save_vector_map=False)
                 
