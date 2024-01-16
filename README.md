@@ -189,6 +189,8 @@ __C.DIR.OUT_PATH                        = './exp_log'
 __C.NETWORK.DEBLURNETARCH               = 'STDAN_Stack'
 # Network phase ('train', 'resume', or 'test')  
 __C.NETWORK.PHASE                       = 'train'
+# If False, fix weights for motion estimator
+__C.NETWORK.MOTION_REQUIRES_GRAD        = True
 
 # Set various losses in list format. Each loss is described in dictionary form.
 __C.LOSS_DICT_LIST                      = [ {'name': 'L1Loss',          'func': 'l1Loss',           'weight': 1},

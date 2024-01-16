@@ -71,6 +71,7 @@ __C.DIR.OUT_PATH                        = './exp_log'         # logs path
 __C.NETWORK                             = edict()
 __C.NETWORK.DEBLURNETARCH               = 'STDAN_Stack'             
 __C.NETWORK.PHASE                       = 'train'                 # available options: 'train', 'test', 'resume'
+__C.NETWORK.MOTION_REQUIRES_GRAD        = True                    # If False, fix weights for motion estimator
 
 __C.LOSS                                = edict()
 __C.LOSS_DICT_LIST                      = [ {'name': 'L1Loss',          'func': 'l1Loss',           'weight': 1},
