@@ -150,11 +150,20 @@ models/ops/modules/__pycache__
 weights/*
 
 # Training and testing code
-/run_train.sh
-/run_test.sh
+run_train.sh
+run_test.sh
+run_stdan.sh
 
-# Docker run command
-/.devcontainer/docker_run.sh
+# Docker
+.devcontainer
+docker-compose.yml
 
 # Debug
 debug_results
+debug.py
+summary
+
+#JSON file
+datasets/*.json
+datasets/rename_dataset.py
+datasets/make_original_json.py

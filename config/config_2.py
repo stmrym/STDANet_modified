@@ -102,7 +102,7 @@ __C.DATA.INPUT_LENGTH                   = 5
 
 __C.TRAIN                               = edict()
 __C.TRAIN.USE_PERCET_LOSS               = False
-__C.TRAIN.NUM_EPOCHES                   = 400   # original: 1200                   # maximum number of epoches
+__C.TRAIN.NUM_EPOCHES                   = 401   # original: 1200                   # maximum number of epoches
 __C.TRAIN.LEARNING_RATE                 = 1e-4 # original: 1e-4
 # __C.TRAIN.LR_MILESTONES                 = [400,600,800,1000]   
 __C.TRAIN.LR_MILESTONES                 = [1000]   
