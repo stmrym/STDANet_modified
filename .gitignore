@@ -167,3 +167,6 @@ summary
 datasets/*.json
 datasets/rename_dataset.py
 datasets/make_original_json.py
+
+# Config
+config/config_debug.py
