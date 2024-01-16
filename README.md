@@ -179,11 +179,11 @@ __C.DIR.OUT_PATH                        = './exp_log'
 ```
 
 #### Network
-```name``` : Loss name, using for Tensorboard.
+```'name'``` : Loss name, using for Tensorboard.
 
-```func``` : Function name in [losses/multi_loss.py](losses/multi_loss.py).
+```'func'``` : Function name in [losses/multi_loss.py](losses/multi_loss.py).
 
-```weight``` : Wight coefficient of the loss.
+```'weight'``` : Wight coefficient of the loss.
 ```Python
 # Set the deblurring network ('STDAN_Stack' or 'STDAN_RAFT_Stack')
 __C.NETWORK.DEBLURNETARCH               = 'STDAN_Stack'
