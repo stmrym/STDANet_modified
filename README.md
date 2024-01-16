@@ -4,8 +4,9 @@ Modified **video deblurring model STDANet.** This project is based on [STDAN](ht
 
 ## Changes from the original
 
-- We save output images (**Output**) and visualized flow images (**Flow vector** and **Flow angle**) at the time of testing.
-- We added [valid.py](core/valid.py) and split the BSD dataset into train, valid and test by [make_BSD_json.py](datasets/make_BSD_json.py).
+- We save output images (**Output**) and visualized flow images (**Flow map**) can be saved.
+- We added [valid.py](core/valid.py) and validation is available during training.
+- You can train/valid/test on multiple datasets. (Please make json files and modify the config file)
 
 ### Output examples
 |Input (blurred)|Output (deblurred)|
@@ -47,30 +48,14 @@ sh install.sh
 ## Get Started
 
 
-To train STDAN, you can simply use the following command (e.g., BSD_3ms24ms):
+To train and test STDAN, you can simply use the following command (e.g., using config/config_1.py):
 
 (Please replace [] with your path.)
 ```
-python runner.py \
-    --data_path=/[your dataset path]/BSD_3ms24ms \
-    --json_path=./datasets/BSD_3ms24ms_train_val_test.json \
-    --data_name=BSD_3ms24ms \
-    --phase=train   
+python runner.py config/congig_1
 ```
 
-To test STDAN, you can simply use the following command (e.g., BSD3ms24ms):
-
-(Please replace [] with your path.)
-```
-python runner.py \
-    --data_path=/[your dataset path]/BSD_3ms24ms \
-    --json_path=./datasets/BSD_3ms24ms_train_val_test.json \
-    --data_name=BSD_3ms24ms \
-    --phase=test \
-    --weights=./exp_log/train/[yyyy-mm-ddThhmmss_STDAN_Stack_BSD_3ms24m]/checkpoints/[saved ckpt].pth.tar  
-```
-
-In [config.py](config.py), there are more settings of testing and training. 
+In [config_1.py](config/config_1.py), there are more settings of testing and training. 
 
 
 
