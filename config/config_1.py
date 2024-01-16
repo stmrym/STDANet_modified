@@ -75,8 +75,8 @@ __C.NETWORK.PHASE                       = 'train'                 # available op
 
 __C.LOSS                                = edict()
 __C.LOSS_DICT_LIST                      = [ {'name': 'L1Loss',          'func': 'l1Loss',           'weight': 1},
-                                            {'name': 'WarpMSELoss',     'func': 'warp_loss',        'weight': 0.05},
-                                            {'name': 'MotionEdgeLoss',  'func': 'motion_edge_loss', 'weight': 0.05}
+                                            {'name': 'WarpMSELoss',     'func': 'warp_loss',        'weight': 0.05}
+                                            # {'name': 'MotionEdgeLoss',  'func': 'motion_edge_loss', 'weight': 0.05}
                                             ]
 #
 # RAFT options
