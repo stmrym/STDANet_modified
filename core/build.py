@@ -11,7 +11,8 @@ import utils.data_transforms
 import utils.network_utils
 import utils.packing
 import models
-from models.STDAN_Stack import STDAN_Stack
+import importlib
+# from models.STDAN_Stack import STDAN_Stack
 # from models.STDAN_RAFT_Stack import STDAN_RAFT_Stack
 from datetime import datetime as dt
 from tensorboardX import SummaryWriter
@@ -50,8 +51,8 @@ def  bulid_net(cfg,output_dir):
         ])
     
     # Set up networks
-    
-    deblurnet = models.__dict__[cfg.NETWORK.DEBLURNETARCH].__dict__[cfg.NETWORK.DEBLURNETARCH](cfg = cfg)
+    module = importlib.import_module('models.' + cfg.NETWORK.DEBLURNETARCH)
+    deblurnet = module.__dict__[cfg.NETWORK.DEBLURNETARCH](cfg = cfg)
     
     log.info(f'{dt.now()} Parameters in {cfg.NETWORK.DEBLURNETARCH}: {utils.network_utils.count_parameters(deblurnet)}.')
     log.info(f'Loss: {cfg.LOSS_DICT_LIST} ')
