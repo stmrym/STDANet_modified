@@ -19,7 +19,6 @@ __C.CONST.WEIGHTS                       = ''
 __C.CONST.TRAIN_BATCH_SIZE              = 4 # original: 8
 __C.CONST.VAL_BATCH_SIZE                = 1
 __C.CONST.TEST_BATCH_SIZE               = 1 # original: 1
-# __C.CONST.DEBUG_PREFIX                  = '20231220_'  # This strings will be added to output_dir_path
 __C.CONST.DEBUG_PREFIX                  = 'W_Motion_'  # This strings will be added to output_dir_path
 
 #
@@ -27,7 +26,7 @@ __C.CONST.DEBUG_PREFIX                  = 'W_Motion_'  # This strings will be ad
 #
 __C.DATASET                             = edict()
 __C.DIR                                 = edict()
-__C.DATASET.TRAIN_DATASET_LIST          = ['BSD_3ms24ms', 'GOPRO']       # available options:  'DVD','GOPRO','BSD_1ms8ms','BSD_2ms16ms','BSD_3ms24ms'
+__C.DATASET.TRAIN_DATASET_LIST          = ['BSD_3ms24ms', 'GOPRO']       
 __C.DIR.TRAIN_IMAGE_BLUR_PATH_LIST      = [ '../dataset/BSD_3ms24ms/%s/%s/Blur/RGB/%s.png',     # %s, %s, %s: phase, seq_name, image_name template
                                             '../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png'
                                             ]
@@ -41,7 +40,7 @@ __C.DIR.TRAIN_JSON_FILE_PATH_LIST       = [ '../STDAN_modified/datasets/BSD_3ms2
                                             # '../STDAN_modified/datasets/GOPRO_train_debug.json'
                                             # ]
 
-__C.DATASET.VAL_DATAET_LIST             = ['BSD_3ms24ms', 'GOPRO']       # available options:  'DVD','GOPRO','BSD_1ms8ms','BSD_2ms16ms','BSD_3ms24ms'
+__C.DATASET.VAL_DATAET_LIST             = ['BSD_3ms24ms', 'GOPRO']       
 __C.DIR.VAL_IMAGE_BLUR_PATH_LIST        = [ '../dataset/BSD_3ms24ms/%s/%s/Blur/RGB/%s.png',     # %s, %s, %s: phase, seq_name, image_name
                                             '../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png'    
                                             ]   
@@ -72,11 +71,12 @@ __C.DIR.OUT_PATH                        = './exp_log'         # logs path
 __C.NETWORK                             = edict()
 __C.NETWORK.DEBLURNETARCH               = 'STDAN_Stack'             
 __C.NETWORK.PHASE                       = 'train'                 # available options: 'train', 'test', 'resume'
+__C.NETWORK.MOTION_REQUIRES_GRAD        = True                    # If False, fix weights for motion estimator
 
 __C.LOSS                                = edict()
 __C.LOSS_DICT_LIST                      = [ {'name': 'L1Loss',          'func': 'l1Loss',           'weight': 1},
-                                            {'name': 'WarpMSELoss',     'func': 'warp_loss',        'weight': 0.05},
-                                            {'name': 'MotionEdgeLoss',  'func': 'motion_edge_loss', 'weight': 0.05}
+                                            {'name': 'WarpMSELoss',     'func': 'warp_loss',        'weight': 0.05}
+                                            # {'name': 'MotionEdgeLoss',  'func': 'motion_edge_loss', 'weight': 0.05}
                                             ]
 #
 # RAFT options

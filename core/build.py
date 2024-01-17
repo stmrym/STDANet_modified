@@ -71,7 +71,9 @@ def  bulid_net(cfg,output_dir):
         # elif "spynet" in name or "flow_pwc" in name or "flow_net" in name:
         elif "motion_branch" in name or "motion_out" in name:
             if param.requires_grad == True:
-                
+                # Fix weigths for motion estimator
+                if cfg.NETWORK.MOTION_REQUIRES_GRAD == False:
+                    param.requires_grad = False
                 motion_branch_params.append(param)
             
                 # param.requires_grad = False

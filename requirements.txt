@@ -7,3 +7,4 @@ imageio
 einops 
 scikit-image 
 tensorboardX
+kornia
