@@ -10,11 +10,9 @@ Modified **video deblurring model STDANet.** This project is based on [STDAN](ht
 - You can add **multiple loss fuctions** by editing [config/config 1.py](config/config_1.py).
 
 ### Output examples
-|Input (blurred)|Output (deblurred)|
-|:---:|:---:|
-|<img width="100%" src="https://github.com/stmrym/STDANet_modified/assets/114562027/e18abdd8-f481-4d48-9ac0-b3a8b5aadd70">|<img width="100%" src="https://github.com/stmrym/STDANet_modified/assets/114562027/8a843d47-9944-4c0c-bb2d-3fe96bed8912">|
-|**Flow vector**|**Flow angle**|
-|<img width="100%" src="https://github.com/stmrym/STDANet_modified/assets/114562027/9661e9fb-bc5b-406f-af1f-18cc414a4c6d">|<img width="100%" src="https://github.com/stmrym/STDANet_modified/assets/114562027/d4726cca-f5ee-499e-b45b-360ef6fd97fc">|
+|Input (blurred)|Output (deblurred)|Flow map|
+|:---:|:---:|:---:|
+|<img width="100%" src="https://github.com/stmrym/STDANet_modified/assets/114562027/ed56addf-e03a-4e8e-a5f7-6e2638e83a78">|<img width="100%" src="https://github.com/stmrym/STDANet_modified/assets/114562027/4324dad1-7389-4997-8711-f27ec1eb0f90">|<img width="100%" src="https://github.com/stmrym/STDANet_modified/assets/114562027/797f8fe4-408d-48fa-9836-b0ed2b15f015">
 
 
 ## Requirements
