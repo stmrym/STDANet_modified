@@ -1,4 +1,4 @@
-# modified STDANet
+# Modified STDANet
 
 Modified **video deblurring model STDANet.** This project is based on [STDAN](https://github.com/huicongzhang/STDAN).
 
