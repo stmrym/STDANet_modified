@@ -4,13 +4,13 @@ Modified **video deblurring model STDANet.** This project is based on [STDAN](ht
 
 ## Changes from the Original
 
-- We save output images (**Output**) and visualized flow images (**Flow map**) can be saved.
+- We save output images (**Output**) and visualized flow images (**Flow Map**) can be saved.
 - We added [valid.py](core/valid.py) and **validation** is available during training.
 - You can train/valid/test on **multiple datasets**. (Please make json files and modify [config/config 1.py](config/config_1.py))
 - You can add **multiple loss fuctions** by editing [config/config 1.py](config/config_1.py).
 
 ### Output Examples
-|Input (blurred)|Output (deblurred)|Flow map|
+|Input (blurred)|Output (deblurred)|Flow Map|
 |:---:|:---:|:---:|
 |<img width="100%" src="https://github.com/stmrym/STDANet_modified/assets/114562027/ed56addf-e03a-4e8e-a5f7-6e2638e83a78">|<img width="100%" src="https://github.com/stmrym/STDANet_modified/assets/114562027/4324dad1-7389-4997-8711-f27ec1eb0f90">|<img width="100%" src="https://github.com/stmrym/STDANet_modified/assets/114562027/797f8fe4-408d-48fa-9836-b0ed2b15f015">
 
