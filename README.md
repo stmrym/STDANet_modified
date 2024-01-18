@@ -48,7 +48,7 @@ We use the [GoPro](https://github.com/SeungjunNah/DeepDeblur_release), and [BSD]
 Specify input data for the model using json files.
 
 - #### BSD dataset
-Run [datasets/make_BSD_json.py](datasets/make_BSD_json.py) to create **BSD_train.json**, **BSD_valid_json**, and **BSD_test.json** respectively.
+Run [datasets/make_BSD_json.py](datasets/make_BSD_json.py) to create **BSD_train.json**, **BSD_valid.json**, and **BSD_test.json** respectively.
 ```Python
 # Path to BSD dataset
 dataset_path = '../../dataset/'
@@ -64,7 +64,7 @@ json_phase = 'train'
 ```
 
 - #### GoPro dataset
-Run [datasets/make_GOPRO_json.py](datasets/make_GOPRO_json.py) to create **GOPRO_train.json** and **GOPRO_valid_json** respectively.
+Run [datasets/make_GOPRO_json.py](datasets/make_GOPRO_json.py) to create **GOPRO_train.json** and **GOPRO_valid.json** respectively.
 ```Python
 # Path to GOPRO dataset
 dataset_path = '../../dataset/GOPRO_Large'
@@ -104,6 +104,7 @@ python runner.py config/congig_1
 Using [config/config_1.py](config/config_1.py) as an example.
 
 #### Common
+
 ```Python
 # Arbitary config file name (used for print log)
 __C.CONST.CONFIG_NAME                   = 'my_config_1'
@@ -111,10 +112,8 @@ __C.CONST.CONFIG_NAME                   = 'my_config_1'
 __C.CONST.DEVICE                        = '0'
 # Nunber of data workers
 __C.CONST.NUM_WORKER                    = 8
-# If you 'resume' or 'test', set a [WEIGHTS].pth.tar file.
-__C.CONST.WEIGHTS                       = 'exp_log/train/yyyy-MM-ddTHHmmss_STDAN_Stack_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-0xxx.pth.tar' # data weights path
-# If you 'train' from the beginning, you do not need to set weights.
-__C.CONST.WEIGHTS                       = ''
+# If you 'resume' or 'test', set your data weights path. If you 'train' from the beginning, set ''.
+__C.CONST.WEIGHTS                       = 'exp_log/train/yyyy-MM-ddTHHmmss_STDAN_Stack_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-0xxx.pth.tar'
 # Training batch size
 __C.CONST.TRAIN_BATCH_SIZE              = 4
 # Validation batch size
