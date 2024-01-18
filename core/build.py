@@ -76,8 +76,7 @@ def  bulid_net(cfg,output_dir):
                 if cfg.NETWORK.MOTION_REQUIRES_GRAD == False:
                     param.requires_grad = False
                 motion_branch_params.append(param)
-            
-                # param.requires_grad = False
+
         else:
             if param.requires_grad == True:
                 
