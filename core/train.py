@@ -17,7 +17,6 @@ from core.valid import valid
 from tqdm import tqdm
 
 
-
 def train(cfg, init_epoch, 
         train_transforms, val_transforms,
         deblurnet, deblurnet_solver, deblurnet_lr_scheduler,
@@ -122,6 +121,19 @@ def train(cfg, init_epoch,
 
         log.info(f'[TRAIN][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}] PSNR_mid: {img_PSNRs_mid.avg}, PSNR_out: {img_PSNRs_out.avg}')
 
+
+                
+        
+        if epoch_idx % cfg.TRAIN.SAVE_FREQ == 0:
+            utils.network_utils.save_checkpoints(os.path.join(ckpt_dir, 'ckpt-epoch-%04d.pth.tar' % (epoch_idx)), \
+                                                    epoch_idx, deblurnet,deblurnet_solver, \
+                                                    Best_Img_PSNR, Best_Epoch)
+            
+        
+        utils.network_utils.save_checkpoints(os.path.join(ckpt_dir, 'latest-ckpt.pth.tar'), \
+                                                    epoch_idx, deblurnet, deblurnet_solver,\
+                                                    Best_Img_PSNR, Best_Epoch)
+
         if epoch_idx % cfg.VAL.VALID_FREQ == 0:
             
             # Validation for each dataset list
@@ -133,7 +145,7 @@ def train(cfg, init_epoch,
                     json_file_path = val_json_file_path,
                     input_length = cfg.DATA.INPUT_LENGTH)
 
-                save_dir = os.path.join(visualize_dir, val_dataset_name, 'epoch-' + str(epoch_idx).zfill(4))
+                save_dir = os.path.join(visualize_dir, 'epoch-' + str(epoch_idx).zfill(4))
 
                 # Validation
                 Best_Img_PSNR, Best_Epoch = valid(
@@ -148,17 +160,6 @@ def train(cfg, init_epoch,
                     val_transforms = val_transforms,
                     deblurnet = deblurnet,
                     tb_writer = tb_writer)
-                
-        
-        if epoch_idx % cfg.TRAIN.SAVE_FREQ == 0:
-            utils.network_utils.save_checkpoints(os.path.join(ckpt_dir, 'ckpt-epoch-%04d.pth.tar' % (epoch_idx)), \
-                                                    epoch_idx, deblurnet,deblurnet_solver, \
-                                                    Best_Img_PSNR, Best_Epoch)
-            
-        
-        utils.network_utils.save_checkpoints(os.path.join(ckpt_dir, 'latest-ckpt.pth.tar'), \
-                                                    epoch_idx, deblurnet, deblurnet_solver,\
-                                                    Best_Img_PSNR, Best_Epoch)
         
     # Close SummaryWriter for TensorBoard
     tb_writer.close()

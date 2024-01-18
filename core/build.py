@@ -108,7 +108,7 @@ def  bulid_net(cfg,output_dir):
                     if torch.is_tensor(v):
                         state[k] = v.cuda()
         # deblurnet_lr_scheduler.load_state_dict(checkpoint['deblurnet_lr_scheduler'])
-        init_epoch = checkpoint['epoch_idx']
+        init_epoch = checkpoint['epoch_idx'] + 1
         Best_Img_PSNR = checkpoint['Best_Img_PSNR']
         Best_Epoch = checkpoint['Best_Epoch']
         

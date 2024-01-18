@@ -18,58 +18,6 @@ from utils import log
 from time import time
 from utils.util import ssim_calculate
 from tqdm import tqdm
-import glob
-from models.submodules import warp
-
-def warp_loss(frames_list,flow_forwards,flow_backwards):  # copied from train.py
-    n, t, c, h, w = frames_list.size()
-    
-    forward_loss = 0
-    backward_loss = 0
-    for idx in [[0,1,2],[1,2,3],[2,3,4],[1,2,3]]:
-        frames = frames_list[:,idx,:,:,:]
-        for flow_forward,flow_backward in zip(flow_forwards,flow_backwards):
-            frames_1 = frames[:, :-1, :, :, :].reshape(-1, c, h, w)
-            frames_2 = frames[:, 1:, :, :, :].reshape(-1, c, h, w)
-            backward_frames = warp(frames_1,flow_backward.reshape(-1, 2, h, w))
-            forward_frames = warp(frames_2,flow_forward.reshape(-1, 2, h, w))
-            forward_loss += l1Loss(forward_frames,frames_1)
-            backward_loss += l1Loss(backward_frames,frames_2)
-    return (0.5*forward_loss + 0.5*backward_loss)/len(flow_forwards)
-
-def mkdir(path):
-    if not os.path.isdir(path):
-        mkdir(os.path.split(path)[0])
-    else:
-        return
-    os.mkdir(path)
-
-def flow_vector(flow, spacing, margin, minlength):
-    """Parameters:
-    input
-    flow: motion vectors 3D-array
-    spacing: pixel spacing of the flow
-    margin: pixel margins of the flow
-    minlength: minimum pixels to leave as flow
-    output
-    x: x coord 1D-array
-    y: y coord 1D-array
-    u: x direction flow vector 2D-array
-    v: y direction flow vector 2D-array
-    """
-    h, w, _ = flow.shape
-
-    x = np.arange(margin, w - margin, spacing, dtype=np.int64)
-    y = np.arange(margin, h - margin, spacing, dtype=np.int64)
-
-    mesh_flow = flow[np.ix_(y, x)]
-    mag, _ = cv2.cartToPolar(mesh_flow[..., 0], mesh_flow[..., 1])
-    mesh_flow[mag < minlength] = np.nan  # replace under minlength to nan
-
-    u = mesh_flow[..., 0]
-    v = mesh_flow[..., 1]
-
-    return x, y, u, v
 
 def test(cfg, 
         test_dataset_name, out_dir,

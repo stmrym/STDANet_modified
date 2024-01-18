@@ -16,22 +16,6 @@ from tqdm import tqdm
 
 from models.submodules import warp
 
-def warp_loss(frames_list,flow_forwards,flow_backwards):  # copied from train.py
-    n, t, c, h, w = frames_list.size()
-    
-    forward_loss = 0
-    backward_loss = 0
-    for idx in [[0,1,2],[1,2,3],[2,3,4],[1,2,3]]:
-        frames = frames_list[:,idx,:,:,:]
-        for flow_forward,flow_backward in zip(flow_forwards,flow_backwards):
-            frames_1 = frames[:, :-1, :, :, :].reshape(-1, c, h, w)
-            frames_2 = frames[:, 1:, :, :, :].reshape(-1, c, h, w)
-            backward_frames = warp(frames_1,flow_backward.reshape(-1, 2, h, w))
-            forward_frames = warp(frames_2,flow_forward.reshape(-1, 2, h, w))
-            forward_loss += l1Loss(forward_frames,frames_1)
-            backward_loss += l1Loss(backward_frames,frames_2)
-    return (0.5*forward_loss + 0.5*backward_loss)/len(flow_forwards)
-
 def valid(cfg, 
         val_dataset_name,
         epoch_idx, init_epoch,
