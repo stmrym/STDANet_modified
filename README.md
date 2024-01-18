@@ -112,7 +112,7 @@ __C.CONST.DEVICE                        = '0'
 # Nunber of data workers
 __C.CONST.NUM_WORKER                    = 8
 # If you 'resume' or 'test', set a [WEIGHTS].pth.tar file.
-__C.CONST.WEIGHTS                       = 'exp_log/train/20231221_2023-12-21T185537_STDAN_Stack_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-0280.pth.tar' # data weights path
+__C.CONST.WEIGHTS                       = 'exp_log/train/yyyy-MM-ddTHHmmss_STDAN_Stack_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-0xxx.pth.tar' # data weights path
 # If you 'train' from the beginning, you do not need to set weights.
 __C.CONST.WEIGHTS                       = ''
 # Training batch size
@@ -121,8 +121,8 @@ __C.CONST.TRAIN_BATCH_SIZE              = 4
 __C.CONST.VAL_BATCH_SIZE                = 1
 # Test batch size
 __C.CONST.TEST_BATCH_SIZE               = 1
-# When 'train', this strings will be added to output directory (e.g., exp_log/train/debug_20231221_2023-12-21T185537_STDAN_Stack_BSD_3ms24ms_GOPRO)
-__C.CONST.DEBUG_PREFIX                  = 'debug_'
+# When 'train', this strings will be added to output directory (e.g., exp_log/train/exp1_yyyy-MM-ddTHHmmss_STDAN_Stack_BSD_3ms24ms_GOPRO)
+__C.CONST.PREFIX                        = 'exp1_'
 ```
 
 #### Dataset, Directories

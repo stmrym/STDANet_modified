@@ -120,6 +120,8 @@ def train(cfg, init_epoch,
         tb_writer.add_scalar('lr/lr', deblurnet_lr_scheduler.get_last_lr()[0], epoch_idx)
         deblurnet_lr_scheduler.step()
 
+        log.info(f'[TRAIN][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}] PSNR_mid: {img_PSNRs_mid.avg}, PSNR_out: {img_PSNRs_out.avg}, PSNR_best: {Best_Img_PSNR}')
+
         if epoch_idx % cfg.VAL.VALID_FREQ == 0:
             
             # Validation for each dataset list
@@ -134,11 +136,12 @@ def train(cfg, init_epoch,
                 save_dir = os.path.join(visualize_dir, val_dataset_name, 'epoch-' + str(epoch_idx).zfill(4))
 
                 # Validation
-                val_img_PSNR, Best_Img_PSNR = valid(
+                Best_Img_PSNR, Best_Epoch = valid(
                     cfg = cfg,
                     val_dataset_name = val_dataset_name,
                     epoch_idx = epoch_idx, init_epoch = init_epoch,
                     Best_Img_PSNR = Best_Img_PSNR,
+                    Best_Epoch = Best_Epoch, 
                     ckpt_dir = ckpt_dir,
                     save_dir = save_dir,
                     val_loader = val_loader, 

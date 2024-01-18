@@ -41,7 +41,7 @@ def main():
             os.makedirs(output_dir)
     elif cfg.NETWORK.PHASE == 'train':
         timestr = dt.now().isoformat(timespec='seconds').replace(':', '')
-        output_dir = os.path.join(cfg.DIR.OUT_PATH,'train', cfg.CONST.DEBUG_PREFIX + timestr + '_' + cfg.NETWORK.DEBLURNETARCH + '_' + '_'.join(cfg.DATASET.TRAIN_DATASET_LIST)) # changed to use timestr
+        output_dir = os.path.join(cfg.DIR.OUT_PATH,'train', cfg.CONST.PREFIX + timestr + '_' + cfg.NETWORK.DEBLURNETARCH + '_' + '_'.join(cfg.DATASET.TRAIN_DATASET_LIST)) # changed to use timestr
 
         log_dir      = os.path.join(output_dir, 'logs')
         ckpt_dir     = os.path.join(output_dir, 'checkpoints')

@@ -35,7 +35,7 @@ def warp_loss(frames_list,flow_forwards,flow_backwards):  # copied from train.py
 def valid(cfg, 
         val_dataset_name,
         epoch_idx, init_epoch,
-        Best_Img_PSNR,
+        Best_Img_PSNR, Best_Epoch,
         ckpt_dir, save_dir,
         val_loader, val_transforms, deblurnet,
         tb_writer):
@@ -171,8 +171,9 @@ def valid(cfg,
             os.makedirs(ckpt_dir)
 
         Best_Img_PSNR = img_PSNRs_out.avg
+        Best_Epoch = epoch_idx
 
-    log.info(f'[VALID][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{val_dataset_name}] PSNR_mid: {img_PSNRs_mid.avg}, PSNR_out: {img_PSNRs_out.avg}, PSNR_best: {Best_Img_PSNR}')
+    log.info(f'[VALID][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{val_dataset_name}] PSNR_mid: {img_PSNRs_mid.avg}, PSNR_out: {img_PSNRs_out.avg}, PSNR_best: {Best_Img_PSNR} at epoch {Best_Epoch}')
     log.info(f'[VALID][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{val_dataset_name}] Inference time: {inference_time}, Process time: {process_time} SSIM_mid: {img_ssims_mid.avg}, SSIM_out: {img_ssims_out.avg}')
 
         # Creating flow map from npy    
@@ -183,4 +184,4 @@ def valid(cfg,
     
         util.save_hsv_flow(save_dir=save_dir, flow_type='out_flow', save_vector_map=False)
 
-    return img_PSNRs_out.avg, Best_Img_PSNR
+    return Best_Img_PSNR, Best_Epoch

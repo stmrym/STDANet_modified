@@ -171,3 +171,4 @@ datasets/make_original_json.py
 # Config
 config/config_debug.py
 config/config_lab.py
+config/my_*
