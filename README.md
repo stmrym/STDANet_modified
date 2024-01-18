@@ -2,14 +2,14 @@
 
 Modified **video deblurring model STDANet.** This project is based on [STDAN](https://github.com/huicongzhang/STDAN).
 
-## Changes from the original
+## Changes from the Original
 
 - We save output images (**Output**) and visualized flow images (**Flow map**) can be saved.
 - We added [valid.py](core/valid.py) and **validation** is available during training.
 - You can train/valid/test on **multiple datasets**. (Please make json files and modify [config/config 1.py](config/config_1.py))
 - You can add **multiple loss fuctions** by editing [config/config 1.py](config/config_1.py).
 
-### Output examples
+### Output Examples
 |Input (blurred)|Output (deblurred)|Flow map|
 |:---:|:---:|:---:|
 |<img width="100%" src="https://github.com/stmrym/STDANet_modified/assets/114562027/ed56addf-e03a-4e8e-a5f7-6e2638e83a78">|<img width="100%" src="https://github.com/stmrym/STDANet_modified/assets/114562027/4324dad1-7389-4997-8711-f27ec1eb0f90">|<img width="100%" src="https://github.com/stmrym/STDANet_modified/assets/114562027/797f8fe4-408d-48fa-9836-b0ed2b15f015">
@@ -38,16 +38,16 @@ sh install.sh
 
 ## Datasets
 
-### Download datasets
+### Download Datasets
 We use the [GoPro](https://github.com/SeungjunNah/DeepDeblur_release), and [BSD](https://github.com/zzh-tech/ESTRNN) datasets in our experiments, which are available below:
 
 - [GoPro](https://drive.google.com/file/d/1y4wvPdOG3mojpFCHTqLgriexhbjoWVkK/view?usp=sharing)
 - [BSD](https://drive.google.com/file/d/19cel6QgofsWviRbA5IPMEv_hDbZ30vwH/view?usp=sharing)
 
-### Prepare json files
+### Prepare JSON Files
 Specify input data for the model using json files.
 
-- #### BSD dataset
+- #### BSD Dataset
 Run [datasets/make_BSD_json.py](datasets/make_BSD_json.py) to create **BSD_train.json**, **BSD_valid.json**, and **BSD_test.json** respectively.
 ```Python
 # Path to BSD dataset
@@ -63,7 +63,7 @@ phase = 'train'
 json_phase = 'train'
 ```
 
-- #### GoPro dataset
+- #### GoPro Dataset
 Run [datasets/make_GOPRO_json.py](datasets/make_GOPRO_json.py) to create **GOPRO_train.json** and **GOPRO_valid.json** respectively.
 ```Python
 # Path to GOPRO dataset
@@ -76,7 +76,7 @@ phase = 'test'
 json_phase = 'valid'
 ```
 
-- #### Your own dataset
+- #### Your Own Dataset
 Run [datasets/make_original_json_sample.py](datasets/make_original_json_sample.py). The dataset must consist of [PHASE], [VIDEO_SEQS], and [FRAME].
 
 (e.g., ```~/dataset/my_dataset/test/001/000001.png```)
