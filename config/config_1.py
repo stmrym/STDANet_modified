@@ -32,8 +32,8 @@ __C.DIR.TRAIN_IMAGE_BLUR_PATH_LIST      = [ '../dataset/BSD_3ms24ms/%s/%s/Blur/R
 __C.DIR.TRAIN_IMAGE_CLEAR_PATH_LIST     = [ '../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png',    # %s, %s, %s: phase, seq_name, image_name template
                                             '../dataset/GOPRO_Large/%s/%s/sharp/%s.png'
                                             ]
-__C.DIR.TRAIN_JSON_FILE_PATH_LIST       = [ '../STDAN_modified/datasets/BSD_3ms24ms_train.json',
-                                            '../STDAN_modified/datasets/GOPRO_train.json'
+__C.DIR.TRAIN_JSON_FILE_PATH_LIST       = [ './datasets/BSD_3ms24ms_train.json',
+                                            './datasets/GOPRO_train.json'
                                             ]
 
 __C.DATASET.VAL_DATAET_LIST             = ['BSD_3ms24ms', 'GOPRO']       
@@ -43,8 +43,8 @@ __C.DIR.VAL_IMAGE_BLUR_PATH_LIST        = [ '../dataset/BSD_3ms24ms/%s/%s/Blur/R
 __C.DIR.VAL_IMAGE_CLEAR_PATH_LIST       = [ '../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png',    # %s, %s, %s: phase, seq_name, image_name
                                             '../dataset/GOPRO_Large/%s/%s/sharp/%s.png'
                                             ]
-__C.DIR.VAL_JSON_FILE_PATH_LIST         = [ '../STDAN_modified/datasets/BSD_3ms24ms_valid.json',    
-                                            '../STDAN_modified/datasets/GOPRO_valid.json'
+__C.DIR.VAL_JSON_FILE_PATH_LIST         = [ './datasets/BSD_3ms24ms_valid.json',    
+                                            './datasets/GOPRO_valid.json'
                                             ]
 
 __C.DATASET.TEST_DATASET_LIST           = ['BSD_3ms24ms']       # Arbitary output name
@@ -53,7 +53,7 @@ __C.DIR.TEST_IMAGE_BLUR_PATH_LIST       = [
                                             ]   
 __C.DIR.TEST_IMAGE_CLEAR_PATH_LIST      = [ '../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png'
                                             ]
-__C.DIR.TEST_JSON_FILE_PATH_LIST        = [ '../STDAN_modified/datasets/BSD_3ms24ms_test.json'
+__C.DIR.TEST_JSON_FILE_PATH_LIST        = [ './datasets/BSD_3ms24ms_test.json'
                                             ]
 
 __C.DIR.OUT_PATH                        = './exp_log'         # logs path
@@ -75,8 +75,8 @@ __C.LOSS_DICT_LIST                      = [ {'name': 'L1Loss',          'func': 
 # RAFT options
 #
 __C.RAFT                                = edict()
-__C.RAFT.CONFIG_FILE                    = '../STDAN_modified/mmflow/configs/raft/raft_8x2_100k_mixed_368x768.py'
-__C.RAFT.CHECKPOINT                     = '../STDAN_modified/mmflow/checkpoints/raft_8x2_100k_mixed_368x768.pth'
+__C.RAFT.CONFIG_FILE                    = './mmflow/configs/raft/raft_8x2_100k_mixed_368x768.py'
+__C.RAFT.CHECKPOINT                     = './mmflow/checkpoints/raft_8x2_100k_mixed_368x768.pth'
 
 #
 # data augmentation

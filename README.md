@@ -139,8 +139,8 @@ __C.DIR.TRAIN_IMAGE_CLEAR_PATH_LIST     = [ '../dataset/BSD_3ms24ms/%s/%s/Sharp/
                                             '../dataset/GOPRO_Large/%s/%s/sharp/%s.png'
                                             ]
 # Set the corresponding json files.
-__C.DIR.TRAIN_JSON_FILE_PATH_LIST       = [ '../STDAN_modified/datasets/BSD_3ms24ms_train.json',
-                                            '../STDAN_modified/datasets/GOPRO_train.json'
+__C.DIR.TRAIN_JSON_FILE_PATH_LIST       = [ './datasets/BSD_3ms24ms_train.json',
+                                            './datasets/GOPRO_train.json'
                                             ]
 
 # Arbitary validation dataset name in list format
@@ -155,8 +155,8 @@ __C.DIR.VAL_IMAGE_CLEAR_PATH_LIST       = [ '../dataset/BSD_3ms24ms/%s/%s/Sharp/
                                             '../dataset/GOPRO_Large/%s/%s/sharp/%s.png'
                                             ]
 # Set the corresponding json files.
-__C.DIR.VAL_JSON_FILE_PATH_LIST         = [ '../STDAN_modified/datasets/BSD_3ms24ms_valid.json',    
-                                            '../STDAN_modified/datasets/GOPRO_valid.json'
+__C.DIR.VAL_JSON_FILE_PATH_LIST         = [ './datasets/BSD_3ms24ms_valid.json',    
+                                            './datasets/GOPRO_valid.json'
                                             ]
 
 # Arbitary test dataset name in list format
@@ -169,7 +169,7 @@ __C.DIR.TEST_IMAGE_BLUR_PATH_LIST       = [
 __C.DIR.TEST_IMAGE_CLEAR_PATH_LIST      = [ '../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png'
                                             ]
 # Set the corresponding json files.
-__C.DIR.TEST_JSON_FILE_PATH_LIST        = [ '../STDAN_modified/datasets/BSD_3ms24ms_test.json'
+__C.DIR.TEST_JSON_FILE_PATH_LIST        = [ './datasets/BSD_3ms24ms_test.json'
                                             ]
 
 # Output path of experiment
@@ -197,8 +197,8 @@ __C.LOSS_DICT_LIST                      = [ {'name': 'L1Loss',          'func': 
                                             ]
 
 # When using RAFT flow estimation, set the config and checkpoints.
-__C.RAFT.CONFIG_FILE                    = '../STDAN_modified/mmflow/configs/raft/raft_8x2_100k_mixed_368x768.py'
-__C.RAFT.CHECKPOINT                     = '../STDAN_modified/mmflow/checkpoints/raft_8x2_100k_mixed_368x768.pth'
+__C.RAFT.CONFIG_FILE                    = './mmflow/configs/raft/raft_8x2_100k_mixed_368x768.py'
+__C.RAFT.CHECKPOINT                     = './mmflow/checkpoints/raft_8x2_100k_mixed_368x768.pth'
 ```
 
 #### Validation
