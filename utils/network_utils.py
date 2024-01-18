@@ -14,11 +14,11 @@ from einops.layers.torch import Rearrange
 import cv2
 from torch.autograd import Variable
 def kaiming_init(module,
-                 a=0,
-                 mode='fan_out',
-                 nonlinearity='relu',
-                 bias=0,
-                 distribution='normal'):
+                a=0,
+                mode='fan_out',
+                nonlinearity='relu',
+                bias=0,
+                distribution='normal'):
     assert distribution in ['uniform', 'normal']
     if hasattr(module, 'weight') and module.weight is not None:
         if distribution == 'uniform':
