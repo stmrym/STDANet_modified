@@ -24,7 +24,6 @@ class STDAN_RAFT(nn.Module):
 
         self.feat_in = feat_in
 
-        assert cfg != None, 'cfg does not exist!'
         InBlock = []
         if not feat_in:
             InBlock.extend([nn.Sequential(
@@ -32,13 +31,13 @@ class STDAN_RAFT(nn.Module):
                           padding=3 // 2),
                 nn.LeakyReLU(0.1,inplace=True)
             )])
-            print("The input of STDAN_RAFT is image")
+            # print("The input of STDAN_RAFT is image")
         else:
             InBlock.extend([nn.Sequential(
                 nn.Conv2d(n_in_feat, n_feat, kernel_size=3, stride=1, padding=3 // 2),
                 nn.LeakyReLU(0.1,inplace=True)
             )])
-            print("The input of STDAN_RAFT is feature")
+            # print("The input of STDAN_RAFT is feature")
         InBlock.extend([blocks.ResBlock(n_feat, n_feat, kernel_size=3, stride=1)
                         for _ in range(3)])
         # encoder1
@@ -91,9 +90,13 @@ class STDAN_RAFT(nn.Module):
         self.MSA = DeformableAttnBlock_FUSION(n_heads=4,d_model=128,n_levels=3,n_points=12)
         
         # self.pos_em  = PositionalEncodingPermute3D(3)
+    
+        config = cfg.RAFT.CONFIG_FILE if cfg is not None else './mmflow/configs/raft/raft_8x2_100k_mixed_368x768.py'
+        checkpoint = cfg.RAFT.CHECKPOINT if cfg is not None else './mmflow/checkpoints/raft_8x2_100k_mixed_368x768.pth'
+
         self.RAFT_net = init_model(
-                        config=cfg.RAFT.CONFIG_FILE,
-                        checkpoint=cfg.RAFT.CHECKPOINT,
+                        config=config,
+                        checkpoint=checkpoint,
                         device='cuda')
         
                 # self.pos_em  = PositionalEncodingPermute3D(3)

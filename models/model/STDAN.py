@@ -27,13 +27,13 @@ class STDAN(nn.Module):
                           padding=3 // 2),
                 nn.LeakyReLU(0.1,inplace=True)
             )])
-            print("The input of STDAN is image")
+            # print("The input of STDAN is image")
         else:
             InBlock.extend([nn.Sequential(
                 nn.Conv2d(n_in_feat, n_feat, kernel_size=3, stride=1, padding=3 // 2),
                 nn.LeakyReLU(0.1,inplace=True)
             )])
-            print("The input of STDAN is feature")
+            # print("The input of STDAN is feature")
         InBlock.extend([blocks.ResBlock(n_feat, n_feat, kernel_size=3, stride=1)
                         for _ in range(3)])
         # encoder1
