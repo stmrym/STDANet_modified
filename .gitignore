@@ -149,6 +149,7 @@ models/ops/functions/__pycache__
 models/ops/modules/__pycache__
 weights/*
 demo_input/*
+demo_output/*
 
 # Training and testing code
 run_train.sh
