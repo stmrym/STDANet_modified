@@ -17,12 +17,12 @@ Modified **Video Deblurring Model STDANet.** This project is based on [STDAN](ht
 
 
 ## Requirements
-#### Clone the Code Repository
+#### 1.  Clone the Code Repository
 
 ```
 git clone https://github.com/stmrym/STDAN_modified.git
 ```
-#### Install Pytorch Denpendencies
+#### 2.  Install Pytorch Denpendencies
 
 ```
 conda create -n STDAN python=3.7 
@@ -30,7 +30,7 @@ conda activate STDAN
 conda install pytorch==1.10.1 torchvision==0.11.2 torchaudio==0.10.1 cudatoolkit=10.2 -c pytorch
 ```
 
-#### Install Python Denpendencies and Build PyTorch Extensions
+#### 3.  Install Python Denpendencies and Build PyTorch Extensions
 
 ```
 cd STDAN_modified
@@ -39,13 +39,13 @@ sh install.sh
 
 ## Demo App
 
-### Prepare Trained Weights
+### 1.  Prepare Trained Weights
 Place the trained checkpoint ```.pth.tar``` file in ```weights/```.
 
-### Prepare Input Images/Videos
+### 2.  Prepare Input Images/Videos
 Place your input images and videos in ```demo_input/```.
 
-### Run App
+### 3.  Run App
 You can easily launch the demo app with the following command.
 ```python
 streamlit run app.py
@@ -55,13 +55,13 @@ Demo results are saved in ```demo_output/```.
 
 ## Datasets
 
-### Download Datasets
+### 1. Download Datasets
 We use the [GoPro](https://github.com/SeungjunNah/DeepDeblur_release), and [BSD](https://github.com/zzh-tech/ESTRNN) datasets in our experiments, which are available below:
 
 - [GoPro](https://drive.google.com/file/d/1y4wvPdOG3mojpFCHTqLgriexhbjoWVkK/view?usp=sharing)
 - [BSD](https://drive.google.com/file/d/19cel6QgofsWviRbA5IPMEv_hDbZ30vwH/view?usp=sharing)
 
-### Prepare JSON Files
+### 2. Prepare JSON Files
 Specify input data for the model using json files.
 
 - #### BSD Dataset
