@@ -7,6 +7,7 @@ from PIL import Image
 import importlib
 import torch
 import torchvision
+from mmflow.datasets import visualize_flow
 
 ss = st.session_state
 
@@ -43,7 +44,7 @@ def select_network():
 def select_input_type():
     # select 'video' or 'images'
     input_type = st.sidebar.radio(
-                            label = 'Choose video format.',
+                            label = 'Choose your input format.',
                             options = ('video', 'images'),
                             disabled = ss.disabled
                             )
@@ -110,14 +111,20 @@ def video_inference(weight, network, upload_file):
     n, c, h, w = input_tensor.shape
     text = st.empty()    
     progress_bar = st.progress(0)
+    col1, col2 = st.columns(2)
     output_frames = []
+    flow_maps = []
     deblurnet.eval()
 
     # Saving settings
     os.makedirs(f'demo_output/{output_dir_name}', exist_ok = True)
+    os.makedirs(f'demo_output/{output_dir_name}_flow', exist_ok = True)
     fourcc = cv2.VideoWriter_fourcc(*'avc1')
-    video = cv2.VideoWriter(f'demo_output/{output_dir_name}.mp4',fourcc, ss.video_fps, (w, h))
-    
+    fourcc2 = cv2.VideoWriter_fourcc(*'avc1')
+    output_video = cv2.VideoWriter(f'demo_output/{output_dir_name}.mp4',fourcc, ss.video_fps, (w, h))
+    flow_video = cv2.VideoWriter(f'demo_output/{output_dir_name}_flow.mp4',fourcc2, ss.video_fps, (w, h))
+
+
     # Calculating inference time
     torch.cuda.synchronize()
     process_start_time = time()
@@ -128,7 +135,7 @@ def video_inference(weight, network, upload_file):
             torch.cuda.synchronize()
             process_time = time() - process_start_time
 
-            text.text(f'Processing frame : {i + 2} / {n - 3}  Inference time : {process_time} [s]')
+            text.text(f'Processing frame : {i + 1} / {n - 4}  Inference time : {process_time} [s]')
             progress_bar.progress((i + 1)/(n - 4))
             
             input_frame = input_tensor[i:i+5, :, :, :]
@@ -143,17 +150,32 @@ def video_inference(weight, network, upload_file):
             output_image = output_image[0].permute(1,2,0).numpy().copy()
             output_image = np.clip(output_image, 0, 255).astype(np.uint8)
             
-            # Show output
-            st.write(output_frame_names[i])
-            st.image(output_image)
+
+            output_flow = ((output_dict['flow_forwards'])[-1])[0][1].permute(1,2,0).cpu().detach().numpy()   
+            flow_map = visualize_flow(output_flow, None)
+            flow_map = cv2.resize(flow_map, (w, h), interpolation = cv2.INTER_NEAREST)
+            # Show output and flow
+            with col1:
+                st.write(output_frame_names[i])
+                st.image(output_image)
+            with col2:
+                st.write(output_frame_names[i])
+                st.image(flow_map)
 
             # Saving images and video
             cv2.imwrite(f'demo_output/{output_dir_name}/{output_frame_names[i]}', cv2.cvtColor(output_image, cv2.COLOR_RGB2BGR))
-            video.write(cv2.cvtColor(output_image, cv2.COLOR_RGB2BGR))  
+            cv2.imwrite(f'demo_output/{output_dir_name}_flow/{output_frame_names[i]}', cv2.cvtColor(flow_map, cv2.COLOR_RGB2BGR))            
 
-            output_frames.append(output_image)        
+            output_video.write(cv2.cvtColor(output_image, cv2.COLOR_RGB2BGR))
+            flow_video.write(cv2.cvtColor(flow_map, cv2.COLOR_RGB2BGR))  
 
-    video.release()
+            output_frames.append(output_image)    
+            flow_maps.append(flow_map)    
+
+
+    output_video.release()
+    flow_video.release()
+    ss.flow_maps = flow_maps
     return output_frames, output_dir_name, output_frame_names
 
     
@@ -172,41 +194,51 @@ def show_video_or_images():
             st.image(image, use_column_width=True)
 
 
-def show_result_video_and_images():
-    # Show result video and images
-
-    # Show video
+def show_result_video():
+    # Show result video
     if ss.input_type == 'video':
     
         st.header('Input')
         st.video(ss.uploaded_file)
         st.header('Output')
         st.video(f'demo_output/{ss.output_dir_name}.mp4')
+        st.header('Flow map')
+        st.video(f'demo_output/{ss.output_dir_name}_flow.mp4')
 
+
+def show_result_multi_images(type_list):
     # Show image columns
-    elif ss.input_type == 'images':
+    if ss.input_type == 'images':
+        num_column = len(type_list)
+        if num_column != 0:
+            column_list = st.columns(num_column)
+            for col, image_type in zip(column_list, type_list):
+                
+                if image_type == 'Input':
+                    frames = sorted(ss.uploaded_file, key=lambda x: x.name)[2:-2]
+                    frame_names = [frame.name for frame in frames]
+                elif image_type == 'Output':
+                    frames = ss.output_frames
+                    frame_names = ss.output_frame_names
+                elif image_type == 'Flow map':
+                    frames = ss.flow_maps
+                    frame_names = ss.output_frame_names
 
-        uploaded_file = sorted(ss.uploaded_file, key=lambda x: x.name)[2:-2]
-        col1, col2 = st.columns(2)
-        with col1:
-            st.header('Input')
-            for i, image in enumerate(uploaded_file):
-                st.write(uploaded_file[i].name)
-                st.image(image, use_column_width=True)
-
-        with col2:
-            st.header('Output')
-            for image_name, image in zip(ss.output_frame_names, ss.output_frames):
-                st.write(image_name)
-                st.image(image, use_column_width=True)
-        
+                # display each type of images
+                with col:
+                    st.header(image_type)
+                    for image_name, image in zip(frame_names, frames):
+                        st.write(image_name)
+                        st.image(image, use_column_width=True)
+            
 
 
 def set_session_start():
     # Jump to processing page
-    ss.disabled = True
-    ss.page_control = 'processing'
-    ss.show_result_disable = True
+    if (ss.input_type == 'video') or (ss.input_type == 'images' and len(ss.uploaded_file) >= 5):
+        ss.disabled = True
+        ss.page_control = 'processing'
+        ss.show_result_disable = True
 
 def set_session_exit():
     # Jump to start page
@@ -229,7 +261,7 @@ def upload_wiget():
     
     if ss.input_type == 'images':
         uploaded_file = st.file_uploader(
-                            label = 'Upload your image files. (demo_input/*)',
+                            label = 'Upload your image files. (demo_input/*) (more than 5 images.)',
                             accept_multiple_files = True,
                             type = ['png', 'jpg', 'jpeg'],
                             disabled = ss.disabled
@@ -271,7 +303,17 @@ def finished_page():
     # Show result images
     st.button('End', on_click = set_session_exit)
     st.write(f'Results saved to "demo_output/{ss.output_dir_name}".')
-    show_result_video_and_images()
+
+    if ss.input_type == 'video':
+        show_result_video()
+    
+    elif ss.input_type == 'images':
+        type_list = st.multiselect(
+            label = 'Type of image to display.',
+            options = ['Input', 'Output', 'Flow map'],
+            default = ['Input', 'Output', 'Flow map']
+            )
+        show_result_multi_images(type_list)
 
 
 
