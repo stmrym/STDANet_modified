@@ -8,6 +8,7 @@ Modified **Video Deblurring Model STDANet.** This project is based on [STDAN](ht
 - We added [valid.py](core/valid.py) and **validation** is available during training.
 - You can train/valid/test on **multiple datasets**. (Please make json files and modify [config/config 1.py](config/config_1.py))
 - You can add **multiple loss fuctions** by editing [config/config 1.py](config/config_1.py).
+- We offer a **demo App** that allows you to easily infer input in .mp4, .png, .jpg, and .jpeg formats.
 
 ### Output Examples
 |Input (blurred)|Output (deblurred)|Flow Map|
@@ -35,6 +36,22 @@ conda install pytorch==1.10.1 torchvision==0.11.2 torchaudio==0.10.1 cudatoolkit
 cd STDAN_modified
 sh install.sh
 ```
+
+## Demo App
+
+### Prepare Trained Weights
+Place the trained checkpoint ```.pth.tar``` file in ```weights/```.
+
+### Prepare Input Images/Videos
+Place your input images and videos in ```demo_input/```.
+
+### Run App
+You can easily launch the demo app with the following command.
+```python
+streamlit run app.py
+```
+Demo results are saved in ```demo_output/```.
+
 
 ## Datasets
 
@@ -94,7 +111,7 @@ savename = 'my_dataset'
 
 
 
-## Get Started
+## Training
 To train and test STDAN, you can simply use the following command (e.g., using [config/config_1.py](config/config_1.py)):
 ```
 python runner.py config/congig_1
