@@ -3,8 +3,10 @@ import os
 import cv2
 import numpy as np
 from time import time
+from datetime import datetime
 from PIL import Image
 import importlib
+import tempfile
 import torch
 import torchvision
 from mmflow.datasets import visualize_flow
@@ -75,18 +77,34 @@ def video_inference(weight, network, upload_file):
         network = network,
         weight = weight
     )
-    st.text(f'Wights: {weight}, Model: {network} loaded.')
+    st.text(f'Wights: {weight}, Network: {network} loaded.')
 
     # Load input frames from a video
     if ss.input_type == 'video':
-        video_tensor, _, fps_dict = torchvision.io.read_video(os.path.join('demo_input', upload_file.name))
-        input_tensor = (video_tensor.float() / 255).cuda()
-        # (n, h, w, c) -> (n, c, h, w)
-        input_tensor = input_tensor.permute(0, 3, 1, 2)
-        ss.video_fps = int(fps_dict['video_fps'])
 
-        output_dir_name = os.path.splitext(upload_file.name)[0]
-        output_frame_names = [f'{i:05}.png'  for i in range(0, (input_tensor.shape)[0])]
+        # write upload_file to temp_file and read video
+        with tempfile.NamedTemporaryFile() as tfile:
+            tfile.write(upload_file.read())
+            cap = cv2.VideoCapture(tfile.name)
+            ss.video_fps = cap.get(cv2.CAP_PROP_FPS)
+
+            inputs = []
+            while True:
+                ret, frame = cap.read()
+                
+                if not ret:
+                    break
+
+                # (h, w, c) -> (c, h, w)
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                image_tensor = torch.from_numpy(frame).permute(2, 0, 1).cuda()
+                image_tensor = image_tensor.float() / 255
+                inputs.append(image_tensor)
+
+            input_tensor = torch.stack(inputs, dim = 0)
+
+        output_dir_name = datetime.now().strftime('%Y%m%dT%H%M%S') + '_' + ss.weight.split('.')[0] + '_' + os.path.splitext(upload_file.name)[0]    # e.g., 'ckpt-epoch-0390_000'
+        output_frame_names = [f'{i:05}.png'  for i in range(0, (input_tensor.shape)[0])]  # e.g., ['002.png', '003.png', '004.png',...]
 
     # Load input frames from images
     elif ss.input_type == 'images':
@@ -100,9 +118,9 @@ def video_inference(weight, network, upload_file):
 
         input_tensor = torch.stack(inputs, dim = 0)
 
-        output_dir_name = os.path.splitext(upload_file[0].name)[0]
+        output_dir_name = datetime.now().strftime('%Y%m%dT%H%M%S') + '_' + ss.weight.split('.')[0] + '_' + os.path.splitext(upload_file[0].name)[0]  # e.g., 'ckpt-epoch-0390_000'
         output_frame_names = [file.name for file in upload_file]
-        output_frame_names = output_frame_names[2:-2]
+        output_frame_names = output_frame_names[2:-2]   # e.g., ['002.png', '003.png', '004.png',...]
 
         ss.video_fps = 20
 
@@ -175,6 +193,7 @@ def video_inference(weight, network, upload_file):
 
     output_video.release()
     flow_video.release()
+    del deblurnet
     ss.flow_maps = flow_maps
     return output_frames, output_dir_name, output_frame_names
 
@@ -252,7 +271,7 @@ def set_session_finish():
 def upload_wiget():
     if ss.input_type == 'video':
         uploaded_file = st.file_uploader(
-                            label = 'Upload your video file. (demo_input/*)',
+                            label = 'Upload your video file. (.mp4)',
                             type = 'mp4',
                             disabled = ss.disabled
                             )
@@ -261,7 +280,7 @@ def upload_wiget():
     
     if ss.input_type == 'images':
         uploaded_file = st.file_uploader(
-                            label = 'Upload your image files. (demo_input/*) (more than 5 images.)',
+                            label = 'Upload your image files. (.png, .jpg, .jpeg) (more than 5 images.)',
                             accept_multiple_files = True,
                             type = ['png', 'jpg', 'jpeg'],
                             disabled = ss.disabled
@@ -301,7 +320,7 @@ def processing_page():
 
 def finished_page():
     # Show result images
-    st.button('End', on_click = set_session_exit)
+    st.button('Return to start', on_click = set_session_exit)
     st.write(f'Results saved to "demo_output/{ss.output_dir_name}".')
 
     if ss.input_type == 'video':

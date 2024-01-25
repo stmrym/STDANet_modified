@@ -10,4 +10,3 @@ tensorboardX
 kornia
 streamlit
 av
-stqdm
