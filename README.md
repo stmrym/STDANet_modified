@@ -42,10 +42,7 @@ sh install.sh
 ### 1.  Prepare Trained Weights
 Place the trained checkpoint ```.pth.tar``` file in ```weights/```.
 
-### 2.  Prepare Input Images/Videos
-Place your input images and videos in ```demo_input/```.
-
-### 3.  Run App
+### 2.  Run App
 You can easily launch the demo app with the following command.
 ```python
 streamlit run app.py
