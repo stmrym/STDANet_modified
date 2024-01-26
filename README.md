@@ -39,8 +39,10 @@ sh install.sh
 
 ## Demo App
 
+<img src='https://github.com/stmrym/STDANet_modified/assets/114562027/e60d0537-c3f2-47d3-93d3-dcb3de2d13bf' width=49%>　<img src='https://github.com/stmrym/STDANet_modified/assets/114562027/2e9ef1d9-ac53-4c77-a380-93346d610b90' width=49%>
+
 ### 1.  Prepare Trained Weights
-Place the trained checkpoint ```.pth.tar``` file in ```weights/```.
+Place the trained checkpoint ```.pth.tar``` file in ```weights/```. (Pre-trained STDAN Stack by GoPro is available [here](https://drive.google.com/file/d/1Cua_6of5bscw1rLK_FFD4GCtVPJfBioh/view?usp=drive_link).)
 
 ### 2.  Run App
 You can easily launch the demo app with the following command.
