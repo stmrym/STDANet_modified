@@ -74,6 +74,7 @@ def  bulid_net(cfg,output_dir):
             if param.requires_grad == True:
                 # Fix weigths for motion estimator
                 if cfg.NETWORK.MOTION_REQUIRES_GRAD == False:
+                    log.info(f'Motion requires grad ... False')
                     param.requires_grad = False
                 motion_branch_params.append(param)
 
@@ -95,7 +96,7 @@ def  bulid_net(cfg,output_dir):
     Best_Epoch       = -1
     Best_Img_PSNR    = 0
     
-    if cfg.NETWORK.PHASE in ['resume']:
+    if cfg.CONST.WEIGHTS != '':
         log.info(f'{dt.now()} Recovering from {cfg.CONST.WEIGHTS} ...')
         
         checkpoint = torch.load(os.path.join(cfg.CONST.WEIGHTS),map_location='cpu')
@@ -110,8 +111,7 @@ def  bulid_net(cfg,output_dir):
         init_epoch = checkpoint['epoch_idx'] + 1
         Best_Img_PSNR = checkpoint['Best_Img_PSNR']
         Best_Epoch = checkpoint['Best_Epoch']
-        
-    
+
     elif cfg.NETWORK.PHASE in ['test']:
         log.info(f'{dt.now()} Recovering from {cfg.CONST.WEIGHTS} ...')     
 
