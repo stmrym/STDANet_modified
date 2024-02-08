@@ -48,8 +48,7 @@ def valid(cfg,
     deblurnet.eval()
 
     if epoch_idx == init_epoch:
-        total_case_num = int(len(val_data_loader)) * cfg.CONST.VAL_BATCH_SIZE
-        log.info(f'[VALID] Total [{val_dataset_name}] valid case: {total_case_num}')
+        total_case_num = int(len(val_data_loader))
         assert total_case_num != 0, f'[{val_dataset_name}] empty!'
 
     tqdm_val = tqdm(val_data_loader)
@@ -110,36 +109,31 @@ def valid(cfg,
                 seq, img_name = name[0].split('.')  # name = ['000.00000002']
 
                 # saving output image
-                if os.path.isdir(os.path.join(save_dir, 'output', seq)) == False:
-                    os.makedirs(os.path.join(save_dir, 'output', seq), exist_ok=True)
+                if os.path.isdir(os.path.join(save_dir + '_output', seq)) == False:
+                    os.makedirs(os.path.join(save_dir + '_output', seq), exist_ok=True)
 
                 output_image = output_image.numpy().copy()
                 output_image_bgr = cv2.cvtColor(np.clip(output_image, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
                 
-                cv2.imwrite(os.path.join(save_dir, 'output', seq, img_name + '.png'), output_image_bgr)
+                cv2.imwrite(os.path.join(save_dir + '_output', seq, img_name + '.png'), output_image_bgr)
 
                 for loss_dict in cfg.LOSS_DICT_LIST:
                     if 'motion_edge_loss' in loss_dict.values():
                         
-                        if os.path.isdir(os.path.join(save_dir, 'weighted_edge_out', seq)) == False:
-                            os.makedirs(os.path.join(save_dir, 'weighted_edge_out', seq), exist_ok=True)
-                        if os.path.isdir(os.path.join(save_dir, 'weighted_edge_gt', seq)) == False:
-                            os.makedirs(os.path.join(save_dir, 'weighted_edge_gt', seq), exist_ok=True)
+                        if os.path.isdir(os.path.join(save_dir + '_w_edge_out', seq)) == False:
+                            os.makedirs(os.path.join(save_dir, '_w_edge_out', seq), exist_ok=True)
+                        if os.path.isdir(os.path.join(save_dir, '_w_edge_gt', seq)) == False:
+                            os.makedirs(os.path.join(save_dir, '_w_edge_gt', seq), exist_ok=True)
                         
-                        util.save_edge(savename=os.path.join(save_dir, 'weighted_edge_out', seq, img_name + '.png'), out_image=out, flow_tensor=output_dict['flow_forwards'][-1][:,1,:,:,:], key='weighted', use_bilateral=False)
-                        util.save_edge(savename=os.path.join(save_dir, 'weighted_edge_gt', seq, img_name + '.png'), out_image=gt_seq[:,2,:,:,:], flow_tensor=output_dict['flow_forwards'][-1][:,1,:,:,:], key='weighted', use_bilateral=True)
+                        util.save_edge(savename=os.path.join(save_dir, '_w_edge_out', seq, img_name + '.png'), out_image=out, flow_tensor=output_dict['flow_forwards'][-1][:,1,:,:,:], key='weighted', use_bilateral=False)
+                        util.save_edge(savename=os.path.join(save_dir, '_w_edge_gt', seq, img_name + '.png'), out_image=gt_seq[:,2,:,:,:], flow_tensor=output_dict['flow_forwards'][-1][:,1,:,:,:], key='weighted', use_bilateral=True)
                         
-                # saving mid flow npy files
-                if os.path.isdir(os.path.join(save_dir, 'mid_flow_npy', seq)) == False:
-                    os.makedirs(os.path.join(save_dir, 'mid_flow_npy', seq), exist_ok=True)
-                mid_flow_forward = (flow_forwards[1])[0][1].permute(1,2,0).cpu().detach().numpy()               
-                np.save(os.path.join(save_dir, 'mid_flow_npy', seq, img_name + '.npy'),mid_flow_forward)
 
-                # saving out flow npy files
-                if os.path.isdir(os.path.join(save_dir, 'out_flow_npy', seq)) == False:
-                    os.makedirs(os.path.join(save_dir, 'out_flow_npy', seq), exist_ok=True)
-                out_flow_forward = (flow_forwards[-1])[0][1].permute(1,2,0).cpu().detach().numpy()               
-                np.save(os.path.join(save_dir, 'out_flow_npy', seq, img_name + '.npy'),out_flow_forward)
+                if cfg.VAL.SAVE_FLOW == True:
+                    # saving out flow
+                    out_flow_forward = (flow_forwards[-1])[0][1].permute(1,2,0).cpu().detach().numpy()  
+                    util.save_hsv_flow(save_dir=save_dir, seq=seq, img_name=img_name, out_flow=out_flow_forward)
+                        
             
     # Output val results
     
@@ -159,13 +153,5 @@ def valid(cfg,
 
     log.info(f'[VALID][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{val_dataset_name}] PSNR_mid: {img_PSNRs_mid.avg}, PSNR_out: {img_PSNRs_out.avg}, PSNR_best: {Best_Img_PSNR} at epoch {Best_Epoch}')
     log.info(f'[VALID][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{val_dataset_name}] Inference time: {inference_time}, Process time: {process_time} SSIM_mid: {img_ssims_mid.avg}, SSIM_out: {img_ssims_out.avg}')
-
-        # Creating flow map from npy    
-    
-    if (cfg.VAL.SAVE_FLOW == True) and (epoch_idx % cfg.VAL.VISUALIZE_FREQ == 0):
-
-        log.info('========================== SAVING FLOW MAP ===========================')
-    
-        util.save_hsv_flow(save_dir=save_dir, flow_type='out_flow', save_vector_map=False)
 
     return Best_Img_PSNR, Best_Epoch

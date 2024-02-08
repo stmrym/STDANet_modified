@@ -42,13 +42,13 @@ def train(cfg, init_epoch,
             dataset = dataset_loader.get_dataset(transforms = train_transforms)
             dataset_list.append(dataset)
 
-            case_num = int(len(dataset)) * cfg.CONST.TRAIN_BATCH_SIZE
+            case_num = int(len(dataset))
             log.info(f'[TRAIN] Dataset [{train_dataset_name}] loaded. Train case: {case_num}')
 
     # Concat all dataset
     all_dataset = torch.utils.data.ConcatDataset(dataset_list)
 
-    total_case_num = int(len(all_dataset)) * cfg.CONST.TRAIN_BATCH_SIZE
+    total_case_num = int(len(all_dataset))
     log.info(f'[TARIN] Total train case: {total_case_num}')
     assert total_case_num != 0, f'[TRAIN] Total train case empty!'
 

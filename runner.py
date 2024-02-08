@@ -43,13 +43,10 @@ def main():
         timestr = dt.now().isoformat(timespec='seconds').replace(':', '')
         output_dir = os.path.join(cfg.DIR.OUT_PATH,'train', cfg.CONST.PREFIX + timestr + '_' + cfg.NETWORK.DEBLURNETARCH + '_' + '_'.join(cfg.DATASET.TRAIN_DATASET_LIST)) # changed to use timestr
 
-        log_dir      = os.path.join(output_dir, 'logs')
         ckpt_dir     = os.path.join(output_dir, 'checkpoints')
         print_log    = os.path.join(output_dir, 'print.log')
-        data_log_dirs = [log_dir,ckpt_dir]
-        for dir_exit in data_log_dirs:
-            if not os.path.exists(dir_exit):
-                os.makedirs(dir_exit)
+        if not os.path.exists(ckpt_dir):
+            os.makedirs(ckpt_dir)
     else:
         print('Invalid NETWORK.PHASE!')
         exit()

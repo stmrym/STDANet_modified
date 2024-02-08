@@ -176,3 +176,5 @@ def calc_update_losses(output_dict:dict, gt_seq:torch.tensor, losses_dict_list:l
 
     total_losses.update(total_loss.item(), batch_size) # Update total losses
     return total_loss, total_losses, losses_dict_list
+
+

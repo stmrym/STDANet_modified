@@ -173,7 +173,7 @@ def save_edge(savename:str, out_image:torch.tensor, flow_tensor:torch.tensor, ke
 
 
 
-def save_hsv_flow(save_dir, flow_type='out_flow', save_vector_map=False):
+def save_hsv_flow_from_outflow(save_dir, flow_type='out_flow', save_vector_map=False):
 
     seqs = sorted([f for f in os.listdir(os.path.join(save_dir, flow_type + '_npy')) if os.path.isdir(os.path.join(save_dir, flow_type + '_npy', f))])
     tqdm_seqs = tqdm(seqs)
@@ -242,3 +242,21 @@ def save_hsv_flow(save_dir, flow_type='out_flow', save_vector_map=False):
                 if os.path.isdir(forward_path) == False:
                     os.makedirs(forward_path)
                 plt.savefig(os.path.join(forward_path, img_name + '.png'), bbox_inches = "tight")
+
+
+
+def save_hsv_flow(save_dir:str, seq:str, img_name:str, out_flow):
+            
+    ############################
+    # saving flow_hsv using mmcv
+    ############################
+    
+    flow_map = visualize_flow(out_flow, None)
+    # visualize_flow return flow map with RGB order
+    flow_map = cv2.cvtColor(flow_map, cv2.COLOR_RGB2BGR)
+
+    if os.path.isdir(os.path.join(save_dir +  '_out_flow', seq)) == False:
+        os.makedirs(os.path.join(save_dir + '_out_flow', seq), exist_ok=True)
+    
+    cv2.imwrite(os.path.join(save_dir + '_out_flow', seq, img_name + '.png'), flow_map) 
+

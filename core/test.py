@@ -46,7 +46,7 @@ def test(cfg,
 
     deblurnet.eval()
     
-    total_case_num = int(len(test_data_loader)) * cfg.CONST.TEST_BATCH_SIZE
+    total_case_num = int(len(test_data_loader))
     print(f'[TEST] Total [{test_dataset_name}] test case: {total_case_num}')
     log.info(f'[TEST] Total [{test_dataset_name}] test case: {total_case_num}')
     assert total_case_num != 0, f'[{test_dataset_name}] empty!'
@@ -128,11 +128,10 @@ def test(cfg,
             torch.cuda.synchronize()
             process_time.update((time() - process_start_time))
             
-            # Saving npy files
-            if os.path.isdir(os.path.join(out_dir, 'out_flow_npy', seq)) == False:
-                os.makedirs(os.path.join(out_dir, 'out_flow_npy', seq), exist_ok=True)
-            out_flow_forward = (flow_forwards[-1])[0][1].permute(1,2,0).cpu().detach().numpy()               
-            np.save(os.path.join(out_dir, 'out_flow_npy', seq, img_name + '.npy'),out_flow_forward)
+            if cfg.VAL.SAVE_FLOW == True:
+                # saving out flow
+                out_flow_forward = (flow_forwards[-1])[0][1].permute(1,2,0).cpu().detach().numpy()  
+                util.save_hsv_flow(save_dir=out_dir, seq=seq, img_name=img_name, out_flow=out_flow_forward)
             
             tqdm_test.set_postfix_str(f'Inference Time {inference_time} Process Time {process_time} PSNR_mid {img_PSNRs_mid} PSNR_out {img_PSNRs_out}')
     
@@ -141,8 +140,4 @@ def test(cfg,
     log.info(f'[TEST] Total PSNR_mid: {img_PSNRs_mid.avg}, PSNR_out: {img_PSNRs_out.avg}')
     log.info(f'[TEST] Total SSIM_mid: {img_ssims_mid.avg}, SSIM_out: {img_ssims_out.avg}, Inference time: {inference_time}, Process time: {process_time}')
     
-    # Creating flow map from npy    
-    log.info('========================== SAVING FLOW MAP ===========================')
-    
-    util.save_hsv_flow(out_dir, flow_type='out_flow', save_vector_map=False)
                 
