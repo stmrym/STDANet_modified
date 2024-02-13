@@ -22,12 +22,6 @@ import warnings
 warnings.filterwarnings("ignore") 
 
 
-def set_random_seed(seed):
-    """Set random seeds."""
-    
-
-
-
 def main():
 
     parser = argparse.ArgumentParser(description='STDAN modified')
