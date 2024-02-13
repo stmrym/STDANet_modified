@@ -8,15 +8,25 @@ import os
 os.environ["NUMEXPR_MAX_THREADS"] = "8"
 """ from visualizer import get_local
 get_local.activate() """
+import numpy as np
 import re
+import random
 import importlib
 import argparse
+import shutil
 matplotlib.use('Agg')
 
 from datetime import datetime as dt
 from core.build import bulid_net
 import warnings
 warnings.filterwarnings("ignore") 
+
+
+def set_random_seed(seed):
+    """Set random seeds."""
+    
+
+
 
 def main():
 
@@ -43,10 +53,14 @@ def main():
         timestr = dt.now().isoformat(timespec='seconds').replace(':', '')
         output_dir = os.path.join(cfg.DIR.OUT_PATH,'train', cfg.CONST.PREFIX + timestr + '_' + cfg.NETWORK.DEBLURNETARCH + '_' + '_'.join(cfg.DATASET.TRAIN_DATASET_LIST)) # changed to use timestr
 
+        
         ckpt_dir     = os.path.join(output_dir, 'checkpoints')
-        print_log    = os.path.join(output_dir, 'print.log')
         if not os.path.exists(ckpt_dir):
             os.makedirs(ckpt_dir)
+
+        print_log    = os.path.join(output_dir, 'print.log')
+        shutil.copy(args.config + '.py', os.path.join(output_dir, timestr + '_config.py'))
+        
     else:
         print('Invalid NETWORK.PHASE!')
         exit()
@@ -61,8 +75,14 @@ def main():
         os.environ["CUDA_VISIBLE_DEVICES"] = cfg.CONST.DEVICE
     
     
-
     import torch
+ 
+    random.seed(cfg.CONST.SEED)
+    np.random.seed(cfg.CONST.SEED)
+    torch.manual_seed(cfg.CONST.SEED)
+    torch.cuda.manual_seed(cfg.CONST.SEED)
+    torch.cuda.manual_seed_all(cfg.CONST.SEED)
+    
     log.info('CUDA DEVICES NUMBER: '+ str(torch.cuda.device_count()))
     log.info(f' Output_dir： {output_dir}')
 

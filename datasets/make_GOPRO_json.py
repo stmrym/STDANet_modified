@@ -7,10 +7,10 @@ import glob
 dataset_path = '../../dataset/GOPRO_Large'
 
 # GOPRO dataset attribute 'train', or 'test'
-phase = 'test'
+phase = 'train'
 
 # attributes to be assigned to JSON file
-json_phase = 'valid_500'
+json_phase = 'train_500'
 #----------------------------
 
 

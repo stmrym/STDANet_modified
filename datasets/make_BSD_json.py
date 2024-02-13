@@ -10,10 +10,10 @@ dataset_path = '../../dataset/'
 bsd_type = 'BSD_3ms24ms'
 
 # BSD dataset attributes 'train', 'valid', or 'test'
-phase = 'train'
+phase = 'valid'
 
 # attributes to be assigned to JSON file
-json_phase = 'train_1000'
+json_phase = 'valid_1000'
 #----------------------------
 
 
