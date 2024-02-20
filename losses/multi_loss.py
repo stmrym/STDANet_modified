@@ -7,6 +7,7 @@ from utils.network_utils import *
 from models.submodules import warp
 from torchvision import transforms
 from kornia.filters import bilateral_blur
+from typing import Optional, Union
 
 def mseLoss(output, target):
     mse_loss = nn.MSELoss()
@@ -75,7 +76,7 @@ def perceptualLoss(fakeIm, realIm, vggnet):
     return loss
 
 
-def edge_extraction(img_tensor:torch.tensor):
+def laplacian_edge_extraction(img_tensor:torch.tensor):
 
     # Laplacian filter
     kernel = torch.cuda.FloatTensor([[1, 1, 1], 
@@ -99,6 +100,41 @@ def edge_extraction(img_tensor:torch.tensor):
     return edge_tensor
 
 
+def sobel_edge_extraction(img_tensor:torch.tensor):
+
+    x_kernel = torch.cuda.FloatTensor(
+        [[-1, 0, 1],
+        [-2, 0, 2],
+        [-1, 0, 1]]
+        )
+
+    y_kernel = torch.cuda.FloatTensor(
+        [[-1, -2, -1],
+        [0, 0, 0],
+        [1, 2, 1]
+        ]
+        )
+    
+    sobel_x_kernel = x_kernel.expand(1, 1, 3, 3)
+    sobel_y_kernel = y_kernel.expand(1, 1, 3, 3)
+
+    with torch.no_grad():
+
+        # grayscale
+        gray = 0.114*img_tensor[:,0,:,:] + 0.587*img_tensor[:,1,:,:] + 0.299*img_tensor[:,2,:,:]
+        gray = torch.unsqueeze(gray,1)
+        
+        # edge detection by convolution filter
+        x_edge_tensor = F.conv2d(gray, sobel_x_kernel, padding='same')
+        y_edge_tensor = F.conv2d(gray, sobel_y_kernel, padding='same')
+    
+        # Clamp to >= 0
+        x_edge_tensor = torch.clamp(input=x_edge_tensor, min=0)
+        y_edge_tensor = torch.clamp(input=y_edge_tensor, min=0)
+
+    return x_edge_tensor, y_edge_tensor
+
+
 def motion_weighted_edge_extraction(img_tensor:torch.tensor, flow_tensor:torch.tensor, use_bilateral:bool) -> dict:
     #################### 
     # Input shape   
@@ -112,7 +148,7 @@ def motion_weighted_edge_extraction(img_tensor:torch.tensor, flow_tensor:torch.t
         img_tensor = bilateral_blur(input=img_tensor, kernel_size=(5, 5), sigma_color=0.1, sigma_space=(1.5, 1.5))
     
     # edge_tensor -> (B, 1, H, W)
-    edge_tensor = edge_extraction(img_tensor)
+    edge_tensor = laplacian_edge_extraction(img_tensor)
 
     edge_h, edge_w = edge_tensor[0,0,:,:].size()
     flow_h, flow_w = flow_tensor[0,0,:,:].size()
@@ -135,7 +171,47 @@ def motion_weighted_edge_extraction(img_tensor:torch.tensor, flow_tensor:torch.t
     return {'weighted':weighted_edge_tensor, 'edge':edge_tensor, 'flow_magnitude':flow_magnitude_tensor}
 
 
-def calc_weighted_edge_loss(output_tensor:torch.tensor, gt_tensor:torch.tensor, flow_tensor:torch.tensor):
+
+
+
+def orthogonal_edge_extraction(img_tensor:torch.tensor, flow_tensor:torch.tensor, use_bilateral:bool) -> dict:
+
+    sobel_x, sobel_y = sobel_edge_extraction(img_tensor)
+    
+    sobel_amp = torch.sqrt(sobel_x**2 + sobel_y**2 + 1e-7)
+    # [0, 1] normalized
+    sobel_amp = sobel_amp / torch.max(sobel_amp)
+
+    # edge_angle -> (B, 2, H, W)  ((B, dx, H, W) and (B, dy, H, W))
+    edge_angle = torch.cat([sobel_x, sobel_y], dim=1)
+
+    edge_h, edge_w = edge_angle[0,0,:,:].size()
+    flow_h, flow_w = flow_tensor[0,0,:,:].size()
+    
+    # if input size is different, upsampling
+    if (edge_h, edge_w) != (flow_h, flow_w):
+        upsample = nn.Upsample(size=(edge_h, edge_w), mode='bilinear')
+        flow_tensor = upsample(flow_tensor)
+
+        assert flow_tensor[:,0,:,:].shape == edge_angle[:,0,:,:].shape, f'flow_tensor size {flow_tensor.shape}, edge_angle size {edge_angle.shape} do not match!'
+
+
+    # culculating inner product
+    orthogonal_weight = torch.mul(flow_tensor[:,0,:,:], edge_angle[:,0,:,:]) + torch.mul(flow_tensor[:,1,:,:], edge_angle[:,1,:,:])
+    # (B, H, W) -> (B, 1, H, W)
+    orthogonal_weight = orthogonal_weight.unsqueeze(dim=1)
+
+    abs_weight = torch.abs(orthogonal_weight)
+    # [0, 1] normalized
+    if torch.max(abs_weight) != 0:
+        abs_weight = abs_weight / torch.max(abs_weight)
+
+    orthogonal_edge = torch.mul(abs_weight, sobel_amp)
+
+    return {'orthogonal':orthogonal_edge, 'abs_weight':abs_weight,'edge':sobel_amp}
+
+
+def calc_loss_weighted_edge(output_tensor:torch.tensor, gt_tensor:torch.tensor, flow_tensor:torch.tensor):
     # calculating weighted edge loss for each output and GT
     output_dict = motion_weighted_edge_extraction(img_tensor=output_tensor, flow_tensor=flow_tensor, use_bilateral=False)
     gt_dict = motion_weighted_edge_extraction(img_tensor=gt_tensor, flow_tensor=flow_tensor, use_bilateral=True)
@@ -143,6 +219,17 @@ def calc_weighted_edge_loss(output_tensor:torch.tensor, gt_tensor:torch.tensor, 
     # print(f'gt {torch.max(gt_dict["weighted"])} {torch.min(gt_dict["weighted"])}')
     l1_loss = nn.SmoothL1Loss()
     loss = l1_loss(output_dict['weighted'], gt_dict['weighted'])
+    return loss
+
+
+def calc_loss_orthogonal_edge(output_tensor:torch.tensor, gt_tensor:torch.tensor, flow_tensor:torch.tensor):
+    # calculating weighted edge loss for each output and GT
+    output_dict = orthogonal_edge_extraction(img_tensor=output_tensor, flow_tensor=flow_tensor, use_bilateral=False)
+    gt_dict = orthogonal_edge_extraction(img_tensor=gt_tensor, flow_tensor=flow_tensor, use_bilateral=True)
+    # print(f'output {torch.max(output_dict["weighted"])} {torch.min(output_dict["weighted"])}')
+    # print(f'gt {torch.max(gt_dict["weighted"])} {torch.min(gt_dict["weighted"])}')
+    l1_loss = nn.SmoothL1Loss()
+    loss = l1_loss(output_dict['abs_weight'], gt_dict['abs_weight'])
     return loss
 
 
@@ -154,14 +241,33 @@ def motion_edge_loss(output_dict:dict, gt_seq:torch.tensor):
     # ff, fb -> (B, 2, 2, H, W)
 
     # losses weighted by flow_forward
-    loss  = calc_weighted_edge_loss(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=output_ff[:,1,:,:,:])
-    loss += calc_weighted_edge_loss(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_2_ff[:,1,:,:,:])
-    loss += calc_weighted_edge_loss(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_3_ff[:,0,:,:,:])
+    loss  = calc_loss_weighted_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=output_ff[:,1,:,:,:])
+    loss += calc_loss_weighted_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_2_ff[:,1,:,:,:])
+    loss += calc_loss_weighted_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_3_ff[:,0,:,:,:])
 
     # losses weighted by flow_backward
-    loss += calc_weighted_edge_loss(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_1_fb[:,1,:,:,:])
-    loss += calc_weighted_edge_loss(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_2_fb[:,0,:,:,:])
-    loss += calc_weighted_edge_loss(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=output_fb[:,0,:,:,:])
+    loss += calc_loss_weighted_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_1_fb[:,1,:,:,:])
+    loss += calc_loss_weighted_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_2_fb[:,0,:,:,:])
+    loss += calc_loss_weighted_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=output_fb[:,0,:,:,:])
+    
+    return loss
+
+def orthogonal_edge_loss(output_dict:dict, gt_seq:torch.tensor):
+    
+    recons_1, recons_2, recons_3, out = output_dict['recons_1'], output_dict['recons_2'], output_dict['recons_3'], output_dict['out']
+    recons_1_ff, recons_2_ff, recons_3_ff, output_ff = output_dict['flow_forwards']
+    recons_1_fb, recons_2_fb, recons_3_fb, output_fb = output_dict['flow_backwards']
+    # ff, fb -> (B, 2, 2, H, W)
+
+    # losses weighted by flow_forward
+    loss  = calc_loss_orthogonal_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=output_ff[:,1,:,:,:])
+    loss += calc_loss_orthogonal_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_2_ff[:,1,:,:,:])
+    loss += calc_loss_orthogonal_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_3_ff[:,0,:,:,:])
+
+    # losses weighted by flow_backward
+    loss += calc_loss_orthogonal_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_1_fb[:,1,:,:,:])
+    loss += calc_loss_orthogonal_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_2_fb[:,0,:,:,:])
+    loss += calc_loss_orthogonal_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=output_fb[:,0,:,:,:])
     
     return loss
 

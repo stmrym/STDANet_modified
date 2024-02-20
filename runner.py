@@ -76,6 +76,7 @@ def main():
     torch.manual_seed(cfg.CONST.SEED)
     torch.cuda.manual_seed(cfg.CONST.SEED)
     torch.cuda.manual_seed_all(cfg.CONST.SEED)
+    torch.autograd.set_detect_anomaly(True)
     
     log.info('CUDA DEVICES NUMBER: '+ str(torch.cuda.device_count()))
     log.info(f' Output_dir： {output_dir}')
