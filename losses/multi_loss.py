@@ -125,17 +125,20 @@ def sobel_edge_extraction(img_tensor:torch.tensor):
         gray = torch.unsqueeze(gray,1)
         
         # edge detection by convolution filter
-        x_edge_tensor = F.conv2d(gray, sobel_x_kernel, padding='same')
-        y_edge_tensor = F.conv2d(gray, sobel_y_kernel, padding='same')
-    
-        # Clamp to >= 0
-        x_edge_tensor = torch.clamp(input=x_edge_tensor, min=0)
-        y_edge_tensor = torch.clamp(input=y_edge_tensor, min=0)
+        
+        x_conv = torch.nn.Conv2d(in_channels=1, out_channels=1, kernel_size=(3,3), padding='same', padding_mode='reflect', bias=False)
+        y_conv = torch.nn.Conv2d(in_channels=1, out_channels=1, kernel_size=(3,3), padding='same', padding_mode='reflect', bias=False)
+        # set sobel kernel
+        x_conv.weight = torch.nn.Parameter(sobel_x_kernel)
+        y_conv.weight = torch.nn.Parameter(sobel_y_kernel)
+
+        x_edge_tensor = x_conv(gray)
+        y_edge_tensor = y_conv(gray)
 
     return x_edge_tensor, y_edge_tensor
 
 
-def motion_weighted_edge_extraction(img_tensor:torch.tensor, flow_tensor:torch.tensor, use_bilateral:bool) -> dict:
+def motion_weighted_edge_extraction(img_tensor:torch.tensor, flow_tensor:torch.tensor, use_bilateral:bool=True) -> dict:
     #################### 
     # Input shape   
     # img_tensor -> (B, C, H, W)
@@ -174,7 +177,7 @@ def motion_weighted_edge_extraction(img_tensor:torch.tensor, flow_tensor:torch.t
 
 
 
-def orthogonal_edge_extraction(img_tensor:torch.tensor, flow_tensor:torch.tensor, use_bilateral:bool) -> dict:
+def orthogonal_edge_extraction(img_tensor:torch.tensor, flow_tensor:torch.tensor) -> dict:
 
     sobel_x, sobel_y = sobel_edge_extraction(img_tensor)
     
@@ -190,7 +193,7 @@ def orthogonal_edge_extraction(img_tensor:torch.tensor, flow_tensor:torch.tensor
     
     # if input size is different, upsampling
     if (edge_h, edge_w) != (flow_h, flow_w):
-        upsample = nn.Upsample(size=(edge_h, edge_w), mode='bilinear')
+        upsample = nn.Upsample(size=(edge_h, edge_w), mode='bilinear', align_corners = True)
         flow_tensor = upsample(flow_tensor)
 
         assert flow_tensor[:,0,:,:].shape == edge_angle[:,0,:,:].shape, f'flow_tensor size {flow_tensor.shape}, edge_angle size {edge_angle.shape} do not match!'
@@ -224,8 +227,8 @@ def calc_loss_weighted_edge(output_tensor:torch.tensor, gt_tensor:torch.tensor, 
 
 def calc_loss_orthogonal_edge(output_tensor:torch.tensor, gt_tensor:torch.tensor, flow_tensor:torch.tensor):
     # calculating weighted edge loss for each output and GT
-    output_dict = orthogonal_edge_extraction(img_tensor=output_tensor, flow_tensor=flow_tensor, use_bilateral=False)
-    gt_dict = orthogonal_edge_extraction(img_tensor=gt_tensor, flow_tensor=flow_tensor, use_bilateral=True)
+    output_dict = orthogonal_edge_extraction(img_tensor=output_tensor, flow_tensor=flow_tensor)
+    gt_dict = orthogonal_edge_extraction(img_tensor=gt_tensor, flow_tensor=flow_tensor)
     # print(f'output {torch.max(output_dict["weighted"])} {torch.min(output_dict["weighted"])}')
     # print(f'gt {torch.max(gt_dict["weighted"])} {torch.min(gt_dict["weighted"])}')
     l1_loss = nn.SmoothL1Loss()

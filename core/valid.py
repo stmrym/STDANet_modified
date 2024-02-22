@@ -119,14 +119,44 @@ def valid(cfg,
 
                 for loss_dict in cfg.LOSS_DICT_LIST:
                     if 'motion_edge_loss' in loss_dict.values():
-                        
-                        if os.path.isdir(os.path.join(save_dir + '_w_edge_out', seq)) == False:
-                            os.makedirs(os.path.join(save_dir, '_w_edge_out', seq), exist_ok=True)
-                        if os.path.isdir(os.path.join(save_dir, '_w_edge_gt', seq)) == False:
-                            os.makedirs(os.path.join(save_dir, '_w_edge_gt', seq), exist_ok=True)
-                        
-                        util.save_edge(savename=os.path.join(save_dir, '_w_edge_out', seq, img_name + '.png'), out_image=out, flow_tensor=output_dict['flow_forwards'][-1][:,1,:,:,:], key='weighted', use_bilateral=False)
-                        util.save_edge(savename=os.path.join(save_dir, '_w_edge_gt', seq, img_name + '.png'), out_image=gt_seq[:,2,:,:,:], flow_tensor=output_dict['flow_forwards'][-1][:,1,:,:,:], key='weighted', use_bilateral=True)
+                        if os.path.isdir(os.path.join(save_dir + '_m_edge_out', seq)) == False:
+                            os.makedirs(os.path.join(save_dir + '_m_edge_out', seq), exist_ok=True)
+                        if os.path.isdir(os.path.join(save_dir + '_m_edge_gt', seq)) == False:
+                            os.makedirs(os.path.join(save_dir + '_m_edge_gt', seq), exist_ok=True)
+
+                        util.save_edge(
+                            savename = os.path.join(save_dir + '_m_edge_out', seq, img_name + '.png'), 
+                            out_image = out,
+                            flow_tensor=output_dict['flow_forwards'][-1][:,1,:,:,:],
+                            key = 'weighted',
+                            edge_extraction_func = motion_weighted_edge_extraction)
+                    
+                        util.save_edge(
+                            savename = os.path.join(save_dir + '_m_edge_gt', seq, img_name + '.png'),
+                            out_image = gt_seq[:,2,:,:,:],
+                            flow_tensor = output_dict['flow_forwards'][-1][:,1,:,:,:],
+                            key = 'weighted',
+                            edge_extraction_func = motion_weighted_edge_extraction)
+                    
+                    if 'orthogonal_edge_loss' in loss_dict.values():
+                        if os.path.isdir(os.path.join(save_dir + '_o_edge_out', seq)) == False:
+                            os.makedirs(os.path.join(save_dir + '_o_edge_out', seq), exist_ok=True)
+                        if os.path.isdir(os.path.join(save_dir + '_o_edge_gt', seq)) == False:
+                            os.makedirs(os.path.join(save_dir + '_o_edge_gt', seq), exist_ok=True)
+
+                        util.save_edge(
+                            savename = os.path.join(save_dir + '_o_edge_out', seq, img_name + '.png'), 
+                            out_image = out,
+                            flow_tensor=output_dict['flow_forwards'][-1][:,1,:,:,:],
+                            key = 'abs_weight',
+                            edge_extraction_func = orthogonal_edge_extraction)
+                    
+                        util.save_edge(
+                            savename = os.path.join(save_dir + '_o_edge_gt', seq, img_name + '.png'),
+                            out_image = gt_seq[:,2,:,:,:],
+                            flow_tensor = output_dict['flow_forwards'][-1][:,1,:,:,:],
+                            key = 'abs_weight',
+                            edge_extraction_func = orthogonal_edge_extraction)
                         
 
                 if cfg.VAL.SAVE_FLOW == True:

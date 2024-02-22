@@ -154,18 +154,20 @@ def flow_vector(flow, spacing, margin, minlength):
     return x, y, u, v
 
 
-def save_edge(savename:str, out_image:torch.tensor, flow_tensor:torch.tensor, key:str, use_bilateral:bool):
-    output_dict = motion_weighted_edge_extraction(out_image, flow_tensor, use_bilateral=use_bilateral)
+def save_edge(savename:str, out_image:torch.tensor, flow_tensor:torch.tensor, key:str, edge_extraction_func):
+    
+    output_dict = edge_extraction_func(out_image, flow_tensor)
 
     # key: 'weighted', 'edge', or 'flow_magnitude'
     output = output_dict[key]
 
     # Min-max normalization
-    output = (output - torch.min(output))/(torch.max(output) - torch.min(output))
+    if torch.max(output) != torch.min(output):
+        output = (output - torch.min(output))/(torch.max(output) - torch.min(output))
 
     # Edge enhancing
-    if key in ['edge', 'weighted']:
-        output *= 5
+    # if key in ['edge', 'weighted']:
+    #     output *= 5
     
     # print(f'{torch.max(output)} {torch.min(output)}')
 

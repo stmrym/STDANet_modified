@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from typing import Optional, Union
 from tqdm import tqdm
-import math
+from utils import util
+from losses.multi_loss import *
 
 def radial_gradient(color,radii):
     colors=[]
@@ -239,100 +240,133 @@ def flow2direction(flow: np.ndarray,
 
 
 
+def orthogonal_edge_tensor():
+    flow_path = './debug_results/27_00000007.npy'
+    flow = np.load(flow_path)
+    flow_tensor = torch.from_numpy(flow).clone().type(torch.cuda.FloatTensor).cuda()
+    flow_tensor  = flow_tensor.permute(2,0,1).unsqueeze(dim = 0)
+    print(flow_tensor.shape)
+
+    img_path = './debug_results/27_00000007_out.png'
+    # path = './exp_log/train/WO_Motion_2024-01-16T103421_STDAN_Stack_BSD_3ms24ms_GOPRO/visualization/epoch-0350/output/GOPR0410_11_00/000198.png'
+    img = cv2.imread(img_path)
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    
+    out = torch.from_numpy(img_rgb/255).clone().type(torch.cuda.FloatTensor).cuda()
+    out = out.permute(2,0,1).unsqueeze(dim = 0)
+    print(out.device)
 
 
-path = './debug_results/000198.npy'
-flow = np.load(path)
-
-
-
-
-# path = '../dataset/GOPRO_Large/test/GOPR0410_11_00/sharp/000198.png'
-path = './exp_log/train/WO_Motion_2024-01-16T103421_STDAN_Stack_BSD_3ms24ms_GOPRO/visualization/epoch-0350/output/GOPR0410_11_00/000198.png'
-img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-
-# img = np.full((512, 512), 0, dtype=np.uint8)
-# cv2.circle(img, (256,256), 150, (255,255), thickness=-1)
-
-
-cv2.imwrite('./debug_results/output_gray.png', img)
-# exit()
-
-sobel_x_kernel = np.array(
-    [[-1, 0, 1],
-     [-2, 0, 2],
-     [-1, 0, 1]]
-    )
-
-sobel_y_kernel = np.array(
-    [[-1, -2, -1],
-     [0, 0, 0],
-     [1, 2, 1]
-    ]
-    )
+    util.save_edge(
+        savename = './debug_results/27_00000007_w_amp_3.png', 
+        out_image = out,
+        flow_tensor = flow_tensor,
+        key = 'abs_weight',
+        edge_extraction_func = orthogonal_edge_extraction)
 
 
 
 
 
 
-sobel_x = cv2.filter2D(img, cv2.CV_64F, sobel_x_kernel)
-sobel_y= cv2.filter2D(img, cv2.CV_64F, sobel_y_kernel)
+def orthogonal_edge_numpy():
 
-amp = np.sqrt(sobel_x**2 + sobel_y**2)
-# [0, 1] normalized
-amp /= np.max(amp)
+    flow_path = './debug_results/27_00000007.npy'
+    flow = np.load(flow_path)
+
+    # img_path = './debug_results/27_00000007_out.png'
+    img_path = './exp_log/train/WO_Motion_2024-01-16T103421_STDAN_Stack_BSD_3ms24ms_GOPRO/visualization/epoch-0350/output/GOPR0410_11_00/000198.png'
+    img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+
+    # img = np.full((512, 512), 0, dtype=np.uint8)
+    # cv2.circle(img, (256,256), 150, (255,255), thickness=-1)
+    cv2.imwrite('./debug_results/output_gray.png', img)
+    exit()
+    img = np.array(
+        [[0, 0, 0, 0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0, 0, 0, 0],
+         [0, 0, 1, 1, 1, 1, 1, 0, 0],
+         [0, 0, 1, 1, 1, 1, 1, 0, 0],
+         [0, 0, 1, 1, 1, 1, 1, 0, 0],
+         [0, 0, 1, 1, 1, 1, 1, 0, 0],
+         [0, 0, 1, 1, 1, 1, 1, 0, 0],
+         [0, 0, 0, 0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0, 0, 0, 0]
+         ]
+    , dtype=np.float64)
+
+    sobel_x_kernel = np.array(
+        [[-1, 0, 1],
+        [-2, 0, 2],
+        [-1, 0, 1]]
+        )
+
+    sobel_y_kernel = np.array(
+        [[-1, -2, -1],
+        [0, 0, 0],
+        [1, 2, 1]
+        ]
+        )
+
+    sobel_x = cv2.filter2D(img, cv2.CV_64F, sobel_x_kernel)
+    sobel_y= cv2.filter2D(img, cv2.CV_64F, sobel_y_kernel)
+
+    print(sobel_x)
+    print(sobel_y)
+    exit()
+    amp = np.sqrt(sobel_x**2 + sobel_y**2)
+    # [0, 1] normalized
+    amp /= np.max(amp)
+
+    edge_direction = np.stack([sobel_x, sobel_y], axis=-1)
+
+    if flow.shape != edge_direction.shape:
+        flow = cv2.resize(flow, edge_direction.shape[1::-1])
+
+    prod = np.multiply(flow[:,:,0], edge_direction[:,:,0]) + np.multiply(flow[:,:,1], edge_direction[:,:,1])
+    abs_prod = np.abs(prod)
+    # [0, 1] normalized
+    abs_prod /= np.max(abs_prod)
+
+    orthogonal_edge = np.multiply(abs_prod, amp)
 
 
-edge_direction = np.stack([sobel_x, sobel_y], axis=-1)
+    amp = np.uint8(amp/np.max(amp) * 255.)
+    abs_prod = np.uint8(abs_prod/np.max(abs_prod) * 255.)
+    orthogonal_edge = np.uint8(orthogonal_edge/np.max(orthogonal_edge) * 255.)
 
-if flow.shape != edge_direction.shape:
-    flow = cv2.resize(flow, edge_direction.shape[1::-1])
-
-
-prod = np.multiply(flow[:,:,0], edge_direction[:,:,0]) + np.multiply(flow[:,:,1], edge_direction[:,:,1])
-abs_prod = np.abs(prod)
-# [0, 1] normalized
-abs_prod /= np.max(abs_prod)
-
-orthogonal_edge = np.multiply(abs_prod, amp)
-
-
-amp = np.uint8(amp/np.max(amp) * 255.)
-abs_prod = np.uint8(abs_prod/np.max(abs_prod) * 255.)
-orthogonal_edge = np.uint8(orthogonal_edge/np.max(orthogonal_edge) * 255.)
-
-cv2.imwrite('./debug_results/sobel_amp.png', amp)
-cv2.imwrite('./debug_results/sobel_amp_map.png', abs_prod)
-cv2.imwrite('./debug_results/sobel_orth_edge.png', orthogonal_edge)
-
-
-exit()
-
-
-# angle = flow2rgb(edge_flow)
-edge_half_angle = flow2direction(edge_angle)
+    cv2.imwrite('./debug_results/27_00000007_amp.png', amp)
+    cv2.imwrite('./debug_results/27_00000007_w_amp.png', abs_prod)
+    cv2.imwrite('./debug_results/27_00000007_orth_edge.png', orthogonal_edge)
 
 
 
-# angle = np.arctan2(-sobel_y, -sobel_x)/ np.pi
-# angle = (angle + 1)/2
-# print(amp)
+
+    # # angle = flow2rgb(edge_flow)
+    # edge_half_angle = flow2direction(edge_direction)
 
 
-# fig, ax = plt.subplots(tight_layout=True, dpi=200)
-# im = ax.imshow(angle, vmin=0, vmax=360, cmap='hsv', aspect='equal')
 
-# divider = make_axes_locatable(ax)
-# cax = divider.append_axes("top", size="5%", pad=0.3)
+    # angle = np.arctan(sobel_y/sobel_x)/ np.pi
+    # angle = (angle + 1)/2
+    # print(amp)
 
-# fig.colorbar(im, cax=cax, orientation='horizontal')
-# plt.savefig('./debug_results/angle_2.png')
 
-# with open('./debug_results/angle.csv', 'w', newline='') as file:
-    # writer = csv.writer(file)
-    # writer.writerows(angle)
+    # fig, ax = plt.subplots(tight_layout=True, dpi=200)
+    # im = ax.imshow(edge_half_angle, vmin=-90, vmax=90, cmap='hsv', aspect='equal')
 
-cv2.imwrite('./debug_results/output_gray.png', img)
-# cv2.imwrite('./debug_results/output_x.png', sobel_x)
-# cv2.imwrite('./debug_results/output_y.png', sobel_y)
+    # divider = make_axes_locatable(ax)
+    # cax = divider.append_axes("top", size="5%", pad=0.3)
+
+    # fig.colorbar(im, cax=cax, orientation='horizontal')
+    # plt.savefig('./debug_results/angle_2.png')
+
+    # with open('./debug_results/angle.csv', 'w', newline='') as file:
+    #     writer = csv.writer(file)
+    #     writer.writerows(angle)
+
+    # cv2.imwrite('./debug_results/output_gray.png', img)
+    # cv2.imwrite('./debug_results/output_x.png', sobel_x)
+    # cv2.imwrite('./debug_results/output_y.png', sobel_y)
+
+orthogonal_edge_numpy()

@@ -10,6 +10,7 @@ cfg     = __C
 # Common
 #
 __C.CONST                               = edict()
+__C.CONST.SEED                          = 1
 __C.CONST.CONFIG_NAME                   = 'my_config_1'
 __C.CONST.DEVICE                        = '0'                             # gpu_ids
 __C.CONST.NUM_WORKER                    = 8                               # number of data workers
