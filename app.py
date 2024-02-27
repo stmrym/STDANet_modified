@@ -13,13 +13,13 @@ from mmflow.datasets import visualize_flow
 
 ss = st.session_state
 
-def init_page():
+def init_page() -> None:
     st.set_page_config(page_title = 'STDAN modified demo')
     st.title('Modified STDANet demo')
     st.sidebar.title('Options')
 
 
-def select_weight():
+def select_weight() -> None:
     # select ckpt file widget
     model_options = [file for file in os.listdir('./weights') if '.pth.tar' in file]
     selected_weight = st.sidebar.selectbox(
@@ -31,7 +31,7 @@ def select_weight():
         ss.weight = selected_weight
 
 
-def select_network():
+def select_network() -> None:
     # select 'STDANet' or 'STDANet_RAFT_Stack'
     selected_network = st.sidebar.radio(
                             label = 'Choose network. (Must be consistent with training settings)', 
@@ -43,7 +43,7 @@ def select_network():
         ss.network = selected_network
 
 
-def select_input_type():
+def select_input_type() -> None:
     # select 'video' or 'images'
     input_type = st.sidebar.radio(
                             label = 'Choose your input format.',
@@ -57,7 +57,7 @@ def select_input_type():
 
 
 
-def load_model(network, weight):
+def load_model(network:str, weight:str):
     # Load model from 'network' and 'weight'
     module = importlib.import_module('models.' + network)
     deblurnet = module.__dict__[network]()
@@ -66,11 +66,10 @@ def load_model(network, weight):
     deblurnet.load_state_dict({k.replace('module.',''):v for k,v in checkpoint['deblurnet_state_dict'].items()})
     deblurnet = torch.nn.DataParallel(deblurnet).cuda()
 
-    
     return deblurnet
 
 
-def video_inference(weight, network, upload_file):
+def video_inference(weight:str, network:str, upload_file):
 
     # Load model
     deblurnet = load_model(
@@ -190,14 +189,11 @@ def video_inference(weight, network, upload_file):
             output_frames.append(output_image)    
             flow_maps.append(flow_map)    
 
-
     output_video.release()
     flow_video.release()
     del deblurnet
     ss.flow_maps = flow_maps
     return output_frames, output_dir_name, output_frame_names
-
-    
 
 def show_video_or_images():
     # Show video or images depending on input type
@@ -287,6 +283,7 @@ def upload_wiget():
                             )
         if (uploaded_file != []):
             ss.uploaded_file = uploaded_file
+    print(type(uploaded_file))
 
 
 
