@@ -174,7 +174,6 @@ def save_edge(savename:str, out_image:torch.tensor, flow_tensor:torch.tensor, ke
     torchvision.utils.save_image(output, savename)
 
 
-
 def save_hsv_flow_from_outflow(save_dir, flow_type='out_flow', save_vector_map=False):
 
     seqs = sorted([f for f in os.listdir(os.path.join(save_dir, flow_type + '_npy')) if os.path.isdir(os.path.join(save_dir, flow_type + '_npy', f))])
