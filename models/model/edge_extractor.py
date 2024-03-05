@@ -1,61 +1,42 @@
 import torch.nn as nn
+import torch
 
 
 ###############################
-# common
-###############################
-
-def get_same_padding(kernel_size, dilation):
-    kernel_size = kernel_size + (kernel_size - 1) * (dilation - 1)
-    padding = (kernel_size - 1) // 2
-    return padding
-
-
-###############################
-# ResNet
+# Edge Extractor
 ###############################
 
 class Edge_extractor(nn.Module):
     def __init__(self, inplanes, planes, kernel_size=3, stride=1, dilation=1):
         super(Edge_extractor, self).__init__()
-        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=kernel_size, stride=stride,
-                               padding=get_same_padding(kernel_size, dilation), dilation=dilation, padding_mode='reflect')
+        a = torch.tensor(1.0)
+        sobel_kernel = torch.cuda.FloatTensor(
+            [[  [  -a, 0,   a],
+                [-2*a, 0, 2*a],
+                [  -a, 0,   a]],
 
+            [   [-a, -2*a, -a],
+                [ 0,    0,  0],
+                [ a,  2*a,  a]]])
+        sobel_kernel = nn.Parameter(sobel_kernel.unsqueeze(dim=1)) 
+
+        self.sobel_conv = nn.Conv2d(inplanes, planes, kernel_size=kernel_size, stride=stride,
+                            padding='same', dilation=dilation, padding_mode='reflect')
+        self.sobel_conv.weight = sobel_kernel
         self.gelu = nn.GELU()
 
-        self.res_translate = None
-        if not inplanes == planes or not stride == 1:
-            self.res_translate = nn.Conv2d(inplanes, planes, kernel_size=1, stride=stride)
+    def forward(self, x):        
+        b, c, h, w = x.shape
+        assert (c == 3 or c == 1), f'Input channel {c} invalid!'       
+        if c == 3:
+            grayscale_x = 0.114*x[:,0,:,:] + 0.587*x[:,1,:,:] + 0.299*x[:,2,:,:]
+        elif c == 1:
+            pass
         
-    def forward(self, x):
-        out = self.gelu(self.conv1(x))
-        
-        return out
+        # (B, H, W) -> (B, 1, H, W)
+        grayscale_x = grayscale_x.unsqueeze(dim=1)
+        # Input (B, 1, H, W) -> Output (B, 2, H, W)
+        sobel_out = self.gelu(self.sobel_conv(grayscale_x))
+        return sobel_out
 
 
-
-
-class ResBlock(nn.Module):
-    def __init__(self, inplanes, planes, kernel_size=3, stride=1, dilation=1):
-        super(ResBlock, self).__init__()
-        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=kernel_size, stride=stride,
-                               padding=get_same_padding(kernel_size, dilation), dilation=dilation)
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=kernel_size, stride=1,
-                               padding=get_same_padding(kernel_size, dilation), dilation=dilation)
-        self.relu = nn.ReLU(inplace=True)
-
-        self.res_translate = None
-        if not inplanes == planes or not stride == 1:
-            self.res_translate = nn.Conv2d(inplanes, planes, kernel_size=1, stride=stride)
-
-    def forward(self, x):
-        residual = x
-
-        out = self.relu(self.conv1(x))
-        out = self.conv2(out)
-
-        if self.res_translate is not None:
-            residual = self.res_translate(residual)
-        out += residual
-
-        return out

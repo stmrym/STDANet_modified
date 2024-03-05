@@ -17,7 +17,7 @@ class ESTDAN_Stack(nn.Module):
 
         assert n_sequence == 5, "Only support args.n_sequence=5; but get args.n_sequence={}".format(n_sequence)
 
-        self.recons_net = ESTDAN.STDAN(in_channels=in_channels, n_sequence=3, out_channels=out_channels,
+        self.recons_net = ESTDAN.ESTDAN(in_channels=in_channels, n_sequence=3, out_channels=out_channels,
                                                     n_resblock=n_resblock, n_feat=n_feat)
         if load_recons_net:
             self.recons_net.load_state_dict(torch.load(recons_pretrain_fn))
