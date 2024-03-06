@@ -81,7 +81,7 @@ def FFTLoss(output_dict:dict, gt_seq:torch.tensor):
     output_imgs = torch.cat([output_dict['recons_1'], output_dict['recons_2'], output_dict['recons_3'], output_dict['out']],dim=1)
     t_gt_seq = torch.cat([gt_seq[:,1,:,:,:],gt_seq[:,2,:,:,:],gt_seq[:,3,:,:,:],gt_seq[:,2,:,:,:]],dim=1)
 
-    output_fft = torch.fft.fft2(output_fft, dim=(-2, -1))
+    output_fft = torch.fft.fft2(output_imgs, dim=(-2, -1))
     output_fft = torch.stack([output_fft.real, output_fft.imag], dim=-1)
     t_gt_fft = torch.fft.fft2(t_gt_seq, dim=(-2, -1))
     t_gt_fft = torch.stack([t_gt_fft.real, t_gt_fft.imag], dim=-1)
