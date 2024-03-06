@@ -186,7 +186,7 @@ def video_inference(weight:str, network:str, upload_file) -> None:
         network = network,
         weight = weight
     )
-    st.text(f'Wights: {weight}, Network: {network} loaded.')
+    st.text(f'Weights: {weight}, Network: {network} loaded.')
 
     # Get input tensor and output file name
     inputs_list, output_dir_name, output_frame_names = read_frames(upload_file)

@@ -274,13 +274,13 @@ def orthogonal_edge_numpy():
     flow_path = './debug_results/27_00000007.npy'
     flow = np.load(flow_path)
 
-    # img_path = './debug_results/27_00000007_out.png'
-    img_path = './exp_log/train/WO_Motion_2024-01-16T103421_STDAN_Stack_BSD_3ms24ms_GOPRO/visualization/epoch-0350/output/GOPR0410_11_00/000198.png'
+    img_path = './debug_results/000198_input.png'
+    # img_path = './exp_log/train/WO_Motion_2024-01-16T103421_STDAN_Stack_BSD_3ms24ms_GOPRO/visualization/epoch-0350/output/GOPR0410_11_00/000198.png'
     img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
 
     # img = np.full((512, 512), 0, dtype=np.uint8)
     # cv2.circle(img, (256,256), 150, (255,255), thickness=-1)
-    cv2.imwrite('./debug_results/output_gray.png', img)
+    cv2.imwrite('./debug_results/input_gray.png', img)
     exit()
     img = np.array(
         [[0, 0, 0, 0, 0, 0, 0, 0, 0],

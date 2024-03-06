@@ -76,6 +76,21 @@ def perceptualLoss(fakeIm, realIm, vggnet):
     return loss
 
 
+def FFTLoss(output_dict:dict, gt_seq:torch.tensor):
+
+    output_imgs = torch.cat([output_dict['recons_1'], output_dict['recons_2'], output_dict['recons_3'], output_dict['out']],dim=1)
+    t_gt_seq = torch.cat([gt_seq[:,1,:,:,:],gt_seq[:,2,:,:,:],gt_seq[:,3,:,:,:],gt_seq[:,2,:,:,:]],dim=1)
+
+    output_fft = torch.fft.fft2(output_fft, dim=(-2, -1))
+    output_fft = torch.stack([output_fft.real, output_fft.imag], dim=-1)
+    t_gt_fft = torch.fft.fft2(t_gt_seq, dim=(-2, -1))
+    t_gt_fft = torch.stack([t_gt_fft.real, t_gt_fft.imag], dim=-1)
+
+    l1_loss = nn.L1Loss()
+    l1 = l1_loss(output_fft, t_gt_fft)
+    return l1
+
+
 def laplacian_edge_extraction(img_tensor:torch.tensor):
 
     # Laplacian filter
@@ -175,8 +190,6 @@ def motion_weighted_edge_extraction(img_tensor:torch.tensor, flow_tensor:torch.t
 
 
 
-
-
 def orthogonal_edge_extraction(img_tensor:torch.tensor, flow_tensor:torch.tensor) -> dict:
 
     sobel_x, sobel_y = sobel_edge_extraction(img_tensor)
@@ -264,12 +277,12 @@ def orthogonal_edge_loss(output_dict:dict, gt_seq:torch.tensor):
 
     # losses weighted by flow_forward
     loss  = calc_loss_orthogonal_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=output_ff[:,1,:,:,:])
-    loss += calc_loss_orthogonal_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_2_ff[:,1,:,:,:])
-    loss += calc_loss_orthogonal_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_3_ff[:,0,:,:,:])
+    # loss += calc_loss_orthogonal_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_2_ff[:,1,:,:,:])
+    # loss += calc_loss_orthogonal_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_3_ff[:,0,:,:,:])
 
     # losses weighted by flow_backward
-    loss += calc_loss_orthogonal_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_1_fb[:,1,:,:,:])
-    loss += calc_loss_orthogonal_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_2_fb[:,0,:,:,:])
+    # loss += calc_loss_orthogonal_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_1_fb[:,1,:,:,:])
+    # loss += calc_loss_orthogonal_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=recons_2_fb[:,0,:,:,:])
     loss += calc_loss_orthogonal_edge(output_tensor=out, gt_tensor=gt_seq[:,2,:,:,:], flow_tensor=output_fb[:,0,:,:,:])
     
     return loss
