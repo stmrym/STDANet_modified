@@ -63,7 +63,7 @@ def select_network() -> None:
     # Select 'STDANet' or 'STDANet_RAFT_Stack'
     selected_network = st.sidebar.radio(
                             label = 'Choose network. (Must be consistent with training settings)', 
-                            options = ('STDAN_Stack', 'STDAN_RAFT_Stack'),
+                            options = ('STDAN_Stack', 'STDAN_RAFT_Stack', 'ESTDAN'),
                             disabled = ss.disabled
                             )
     
