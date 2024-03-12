@@ -82,7 +82,7 @@ class ESTDAN_light(nn.Module):
         self.decoder_first = nn.Sequential(*Decoder_first)
         self.outBlock = nn.Sequential(*OutBlock)
 
-        self.edge_extractor = nn.Sequential(extractor.Edge_extractor(inplanes=1, planes=sobel_out_channels, kernel_size=3, stride=1))
+        self.edge_extractor = nn.Sequential(extractor.Edge_extractor_light(inplanes=1, planes=sobel_out_channels, kernel_size=3, stride=1))
 
         self.orthogonal_feat_conv = nn.Sequential(
                         nn.Conv2d(in_channels=2, out_channels=n_feat*4, kernel_size=3, stride=1, padding='same', dilation=1),

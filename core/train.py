@@ -88,7 +88,6 @@ def train(cfg, init_epoch,
             input_seq = torch.cat(seq_blur,1)
             gt_seq = torch.cat(seq_clear,1)
             
-            
             # recons_1, recons_2, recons_3, out, flow_forward, flow_backward = deblurnet(input_seq)
             output_dict = deblurnet(input_seq) # {'recons_1': first output, 'recons_2': second output, 'recons_3': third output, 'out': final output, 'flow_forwards': fowards_list, 'flow_backwards': backwards_list}
             
@@ -100,7 +99,6 @@ def train(cfg, init_epoch,
 
             img_PSNR_mid = util.calc_psnr(output_dict['recons_2'].detach(),gt_seq[:,2,:,:,:].detach())
             img_PSNRs_mid.update(img_PSNR_mid, cfg.CONST.TRAIN_BATCH_SIZE)
-
             deblurnet_solver.zero_grad()
             total_loss.backward()
             deblurnet_solver.step()
