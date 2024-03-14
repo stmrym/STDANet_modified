@@ -219,8 +219,8 @@ def orthogonal_edge_extraction(img_tensor:torch.tensor, flow_tensor:torch.tensor
 
     abs_weight = torch.abs(orthogonal_weight)
     # [0, 1] normalized
-    if torch.max(abs_weight) != 0:
-        abs_weight = abs_weight / torch.max(abs_weight)
+    # if torch.max(abs_weight) != 0:
+    # abs_weight = abs_weight / torch.max(abs_weight)
 
     orthogonal_edge = torch.mul(abs_weight, sobel_amp)
 

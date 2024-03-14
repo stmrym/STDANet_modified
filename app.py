@@ -60,10 +60,10 @@ def select_additional_save_imge() -> None:
 
 
 def select_network() -> None:
-    # Select 'STDANet' or 'STDANet_RAFT_Stack'
+    # Select models
     selected_network = st.sidebar.radio(
                             label = 'Choose network. (Must be consistent with training settings)', 
-                            options = ('STDAN_Stack', 'STDAN_RAFT_Stack', 'ESTDAN'),
+                            options = tuple([os.path.splitext(f)[0].split('/')[-1] for f in sorted(glob.glob('models/*_Stack.py'))]),
                             disabled = ss.disabled
                             )
     
