@@ -105,13 +105,13 @@ def test(cfg,
             # Saving images
             seq, img_name = name[0].split('.')  # name = ['000.00000002']
 
-            if os.path.isdir(os.path.join(out_dir, 'output', seq)) == False:
-                os.makedirs(os.path.join(out_dir, 'output', seq), exist_ok=True)
+            if os.path.isdir(os.path.join(out_dir + '_output', seq)) == False:
+                os.makedirs(os.path.join(out_dir + '_output', seq), exist_ok=True)
 
             output_image = output_image.numpy().copy()
             output_image_bgr = cv2.cvtColor(np.clip(output_image, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
             
-            cv2.imwrite(os.path.join(out_dir, 'output', seq, img_name + '.png'), output_image_bgr)
+            cv2.imwrite(os.path.join(out_dir + '_output', seq, img_name + '.png'), output_image_bgr)
 
             for loss_dict in cfg.LOSS_DICT_LIST:
                 if 'motion_edge_loss' in loss_dict.values():
