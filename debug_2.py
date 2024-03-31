@@ -271,29 +271,29 @@ def orthogonal_edge_tensor():
 
 def orthogonal_edge_numpy():
 
-    flow_path = './debug_results/27_00000007.npy'
+    flow_path = './debug_results/000198.npy'
     flow = np.load(flow_path)
 
-    img_path = './debug_results/000198_input.png'
+    img_path = './debug_results/000198.png'
     # img_path = './exp_log/train/WO_Motion_2024-01-16T103421_STDAN_Stack_BSD_3ms24ms_GOPRO/visualization/epoch-0350/output/GOPR0410_11_00/000198.png'
     img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
 
     # img = np.full((512, 512), 0, dtype=np.uint8)
     # cv2.circle(img, (256,256), 150, (255,255), thickness=-1)
-    cv2.imwrite('./debug_results/input_gray.png', img)
-    exit()
-    img = np.array(
-        [[0, 0, 0, 0, 0, 0, 0, 0, 0],
-         [0, 0, 0, 0, 0, 0, 0, 0, 0],
-         [0, 0, 1, 1, 1, 1, 1, 0, 0],
-         [0, 0, 1, 1, 1, 1, 1, 0, 0],
-         [0, 0, 1, 1, 1, 1, 1, 0, 0],
-         [0, 0, 1, 1, 1, 1, 1, 0, 0],
-         [0, 0, 1, 1, 1, 1, 1, 0, 0],
-         [0, 0, 0, 0, 0, 0, 0, 0, 0],
-         [0, 0, 0, 0, 0, 0, 0, 0, 0]
-         ]
-    , dtype=np.float64)
+    # cv2.imwrite('./debug_results/input_gray.png', img)
+
+    # img = np.array(
+    #     [[0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #      [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #      [0, 0, 1, 1, 1, 1, 1, 0, 0],
+    #      [0, 0, 1, 1, 1, 1, 1, 0, 0],
+    #      [0, 0, 1, 1, 1, 1, 1, 0, 0],
+    #      [0, 0, 1, 1, 1, 1, 1, 0, 0],
+    #      [0, 0, 1, 1, 1, 1, 1, 0, 0],
+    #      [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #      [0, 0, 0, 0, 0, 0, 0, 0, 0]
+    #      ]
+    # , dtype=np.float64)
 
     sobel_x_kernel = np.array(
         [[-1, 0, 1],
@@ -313,7 +313,7 @@ def orthogonal_edge_numpy():
 
     print(sobel_x)
     print(sobel_y)
-    exit()
+
     amp = np.sqrt(sobel_x**2 + sobel_y**2)
     # [0, 1] normalized
     amp /= np.max(amp)
@@ -326,7 +326,7 @@ def orthogonal_edge_numpy():
     prod = np.multiply(flow[:,:,0], edge_direction[:,:,0]) + np.multiply(flow[:,:,1], edge_direction[:,:,1])
     abs_prod = np.abs(prod)
     # [0, 1] normalized
-    abs_prod /= np.max(abs_prod)
+    # abs_prod /= np.max(abs_prod)
 
     orthogonal_edge = np.multiply(abs_prod, amp)
 
@@ -335,9 +335,9 @@ def orthogonal_edge_numpy():
     abs_prod = np.uint8(abs_prod/np.max(abs_prod) * 255.)
     orthogonal_edge = np.uint8(orthogonal_edge/np.max(orthogonal_edge) * 255.)
 
-    cv2.imwrite('./debug_results/27_00000007_amp.png', amp)
-    cv2.imwrite('./debug_results/27_00000007_w_amp.png', abs_prod)
-    cv2.imwrite('./debug_results/27_00000007_orth_edge.png', orthogonal_edge)
+    cv2.imwrite('./debug_results/000198_amp.png', amp)
+    cv2.imwrite('./debug_results/000198_wamp.png', abs_prod)
+    # cv2.imwrite('./debug_results/27_00000007_orth_edge.png', orthogonal_edge)
 
 
 
