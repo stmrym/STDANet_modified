@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+import torch
+import lpips
 import csv
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -7,6 +9,16 @@ from typing import Optional, Union
 from tqdm import tqdm
 from utils import util
 from losses.multi_loss import *
+
+
+def calc_lpips():
+    loss_fn_alex = lpips.LPIPS(net='alex')
+    img0 = torch.rand(4,3,64,64)
+    img1 = torch.rand(4,3,64,64)
+    d = loss_fn_alex(img0, img1)
+    print(d)
+
+
 
 def radial_gradient(color,radii):
     colors=[]
@@ -369,4 +381,6 @@ def orthogonal_edge_numpy():
     # cv2.imwrite('./debug_results/output_x.png', sobel_x)
     # cv2.imwrite('./debug_results/output_y.png', sobel_y)
 
-orthogonal_edge_numpy()
+if __name__ == '__main__':
+    # orthogonal_edge_numpy()
+    calc_lpips()
