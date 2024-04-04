@@ -1,4 +1,4 @@
 #!/bin/bash
 
 # streamlit run app.py --server.fileWatcherType none
-streamlit run app.py --browser.gatherUsageStats false --server.fileWatcherType none
+streamlit run app.py --browser.gatherUsageStats false --server.fileWatcherType none --server.port 8502
