@@ -106,7 +106,7 @@ def train(cfg, init_epoch,
             n_itr = n_itr + 1
 
             # Tick / tock
-            tqdm_train.set_postfix_str(f'  TotalLoss {total_losses} PSNR_mid {img_PSNRs_mid} PSNR_out {img_PSNRs_out}')        
+            tqdm_train.set_postfix_str(f'PSNR_mid {img_PSNRs_mid} PSNR_out {img_PSNRs_out}')        
             
         # Append epoch loss to TensorBoard
         for losses_dict in losses_dict_list:

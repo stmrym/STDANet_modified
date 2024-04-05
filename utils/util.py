@@ -121,7 +121,7 @@ def calc_meanFilter(img, kernel_size=11, n_channel=1, device='cuda'):
                                              stride=1, padding=kernel_size // 2)
     return new_img
 def ssim_calculate(x, y, val_range=255.0):
-    ssim = compare_ssim(y, x, multichannel=True, gaussian_weights=True, sigma=1.5, use_sample_covariance=False,
+    ssim = compare_ssim(y, x, multichannel=True, channel_axis=1, gaussian_weights=True, sigma=1.5, use_sample_covariance=False,
                         data_range=val_range)
     return ssim
 

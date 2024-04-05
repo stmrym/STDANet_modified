@@ -55,7 +55,7 @@ def valid(cfg,
     tqdm_val.set_description(f'[VALID] [Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}]')
     
     for seq_idx, (name, seq_blur, seq_clear) in enumerate(tqdm_val):
-        
+        # name: GT frame name (center frame name)
         seq_blur = [utils.network_utils.var_or_cuda(img).unsqueeze(1) for img in seq_blur]
         seq_clear = [utils.network_utils.var_or_cuda(img).unsqueeze(1) for img in seq_clear]
         
@@ -81,11 +81,24 @@ def valid(cfg,
 
             # calculate test loss
             total_loss, total_losses, losses_dict_list = calc_update_losses(output_dict=output_dict, gt_seq=gt_seq, losses_dict_list=losses_dict_list, total_losses=total_losses, batch_size=cfg.CONST.VAL_BATCH_SIZE)
-        
-            img_PSNR_out = util.calc_psnr(output_dict['out'].detach(),gt_seq[:,2,:,:,:].detach())
-            img_PSNRs_out.update(img_PSNR_out, cfg.CONST.VAL_BATCH_SIZE)
-            img_PSNR_mid = util.calc_psnr(output_dict['recons_2'].detach(),gt_seq[:,2,:,:,:].detach())
-            img_PSNRs_mid.update(img_PSNR_mid, cfg.CONST.VAL_BATCH_SIZE)
+
+            output_tensor = output_dict['out']
+            mid_tensor = output_dict['recons_2']
+            gt_tensor = gt_seq[:,2,:,:,:]
+
+            img_PSNRs_out.update(util.calc_psnr(output_tensor.detach(),gt_tensor.detach(), cfg.CONST.VAL_BATCH_SIZE))
+            img_PSNRs_mid.update(util.calc_psnr(mid_tensor.detach(),gt_tensor.detach()), cfg.CONST.VAL_BATCH_SIZE)
+
+            print(name)
+            print(output_tensor.shape)
+
+            img_ssims_mid = ssim_calculate(output_tensor.detach().cpu().numpy()*255, gt_tensor.detach().cpu().numpy()*255)
+            print(img_ssims_mid)
+            # img_ssims_out.update(ssim_calculate(
+            #     output_dict['out'].detach().cpu().numpy()*255,
+            #     gt_seq[:,2,:,:,:].detach().cpu().numpy()*255),cfg.CONST.VAL_BATCH_SIZE)
+            
+            # img_ssims_out            
 
             torch.cuda.synchronize()
             process_time.update((time() - process_start_time))
@@ -182,6 +195,6 @@ def valid(cfg,
         Best_Epoch = epoch_idx
 
     log.info(f'[VALID][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{val_dataset_name}] PSNR_mid: {img_PSNRs_mid.avg}, PSNR_out: {img_PSNRs_out.avg}, PSNR_best: {Best_Img_PSNR} at epoch {Best_Epoch}')
-    log.info(f'[VALID][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{val_dataset_name}] Inference time: {inference_time}, Process time: {process_time} SSIM_mid: {img_ssims_mid.avg}, SSIM_out: {img_ssims_out.avg}')
+    log.info(f'[VALID] Inference time: {inference_time}, Process time: {process_time} SSIM_mid: {img_ssims_mid.avg}, SSIM_out: {img_ssims_out.avg}')
 
     return Best_Img_PSNR, Best_Epoch
