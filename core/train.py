@@ -9,9 +9,8 @@ import utils.data_transforms
 import utils.network_utils
 
 from losses.multi_loss import *
-from time import time
 
-from core.valid import valid
+from core.evaluation import evaluation
 # from models.VGG19 import VGG19
 # from utils.network_utils import flow2rgb
 from tqdm import tqdm
@@ -119,8 +118,6 @@ def train(cfg, init_epoch,
 
         log.info(f'[TRAIN][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}] PSNR_mid: {img_PSNRs_mid.avg}, PSNR_out: {img_PSNRs_out.avg}')
 
-
-                
         
         if epoch_idx % cfg.TRAIN.SAVE_FREQ == 0:
             utils.network_utils.save_checkpoints(os.path.join(ckpt_dir, 'ckpt-epoch-%04d.pth.tar' % (epoch_idx)), \
@@ -132,7 +129,7 @@ def train(cfg, init_epoch,
                                                     epoch_idx, deblurnet, deblurnet_solver,\
                                                     Best_Img_PSNR, Best_Epoch)
 
-        if epoch_idx % cfg.VAL.VALID_FREQ == 0:
+        if epoch_idx % cfg.EVAL.VALID_FREQ == 0:
             
             # Validation for each dataset list
             for val_dataset_name, val_image_blur_path, val_image_clear_path, val_json_file_path\
@@ -146,16 +143,16 @@ def train(cfg, init_epoch,
                 save_dir = os.path.join(visualize_dir, 'epoch-' + str(epoch_idx).zfill(4))
 
                 # Validation
-                Best_Img_PSNR, Best_Epoch = valid(
+                Best_Img_PSNR, Best_Epoch = evaluation(
                     cfg = cfg,
-                    val_dataset_name = val_dataset_name,
+                    eval_dataset_name = val_dataset_name,
                     epoch_idx = epoch_idx, init_epoch = init_epoch,
                     Best_Img_PSNR = Best_Img_PSNR,
                     Best_Epoch = Best_Epoch, 
                     ckpt_dir = ckpt_dir,
                     save_dir = save_dir,
-                    val_loader = val_loader, 
-                    val_transforms = val_transforms,
+                    eval_loader = val_loader, 
+                    eval_transforms = val_transforms,
                     deblurnet = deblurnet,
                     tb_writer = tb_writer)
         

@@ -10,3 +10,4 @@ tensorboardX
 kornia
 streamlit
 av
+lpips

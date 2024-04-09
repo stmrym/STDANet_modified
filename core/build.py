@@ -17,7 +17,7 @@ import importlib
 from datetime import datetime as dt
 from tensorboardX import SummaryWriter
 from core.train import train
-from core.test import test
+from core.evaluation import evaluation
 import logging
 from losses.multi_loss import *
 from utils import log
@@ -135,7 +135,6 @@ def  bulid_net(cfg,output_dir):
     if torch.cuda.is_available():
         deblurnet = torch.nn.DataParallel(deblurnet).cuda()
 
-
     if cfg.NETWORK.PHASE in ['train','resume']:
 
         ckpt_dir      = os.path.join(output_dir, 'checkpoints')
@@ -166,7 +165,7 @@ def  bulid_net(cfg,output_dir):
             
             save_dir = os.path.join(output_dir, test_dataset_name)
 
-            test(cfg = cfg, 
+            _, _ = evaluation(cfg = cfg, 
                 test_dataset_name = test_dataset_name,
                 out_dir = save_dir,
                 epoch_idx = init_epoch,
