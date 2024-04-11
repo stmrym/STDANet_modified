@@ -1,4 +1,5 @@
 import os
+import glob
 from turtle import backward
 from utils import log, util
 import torch.backends.cudnn
@@ -129,6 +130,13 @@ def train(cfg, init_epoch,
                                                     epoch_idx, deblurnet, deblurnet_solver,\
                                                     Best_Img_PSNR, Best_Epoch)
 
+        if cfg.EVAL.WEIGHTS_SAVE_FILE_MAX != -1:
+            files = sorted(glob.glob(os.path.join(ckpt_dir, '*.pth.tar')))
+            remove_num = len(files) - cfg.EVAL.WEIGHTS_SAVE_FILE_MAX
+            if remove_num > 0:
+                for i in range(remove_num):
+                    os.remove(files[i])
+        
         if epoch_idx % cfg.EVAL.VALID_FREQ == 0:
             
             # Validation for each dataset list
@@ -146,14 +154,13 @@ def train(cfg, init_epoch,
                 Best_Img_PSNR, Best_Epoch = evaluation(
                     cfg = cfg,
                     eval_dataset_name = val_dataset_name,
-                    epoch_idx = epoch_idx, init_epoch = init_epoch,
-                    Best_Img_PSNR = Best_Img_PSNR,
-                    Best_Epoch = Best_Epoch, 
-                    ckpt_dir = ckpt_dir,
                     save_dir = save_dir,
                     eval_loader = val_loader, 
                     eval_transforms = val_transforms,
                     deblurnet = deblurnet,
+                    epoch_idx = epoch_idx, init_epoch = init_epoch,
+                    Best_Img_PSNR = Best_Img_PSNR,
+                    Best_Epoch = Best_Epoch,
                     tb_writer = tb_writer)
         
     # Close SummaryWriter for TensorBoard

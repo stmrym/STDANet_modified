@@ -5,6 +5,7 @@ import utils.data_transforms
 import utils.network_utils
 from losses.multi_loss import *
 from utils import util
+import shutil
 import cv2
 import numpy as np
 from time import time
@@ -17,11 +18,11 @@ from models.submodules import warp
 
 def evaluation(cfg, 
         eval_dataset_name,
-        epoch_idx, init_epoch,
-        Best_Img_PSNR, Best_Epoch,
-        ckpt_dir, save_dir,
+        save_dir,
         eval_loader, eval_transforms, deblurnet,
-        tb_writer=None):
+        epoch_idx = 0, init_epoch = 0,
+        Best_Img_PSNR = 0, Best_Epoch = 0,
+        tb_writer = None):
     
     # Set up data loader
     eval_data_loader = torch.utils.data.DataLoader(
@@ -35,10 +36,10 @@ def evaluation(cfg,
     img_PSNRs_out = utils.network_utils.AverageMeter()
     img_ssims_mid = utils.network_utils.AverageMeter()
     img_ssims_out = utils.network_utils.AverageMeter()
-    img_LPIPSs_mid = utils.network_utils.AverageMeter()
-    img_LPIPSs_out = utils.network_utils.AverageMeter()
+    # img_LPIPSs_mid = utils.network_utils.AverageMeter()
+    # img_LPIPSs_out = utils.network_utils.AverageMeter()
 
-    loss_fn_alex = lpips.LPIPS(net='alex').cuda()
+    # loss_fn_alex = lpips.LPIPS(net='alex').cuda()
 
     losses_dict_list = []
     for loss_config_dict in cfg.LOSS_DICT_LIST:
@@ -91,8 +92,8 @@ def evaluation(cfg,
             img_PSNRs_out.update(util.calc_psnr(output_tensor.detach(),gt_tensor.detach(), cfg.CONST.EVAL_BATCH_SIZE))
             img_PSNRs_mid.update(util.calc_psnr(mid_tensor.detach(),gt_tensor.detach()), cfg.CONST.EVAL_BATCH_SIZE)
         
-            img_LPIPSs_out.update(loss_fn_alex(output_tensor, gt_tensor).mean().detach().cpu(), cfg.CONST.EVAL_BATCH_SIZE)
-            img_LPIPSs_mid.update(loss_fn_alex(mid_tensor, gt_tensor).mean().detach().cpu(), cfg.CONST.EVAL_BATCH_SIZE)
+            # img_LPIPSs_out.update(loss_fn_alex(output_tensor, gt_tensor).mean().detach().cpu(), cfg.CONST.EVAL_BATCH_SIZE)
+            # img_LPIPSs_mid.update(loss_fn_alex(mid_tensor, gt_tensor).mean().detach().cpu(), cfg.CONST.EVAL_BATCH_SIZE)
         
             output_ndarrays = output_tensor.detach().cpu().permute(0,2,3,1).numpy()*255
             mid_ndarrays = mid_tensor.detach().cpu().permute(0,2,3,1).numpy()*255
@@ -120,11 +121,11 @@ def evaluation(cfg,
                     output_image_bgr = cv2.cvtColor(np.clip(output_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)                    
                     cv2.imwrite(os.path.join(save_dir + '_output', seq, img_name + '.png'), output_image_bgr)
 
-                    if os.path.isdir(os.path.join(save_dir + '_mid', seq)) == False:
-                        os.makedirs(os.path.join(save_dir + '_mid', seq), exist_ok=True)
+                    # if os.path.isdir(os.path.join(save_dir + '_mid', seq)) == False:
+                    #     os.makedirs(os.path.join(save_dir + '_mid', seq), exist_ok=True)
 
-                    mid_image_bgr = cv2.cvtColor(np.clip(mid_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)                    
-                    cv2.imwrite(os.path.join(save_dir + '_mid', seq, img_name + '.png'), mid_image_bgr)
+                    # mid_image_bgr = cv2.cvtColor(np.clip(mid_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)                    
+                    # cv2.imwrite(os.path.join(save_dir + '_mid', seq, img_name + '.png'), mid_image_bgr)
 
 
                     for loss_dict in cfg.LOSS_DICT_LIST:
@@ -179,9 +180,16 @@ def evaluation(cfg,
             torch.cuda.synchronize()
             process_time.update((time() - process_start_time))
             tqdm_eval.set_postfix_str(f'Inference Time {inference_time} Process Time {process_time} PSNR_mid {img_PSNRs_mid} PSNR_out {img_PSNRs_out}')
-            
 
 
+    if cfg.EVAL.VISUAL_SAVE_FILE_MAX != -1:
+        visualize_dir = save_dir.rstrip(save_dir.split('/')[-1])
+        dirs = sorted([visualize_dir + dir for dir in os.listdir(visualize_dir)])
+        remove_num = len(dirs) - cfg.EVAL.VISUAL_SAVE_FILE_MAX
+        if remove_num > 0:
+            for i in range(remove_num):
+                shutil.rmtree(dirs[i])
+                print(f'remove {dirs[i]}')
     
     # Add testing results to TensorBoard
     if cfg.NETWORK.PHASE in ['train', 'resume']:
@@ -191,16 +199,14 @@ def evaluation(cfg,
         tb_writer.add_scalar(f'Loss_VALID_{eval_dataset_name}/TotalLoss', total_losses.avg, epoch_idx)
         tb_writer.add_scalar(f'PSNR/VALID_{eval_dataset_name}', img_PSNRs_out.avg, epoch_idx)
         tb_writer.add_scalar(f'SSIM/VALID_{eval_dataset_name}', img_ssims_out.avg, epoch_idx)
-        tb_writer.add_scalar(f'LPIPS/VALID_{eval_dataset_name}', img_LPIPSs_out.avg, epoch_idx)
+        # tb_writer.add_scalar(f'LPIPS/VALID_{eval_dataset_name}', img_LPIPSs_out.avg, epoch_idx)
 
         if img_PSNRs_out.avg  >= Best_Img_PSNR:
-            if not os.path.exists(ckpt_dir):
-                os.makedirs(ckpt_dir)
 
             Best_Img_PSNR = img_PSNRs_out.avg
             Best_Epoch = epoch_idx
 
     log.info(f'[EVAL][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{eval_dataset_name}] PSNR(mid:{img_PSNRs_mid.avg}, out:{img_PSNRs_out.avg}), PSNR_best:{Best_Img_PSNR} at epoch {Best_Epoch}')
-    log.info(f'[EVAL] Infer. time:{inference_time}, Process time:{process_time} SSIM(mid:{img_ssims_mid.avg}, out:{img_ssims_out.avg}), LPIPS(mid:{img_LPIPSs_mid.avg}, out:{img_LPIPSs_out.avg})')
+    log.info(f'[EVAL] Infer. time:{inference_time}, Process time:{process_time} SSIM(mid:{img_ssims_mid.avg}, out:{img_ssims_out.avg}))')
 
     return Best_Img_PSNR, Best_Epoch

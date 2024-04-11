@@ -29,7 +29,7 @@ def  bulid_net(cfg,output_dir):
     if cfg.NETWORK.PHASE in ['train', 'resume']:
 
         train_transforms = utils.data_transforms.Compose([
-            # utils.data_transforms.ColorJitter(cfg.DATA.COLOR_JITTER),
+            utils.data_transforms.ColorJitter(cfg.DATA.COLOR_JITTER),
             utils.data_transforms.Normalize(mean=cfg.DATA.MEAN, std=cfg.DATA.STD),
             utils.data_transforms.RandomCrop(cfg.DATA.CROP_IMG_SIZE),
             utils.data_transforms.RandomVerticalFlip(),
@@ -166,10 +166,8 @@ def  bulid_net(cfg,output_dir):
             save_dir = os.path.join(output_dir, test_dataset_name)
 
             _, _ = evaluation(cfg = cfg, 
-                test_dataset_name = test_dataset_name,
-                out_dir = save_dir,
-                epoch_idx = init_epoch,
-                Best_Img_PSNR = Best_Img_PSNR,
-                test_loader = test_loader,
-                test_transforms = test_transforms,
+                eval_dataset_name = test_dataset_name,
+                save_dir = save_dir,
+                eval_loader = test_loader,
+                eval_transforms = test_transforms,
                 deblurnet = deblurnet)        

@@ -39,7 +39,7 @@ def main():
         print_log  = os.path.join(output_dir, 'print.log')
 
     elif  cfg.NETWORK.PHASE == 'test':
-        output_dir = os.path.join(cfg.DIR.OUT_PATH,'test', re.split('[/]', cfg.CONST.WEIGHTS)[-3]  + '_' + re.split('[/.]', cfg.CONST.WEIGHTS)[-3])
+        output_dir = os.path.join(cfg.DIR.OUT_PATH,'test', cfg.CONST.PREFIX + re.split('[/]', cfg.CONST.WEIGHTS)[-3]  + '_' + re.split('[/.]', cfg.CONST.WEIGHTS)[-3])
         print_log    = os.path.join(output_dir, 'print.log')
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
