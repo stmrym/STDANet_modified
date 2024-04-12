@@ -15,12 +15,9 @@ import importlib
 import argparse
 import shutil
 matplotlib.use('Agg')
-
 from datetime import datetime as dt
-from core.build import bulid_net
 import warnings
 warnings.filterwarnings("ignore") 
-
 
 def main():
 
@@ -66,11 +63,12 @@ def main():
 
     # Set GPU to use
     if type(cfg.CONST.DEVICE) == str and not cfg.CONST.DEVICE == 'all':
-        os.environ["CUDA_VISIBLE_DEVICES"] = cfg.CONST.DEVICE
+        os.environ['CUDA_VISIBLE_DEVICES'] = cfg.CONST.DEVICE
     
     
     import torch
- 
+    from core.build import bulid_net
+    
     random.seed(cfg.CONST.SEED)
     np.random.seed(cfg.CONST.SEED)
     torch.manual_seed(cfg.CONST.SEED)
@@ -80,6 +78,7 @@ def main():
     
     log.info('CUDA DEVICES NUMBER: '+ str(torch.cuda.device_count()))
     log.info(f' Output_dir： {output_dir}')
+
 
     # Setup Network & Start train/test process
     bulid_net(
