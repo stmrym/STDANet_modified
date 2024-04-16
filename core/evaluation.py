@@ -89,7 +89,7 @@ def evaluation(cfg,
             mid_tensor = output_dict['recons_2']
             gt_tensor = gt_seq[:,2,:,:,:]
 
-            img_PSNRs_out.update(util.calc_psnr(output_tensor.detach(),gt_tensor.detach(), cfg.CONST.EVAL_BATCH_SIZE))
+            img_PSNRs_out.update(util.calc_psnr(output_tensor.detach(),gt_tensor.detach()), cfg.CONST.EVAL_BATCH_SIZE)
             img_PSNRs_mid.update(util.calc_psnr(mid_tensor.detach(),gt_tensor.detach()), cfg.CONST.EVAL_BATCH_SIZE)
         
             # img_LPIPSs_out.update(loss_fn_alex(output_tensor, gt_tensor).mean().detach().cpu(), cfg.CONST.EVAL_BATCH_SIZE)
@@ -126,7 +126,6 @@ def evaluation(cfg,
 
                     # mid_image_bgr = cv2.cvtColor(np.clip(mid_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)                    
                     # cv2.imwrite(os.path.join(save_dir + '_mid', seq, img_name + '.png'), mid_image_bgr)
-
 
                     for loss_dict in cfg.LOSS_DICT_LIST:
                         if 'motion_edge_loss' in loss_dict.values():
