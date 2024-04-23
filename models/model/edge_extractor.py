@@ -1,5 +1,6 @@
-import torch.nn as nn
 import torch
+import torch.nn as nn
+import torch.nn.init as init
 
 
 ###############################
@@ -52,10 +53,11 @@ class Edge_extractor(nn.Module):
 
 
 class Edge_extractor_light(nn.Module):
-    def __init__(self, inplanes, planes, kernel_size=3, stride=1, dilation=1):
+    def __init__(self, inplanes, planes, kernel_size=3, stride=1, dilation=1, device='cuda'):
         super(Edge_extractor_light, self).__init__()
         a = torch.tensor(1.0)
-        sobel_kernel = torch.cuda.FloatTensor(
+        
+        sobel_kernel = torch.FloatTensor(
             [[  [  -a, 0,   a],
                 [-2*a, 0, 2*a],
                 [  -a, 0,   a]],
@@ -63,13 +65,14 @@ class Edge_extractor_light(nn.Module):
             [   [-a, -2*a, -a],
                 [ 0,    0,  0],
                 [ a,  2*a,  a]]
-                ])
-        # (2, 1, 3, 3)
-        sobel_kernel = nn.Parameter(sobel_kernel.unsqueeze(dim=1)) 
+                ], device=device)
 
         self.sobel_conv = nn.Conv2d(inplanes, planes, kernel_size=kernel_size, stride=stride,
                             padding='same', dilation=dilation, padding_mode='reflect')
-        self.sobel_conv.weight = sobel_kernel
+        # (2, 1, 3, 3)
+        self.sobel_conv.weight = nn.Parameter(sobel_kernel.unsqueeze(dim=1))
+        # initialize bias to 0
+        init.constant_(self.sobel_conv.bias, 0)
         self.gelu = nn.GELU()
 
     def forward(self, x):     

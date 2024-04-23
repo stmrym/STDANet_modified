@@ -169,7 +169,7 @@ def evaluation(cfg,
                                 edge_extraction_func = orthogonal_edge_extraction)
                             
 
-                    if cfg.EVAL.SAVE_FLOW == True:
+                    if cfg.EVAL.SAVE_FLOW:
                         # saving out flow
                         out_flow_forward = (output_dict['flow_forwards'][-1])[0][1].permute(1,2,0).cpu().detach().numpy()  
                         util.save_hsv_flow(save_dir=save_dir, seq=seq, img_name=img_name, out_flow=out_flow_forward)

@@ -65,24 +65,28 @@ def  bulid_net(cfg,output_dir):
     motion_branch_params = []
     attention_params = []
 
+
+
     for name,param in deblurnet.named_parameters():
         if 'reference_points' in name or 'sampling_offsets' in name:
-            if param.requires_grad == True:
+            if param.requires_grad:
                 attention_params.append(param)
         # elif "spynet" in name or "flow_pwc" in name or "flow_net" in name:
-        elif "motion_branch" in name or "motion_out" in name:
-            if param.requires_grad == True:
+        elif 'motion_branch' in name or 'motion_out' in name:
+            if param.requires_grad:
                 # Fix weigths for motion estimator
-                if cfg.NETWORK.MOTION_REQUIRES_GRAD == False:
+                if not cfg.NETWORK.MOTION_REQUIRES_GRAD:
                     log.info(f'Motion requires grad ... False')
                     param.requires_grad = False
                 motion_branch_params.append(param)
+        elif 'edge_extractor' in name and not cfg.NETWORK.SOBEL_REQUIRES_GRAD:
+            param.requires_grad = False
 
         else:
-            if param.requires_grad == True:
-                
+            if param.requires_grad:
                 base_params.append(param)
     
+
     optim_param = [
             {'params':base_params,'initial_lr':cfg.TRAIN.LEARNING_RATE,"lr":cfg.TRAIN.LEARNING_RATE},
             {'params':motion_branch_params,'initial_lr':cfg.TRAIN.LEARNING_RATE,"lr":cfg.TRAIN.LEARNING_RATE},

@@ -19,7 +19,6 @@ def calc_lpips():
     print(d)
 
 
-
 def radial_gradient(color,radii):
     colors=[]
     for r in radii:
