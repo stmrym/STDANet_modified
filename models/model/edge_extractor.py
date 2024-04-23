@@ -57,7 +57,7 @@ class Edge_extractor_light(nn.Module):
         super(Edge_extractor_light, self).__init__()
         a = torch.tensor(1.0)
         
-        sobel_kernel = torch.FloatTensor(
+        sobel_kernel = torch.tensor(
             [[  [  -a, 0,   a],
                 [-2*a, 0, 2*a],
                 [  -a, 0,   a]],
@@ -65,7 +65,7 @@ class Edge_extractor_light(nn.Module):
             [   [-a, -2*a, -a],
                 [ 0,    0,  0],
                 [ a,  2*a,  a]]
-                ], device=device)
+                ], dtype=torch.float32, device=device)
 
         self.sobel_conv = nn.Conv2d(inplanes, planes, kernel_size=kernel_size, stride=stride,
                             padding='same', dilation=dilation, padding_mode='reflect')
