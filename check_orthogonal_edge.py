@@ -18,8 +18,9 @@ if __name__ == '__main__':
     weights = get_weights(path, multi_file = True)
     device = 'cpu'
 
-    image_path = ''
+    image_path = './'
     image = cv2.imread(image_path)
+    output_dir = './debug_results'
 
     deblurnet = ESTDAN_light_Stack(device=device)
 
