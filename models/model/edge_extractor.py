@@ -55,7 +55,7 @@ class Edge_extractor(nn.Module):
 class Edge_extractor_light(nn.Module):
     def __init__(self, inplanes, planes, kernel_size=3, stride=1, dilation=1, device='cuda'):
         super(Edge_extractor_light, self).__init__()
-        a = torch.tensor(1.0)
+        a = torch.tensor(1.0, dtype=torch.float32, device=device)
         
         sobel_kernel = torch.tensor(
             [[  [  -a, 0,   a],
@@ -72,7 +72,7 @@ class Edge_extractor_light(nn.Module):
         # (2, 1, 3, 3)
         self.sobel_conv.weight = nn.Parameter(sobel_kernel.unsqueeze(dim=1))
         # initialize bias to 0
-        init.constant_(self.sobel_conv.bias, 0)
+        init.constant_(self.sobel_conv.bias, 0.0)
         self.gelu = nn.GELU()
 
     def forward(self, x):     

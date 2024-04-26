@@ -51,8 +51,10 @@ def  bulid_net(cfg,output_dir):
         ])
     
     # Set up networks
+    device = 'cuda' if torch.cuda.device_count() > 0 else 'cpu'
     module = importlib.import_module('models.' + cfg.NETWORK.DEBLURNETARCH)
-    deblurnet = module.__dict__[cfg.NETWORK.DEBLURNETARCH](cfg = cfg)
+    # deblurnet = module.__dict__[cfg.NETWORK.DEBLURNETARCH](cfg = cfg)
+    deblurnet = module.__dict__[cfg.NETWORK.DEBLURNETARCH](device = device)
     
     log.info(f'{dt.now()} Parameters in {cfg.NETWORK.DEBLURNETARCH}: {utils.network_utils.count_parameters(deblurnet)}.')
     log.info(f'Loss: {cfg.LOSS_DICT_LIST} ')
