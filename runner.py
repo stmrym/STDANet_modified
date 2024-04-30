@@ -36,7 +36,7 @@ def main():
         print_log  = os.path.join(output_dir, 'print.log')
 
     elif  cfg.NETWORK.PHASE == 'test':
-        output_dir = os.path.join(cfg.DIR.OUT_PATH,'test', cfg.CONST.PREFIX + re.split('[/]', cfg.CONST.WEIGHTS)[-3]  + '_' + re.split('[/.]', cfg.CONST.WEIGHTS)[-3])
+        output_dir = os.path.join(cfg.DIR.OUT_PATH,'test', cfg.CONST.PREFIX)
         print_log    = os.path.join(output_dir, 'print.log')
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
@@ -68,6 +68,7 @@ def main():
     
     import torch
     from core.build import bulid_net
+    from core.test import test
     
     random.seed(cfg.CONST.SEED)
     np.random.seed(cfg.CONST.SEED)
@@ -81,9 +82,11 @@ def main():
 
 
     # Setup Network & Start train/test process
-    bulid_net(
-        cfg = cfg,
-        output_dir = output_dir)
+    if cfg.NETWORK.PHASE in ['train', 'resume']:
+        bulid_net(cfg = cfg, output_dir = output_dir)
+    elif cfg.NETWORK.PHASE in ['test']:
+        test(cfg = cfg, output_dir = output_dir)
+
 
 if __name__ == '__main__':
 

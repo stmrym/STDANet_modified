@@ -27,6 +27,8 @@ if __name__ == '__main__':
     for weight in weights[0:100]:
         checkpoint = torch.load(weight, map_location=device)
         deblurnet.load_state_dict({k.replace('module.',''):v for k,v in checkpoint['deblurnet_state_dict'].items()})
+
+        
         
 
 

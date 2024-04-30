@@ -154,6 +154,7 @@ demo_output/*
 run_train.sh
 run_test.sh
 run_stdan.sh
+run_code.sh
 
 # Docker
 .devcontainer

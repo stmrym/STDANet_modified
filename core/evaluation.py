@@ -205,6 +205,10 @@ def evaluation(cfg,
             Best_Img_PSNR = img_PSNRs_out.avg
             Best_Epoch = epoch_idx
 
+    elif cfg.NETWORK.PHASE in ['test'] and tb_writer is not None:
+        tb_writer.add_scalar(f'PSNR/VALID_{eval_dataset_name}', img_PSNRs_out.avg, epoch_idx)
+        tb_writer.add_scalar(f'SSIM/VALID_{eval_dataset_name}', img_ssims_out.avg, epoch_idx)
+
     log.info(f'[EVAL][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{eval_dataset_name}] PSNR(mid:{img_PSNRs_mid.avg}, out:{img_PSNRs_out.avg}), PSNR_best:{Best_Img_PSNR} at epoch {Best_Epoch}')
     log.info(f'[EVAL] Infer. time:{inference_time}, Process time:{process_time} SSIM(mid:{img_ssims_mid.avg}, out:{img_ssims_out.avg}))')
 
