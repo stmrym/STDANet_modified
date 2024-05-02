@@ -75,10 +75,11 @@ def test(cfg,output_dir):
             
             if len(weights) != 1:
                 save_dir = os.path.join(output_dir, test_dataset_name, epoch)
-                if not os.path.exists(save_dir):
-                    os.makedirs(save_dir)
             else:
                 save_dir = os.path.join(output_dir, test_dataset_name)
+                
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
 
             _, _ = evaluation(cfg = cfg, 
                 eval_dataset_name = test_dataset_name,

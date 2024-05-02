@@ -38,8 +38,7 @@ def main():
     elif  cfg.NETWORK.PHASE == 'test':
         output_dir = os.path.join(cfg.DIR.OUT_PATH,'test', cfg.CONST.PREFIX)
         print_log    = os.path.join(output_dir, 'print.log')
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+
     elif cfg.NETWORK.PHASE == 'train':
         timestr = dt.now().isoformat(timespec='seconds').replace(':', '')
         output_dir = os.path.join(cfg.DIR.OUT_PATH,'train', cfg.CONST.PREFIX + timestr + '_' + cfg.NETWORK.DEBLURNETARCH + '_' + '_'.join(cfg.DATASET.TRAIN_DATASET_LIST)) # changed to use timestr
