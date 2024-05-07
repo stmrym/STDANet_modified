@@ -8,6 +8,7 @@ from datetime import datetime
 from PIL import Image
 import importlib
 import tempfile
+# os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 import torch
 import torchvision
 from mmflow.datasets import visualize_flow

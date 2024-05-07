@@ -16,8 +16,8 @@ def get_weights(path, multi_file = True):
 
 if __name__ == '__main__':
 
-    path = './exp_log/train/F_2024-03-06T124456_ESTDAN_Stack_BSD_3ms24ms_GOPRO/checkpoints'
-    weights = get_weights(path, multi_file = True)
+    path = './exp_log/train/Sobel_fixed_2024-04-23T042249_ESTDAN_light_Stack_GOPRO/checkpoints/ckpt-epoch-1200.pth.tar'
+    weights = get_weights(path, multi_file = False)
 
     index_list = [s.split('ckpt-epoch-')[1].split('.pth.tar')[0] for s in weights]
     row_list = ['x11', 'x12', 'x13', 'x21', 'x22', 'x23', 'x31', 'x32', 'x33',
