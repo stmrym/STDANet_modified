@@ -54,7 +54,7 @@ def test(cfg,output_dir):
     weights = get_weights(cfg.CONST.WEIGHTS, multi_file = True)
     test_writer = SummaryWriter(output_dir) if cfg.EVAL.USE_TENSORBOARD else None
 
-    for weight in weights[10:]:
+    for weight in weights:
 
         epoch = weight.split('ckpt-epoch-')[-1].split('.pth')[0]
         log.info(f'{dt.now()} Recovering from {weight} ...')     
@@ -77,9 +77,6 @@ def test(cfg,output_dir):
                 save_dir = os.path.join(output_dir, test_dataset_name, epoch)
             else:
                 save_dir = os.path.join(output_dir, test_dataset_name)
-                
-            if not os.path.exists(save_dir):
-                os.makedirs(save_dir)
 
             _, _ = evaluation(cfg = cfg, 
                 eval_dataset_name = test_dataset_name,

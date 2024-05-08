@@ -121,11 +121,11 @@ def evaluation(cfg,
                     output_image_bgr = cv2.cvtColor(np.clip(output_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)                    
                     cv2.imwrite(os.path.join(save_dir + '_output', seq, img_name + '.png'), output_image_bgr)
 
-                    # if os.path.isdir(os.path.join(save_dir + '_mid', seq)) == False:
-                    #     os.makedirs(os.path.join(save_dir + '_mid', seq), exist_ok=True)
+                    if os.path.isdir(os.path.join(save_dir + '_mid', seq)) == False:
+                        os.makedirs(os.path.join(save_dir + '_mid', seq), exist_ok=True)
 
-                    # mid_image_bgr = cv2.cvtColor(np.clip(mid_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)                    
-                    # cv2.imwrite(os.path.join(save_dir + '_mid', seq, img_name + '.png'), mid_image_bgr)
+                    mid_image_bgr = cv2.cvtColor(np.clip(mid_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)                    
+                    cv2.imwrite(os.path.join(save_dir + '_mid', seq, img_name + '.png'), mid_image_bgr)
 
                     for loss_dict in cfg.LOSS_DICT_LIST:
                         if 'motion_edge_loss' in loss_dict.values():
@@ -210,6 +210,6 @@ def evaluation(cfg,
         tb_writer.add_scalar(f'SSIM/VALID_{eval_dataset_name}', img_ssims_out.avg, epoch_idx)
 
     log.info(f'[EVAL][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{eval_dataset_name}] PSNR(mid:{img_PSNRs_mid.avg}, out:{img_PSNRs_out.avg}), PSNR_best:{Best_Img_PSNR} at epoch {Best_Epoch}')
-    log.info(f'[EVAL] Infer. time:{inference_time}, Process time:{process_time} SSIM(mid:{img_ssims_mid.avg}, out:{img_ssims_out.avg}))')
+    log.info(f'[EVAL][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{eval_dataset_name}] Infer. time:{inference_time}, Process time:{process_time} SSIM(mid:{img_ssims_mid.avg}, out:{img_ssims_out.avg}))')
 
     return Best_Img_PSNR, Best_Epoch
