@@ -11,7 +11,7 @@ import numpy as np
 from time import time
 from utils import log
 from utils.util import ssim_calculate
-import lpips
+# import lpips
 from tqdm import tqdm
 
 from models.submodules import warp
@@ -32,14 +32,11 @@ def evaluation(cfg,
 
     inference_time = utils.network_utils.AverageMeter()
     process_time   = utils.network_utils.AverageMeter()
-    img_PSNRs_mid = utils.network_utils.AverageMeter()
     img_PSNRs_out = utils.network_utils.AverageMeter()
-    img_ssims_mid = utils.network_utils.AverageMeter()
     img_ssims_out = utils.network_utils.AverageMeter()
-    # img_LPIPSs_mid = utils.network_utils.AverageMeter()
-    # img_LPIPSs_out = utils.network_utils.AverageMeter()
-
-    # loss_fn_alex = lpips.LPIPS(net='alex').cuda()
+    if cfg.NETWORK.USE_STACK:    
+        img_PSNRs_mid = utils.network_utils.AverageMeter()
+        img_ssims_mid = utils.network_utils.AverageMeter()
 
     losses_dict_list = []
     for loss_config_dict in cfg.LOSS_DICT_LIST:
@@ -73,11 +70,21 @@ def evaluation(cfg,
             input_seq = torch.cat(input_seq,1)
             gt_seq = torch.cat(seq_clear,1)
 
+            if len(seq_clear) == 3:
+                gt_tensor = gt_seq[:,1,:,:,:]
+            elif len(seq_clear) == 5:
+                gt_tensor = gt_seq[:,2,:,:,:]
+            
             torch.cuda.synchronize()
             inference_start_time = time()
 
             # Inference
-            output_dict = deblurnet(input_seq) # {'recons_1': first output, 'recons_2': second output, 'recons_3': third output, 'out': final output, 'flow_forwards': fowards_list, 'flow_backwards': backwards_list}
+
+            # {'out':           {'recons_1', 'recons_2', 'recons_3', 'final'},
+            #  'flow_forwards': {'recons_1', 'recons_2', 'recons_3', 'final'},
+            #  'flow_backwards':{'recons_1', 'recons_2', 'recons_3', 'final'},
+            #  ...}
+            output_dict = deblurnet(input_seq)
             
             torch.cuda.synchronize()
             inference_time.update((time() - inference_start_time))
@@ -85,27 +92,25 @@ def evaluation(cfg,
             # calculate test loss
             total_loss, total_losses, losses_dict_list = calc_update_losses(output_dict=output_dict, gt_seq=gt_seq, losses_dict_list=losses_dict_list, total_losses=total_losses, batch_size=cfg.CONST.EVAL_BATCH_SIZE)
 
-            output_tensor = output_dict['out']
-            mid_tensor = output_dict['recons_2']
-            gt_tensor = gt_seq[:,2,:,:,:]
+            img_PSNRs_out.update(util.calc_psnr(output_dict['out']['final'].detach(),gt_tensor.detach()), cfg.CONST.EVAL_BATCH_SIZE)
+            
+            output_ndarrays = output_dict['out']['final'].detach().cpu().permute(0,2,3,1).numpy()*255
+            gt_ndarrays = gt_tensor.detach().cpu().permute(0,2,3,1).numpy()*255        
+            
+            if cfg.NETWORK.USE_STACK: 
+                img_PSNRs_mid.update(util.calc_psnr(output_dict['out']['recons_2'].detach(),gt_tensor.detach()), cfg.CONST.EVAL_BATCH_SIZE)
+                mid_ndarrays = output_dict['out']['recons_2'].detach().cpu().permute(0,2,3,1).numpy()*255
 
-            img_PSNRs_out.update(util.calc_psnr(output_tensor.detach(),gt_tensor.detach()), cfg.CONST.EVAL_BATCH_SIZE)
-            img_PSNRs_mid.update(util.calc_psnr(mid_tensor.detach(),gt_tensor.detach()), cfg.CONST.EVAL_BATCH_SIZE)
-        
-            # img_LPIPSs_out.update(loss_fn_alex(output_tensor, gt_tensor).mean().detach().cpu(), cfg.CONST.EVAL_BATCH_SIZE)
-            # img_LPIPSs_mid.update(loss_fn_alex(mid_tensor, gt_tensor).mean().detach().cpu(), cfg.CONST.EVAL_BATCH_SIZE)
-        
-            output_ndarrays = output_tensor.detach().cpu().permute(0,2,3,1).numpy()*255
-            mid_ndarrays = mid_tensor.detach().cpu().permute(0,2,3,1).numpy()*255
-            gt_ndarrays = gt_tensor.detach().cpu().permute(0,2,3,1).numpy()*255
 
             for batch in range(0, output_ndarrays.shape[0]):
                 output_ndarr = output_ndarrays[batch,:,:,:]
-                mid_ndarr = mid_ndarrays[batch,:,:,:]
                 gt_ndarr = gt_ndarrays[batch,:,:,:]
-
+                # [TODO] need to modify
                 img_ssims_out.update(ssim_calculate(output_ndarr, gt_ndarr), cfg.CONST.EVAL_BATCH_SIZE)
-                img_ssims_mid.update(ssim_calculate(mid_ndarr, gt_ndarr), cfg.CONST.EVAL_BATCH_SIZE)
+                
+                if cfg.NETWORK.USE_STACK:
+                    mid_ndarr = mid_ndarrays[batch,:,:,:]
+                    img_ssims_mid.update(ssim_calculate(mid_ndarr, gt_ndarr), cfg.CONST.EVAL_BATCH_SIZE)
 
                 if cfg.NETWORK.PHASE == 'test':
                     cfg.EVAL.VISUALIZE_FREQ = 1
@@ -115,70 +120,39 @@ def evaluation(cfg,
     
                     seq, img_name = name[batch].split('.')  # name = ['000.00000002']
                     # saving output image
-                    if os.path.isdir(os.path.join(save_dir + '_output', seq)) == False:
-                        os.makedirs(os.path.join(save_dir + '_output', seq), exist_ok=True)
+                    # if os.path.isdir(os.path.join(save_dir + '_output', seq)) == False:
+                    #     os.makedirs(os.path.join(save_dir + '_output', seq), exist_ok=True)
 
-                    output_image_bgr = cv2.cvtColor(np.clip(output_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)                    
-                    cv2.imwrite(os.path.join(save_dir + '_output', seq, img_name + '.png'), output_image_bgr)
+                    # output_image_bgr = cv2.cvtColor(np.clip(output_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)                    
+                    # cv2.imwrite(os.path.join(save_dir + '_output', seq, img_name + '.png'), output_image_bgr)
 
-                    if os.path.isdir(os.path.join(save_dir + '_mid', seq)) == False:
-                        os.makedirs(os.path.join(save_dir + '_mid', seq), exist_ok=True)
+                    # if cfg.NETWORK.USE_STACK:
+                    #     if os.path.isdir(os.path.join(save_dir + '_mid', seq)) == False:
+                    #         os.makedirs(os.path.join(save_dir + '_mid', seq), exist_ok=True)
 
-                    mid_image_bgr = cv2.cvtColor(np.clip(mid_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)                    
-                    cv2.imwrite(os.path.join(save_dir + '_mid', seq, img_name + '.png'), mid_image_bgr)
+                    #     mid_image_bgr = cv2.cvtColor(np.clip(mid_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)                    
+                    #     cv2.imwrite(os.path.join(save_dir + '_mid', seq, img_name + '.png'), mid_image_bgr)
 
-                    for loss_dict in cfg.LOSS_DICT_LIST:
-                        if 'motion_edge_loss' in loss_dict.values():
-                            if os.path.isdir(os.path.join(save_dir + '_m_edge_out', seq)) == False:
-                                os.makedirs(os.path.join(save_dir + '_m_edge_out', seq), exist_ok=True)
-                            if os.path.isdir(os.path.join(save_dir + '_m_edge_gt', seq)) == False:
-                                os.makedirs(os.path.join(save_dir + '_m_edge_gt', seq), exist_ok=True)
+                    # if cfg.EVAL.SAVE_FLOW:
+                    #     # saving out flow
+                    #     out_flow_forward = (output_dict['flow_forwards']['final'])[0][1].permute(1,2,0).cpu().detach().numpy()  
+                    #     util.save_hsv_flow(save_dir=save_dir, seq=seq, img_name=img_name, out_flow=out_flow_forward)
 
-                            util.save_edge(
-                                savename = os.path.join(save_dir + '_m_edge_out', seq, img_name + '.png'), 
-                                out_image = output_tensor,
-                                flow_tensor=output_dict['flow_forwards'][-1][:,1,:,:,:],
-                                key = 'weighted',
-                                edge_extraction_func = motion_weighted_edge_extraction)
+                    # if 'ortho_weight' in output_dict.keys():
+                    #     ortho_weight = output_dict['ortho_weight']['final'][batch,0,:,:]
+                    #     ortho_weight_ndarr = ortho_weight.detach().cpu().numpy()*255
+                    #     if os.path.isdir(os.path.join(save_dir + '_orthoEdge', seq)) == False:
+                    #         os.makedirs(os.path.join(save_dir + '_orthoEdge', seq), exist_ok=True)
+                    #     cv2.imwrite(os.path.join(save_dir + '_orthoEdge', seq, img_name + '.png'), np.clip(ortho_weight_ndarr, 0, 255).astype(np.uint8))
                         
-                            util.save_edge(
-                                savename = os.path.join(save_dir + '_m_edge_gt', seq, img_name + '.png'),
-                                out_image = gt_seq[:,2,:,:,:],
-                                flow_tensor = output_dict['flow_forwards'][-1][:,1,:,:,:],
-                                key = 'weighted',
-                                edge_extraction_func = motion_weighted_edge_extraction)
-                        
-                        if 'orthogonal_edge_loss' in loss_dict.values():
-                            if os.path.isdir(os.path.join(save_dir + '_o_edge_out', seq)) == False:
-                                os.makedirs(os.path.join(save_dir + '_o_edge_out', seq), exist_ok=True)
-                            if os.path.isdir(os.path.join(save_dir + '_o_edge_gt', seq)) == False:
-                                os.makedirs(os.path.join(save_dir + '_o_edge_gt', seq), exist_ok=True)
-
-                            util.save_edge(
-                                savename = os.path.join(save_dir + '_o_edge_out', seq, img_name + '.png'), 
-                                out_image = output_tensor,
-                                flow_tensor=output_dict['flow_forwards'][-1][:,1,:,:,:],
-                                key = 'abs_weight',
-                                edge_extraction_func = orthogonal_edge_extraction)
-                        
-                            util.save_edge(
-                                savename = os.path.join(save_dir + '_o_edge_gt', seq, img_name + '.png'),
-                                out_image = gt_tensor,
-                                flow_tensor = output_dict['flow_forwards'][-1][:,1,:,:,:],
-                                key = 'abs_weight',
-                                edge_extraction_func = orthogonal_edge_extraction)
-                            
-
-                    if cfg.EVAL.SAVE_FLOW:
-                        # saving out flow
-                        out_flow_forward = (output_dict['flow_forwards'][-1])[0][1].permute(1,2,0).cpu().detach().numpy()  
-                        util.save_hsv_flow(save_dir=save_dir, seq=seq, img_name=img_name, out_flow=out_flow_forward)
-
-
 
             torch.cuda.synchronize()
             process_time.update((time() - process_start_time))
-            tqdm_eval.set_postfix_str(f'Inference Time {inference_time} Process Time {process_time} PSNR_mid {img_PSNRs_mid} PSNR_out {img_PSNRs_out}')
+            if cfg.NETWORK.USE_STACK:
+                tqdm_eval.set_postfix_str(f'Inference Time {inference_time} Process Time {process_time} PSNR_mid {img_PSNRs_mid} PSNR_out {img_PSNRs_out}')
+            else:
+                tqdm_eval.set_postfix_str(f'Inference Time {inference_time} Process Time {process_time} PSNR_out {img_PSNRs_out}')
+
 
 
     if cfg.EVAL.VISUAL_SAVE_FILE_MAX != -1:
@@ -209,7 +183,12 @@ def evaluation(cfg,
         tb_writer.add_scalar(f'PSNR/VALID_{eval_dataset_name}', img_PSNRs_out.avg, epoch_idx)
         tb_writer.add_scalar(f'SSIM/VALID_{eval_dataset_name}', img_ssims_out.avg, epoch_idx)
 
-    log.info(f'[EVAL][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{eval_dataset_name}] PSNR(mid:{img_PSNRs_mid.avg}, out:{img_PSNRs_out.avg}), PSNR_best:{Best_Img_PSNR} at epoch {Best_Epoch}')
-    log.info(f'[EVAL][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{eval_dataset_name}] Infer. time:{inference_time}, Process time:{process_time} SSIM(mid:{img_ssims_mid.avg}, out:{img_ssims_out.avg}))')
+    if cfg.NETWORK.USE_STACK:
+        log.info(f'[EVAL][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{eval_dataset_name}] PSNR(mid:{img_PSNRs_mid.avg}, out:{img_PSNRs_out.avg}), PSNR_best:{Best_Img_PSNR} at epoch {Best_Epoch}')
+        log.info(f'[EVAL][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{eval_dataset_name}] SSIM(mid:{img_ssims_mid.avg}, out:{img_ssims_out.avg}), Infer. time:{inference_time}, Process time:{process_time}')
+    else:
+        log.info(f'[EVAL][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{eval_dataset_name}] PSNR(out:{img_PSNRs_out.avg}), PSNR_best:{Best_Img_PSNR} at epoch {Best_Epoch}')
+        log.info(f'[EVAL][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{eval_dataset_name}] SSIM(out:{img_ssims_out.avg}), Infer. time:{inference_time}, Process time:{process_time}')
+
 
     return Best_Img_PSNR, Best_Epoch

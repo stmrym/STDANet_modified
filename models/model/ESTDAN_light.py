@@ -170,4 +170,4 @@ class ESTDAN_light(nn.Module):
         first_scale_decoder_first = self.decoder_first(first_scale_decoder_second + first_scale_encoder_first.view(b,n,64,h//2,w//2)[:,1] + orthogonal_feat_second)
         first_scale_outBlock = self.outBlock(first_scale_decoder_first + first_scale_inblock.view(b,n,32,h,w)[:,1] + orthogonal_feat_first)
         
-        return first_scale_outBlock, flow_forward,flow_backward, orthogonal_weight
+        return {'out':first_scale_outBlock, 'flow_forwards':flow_forward, 'flow_backwards':flow_backward, 'ortho_weight':orthogonal_weight}

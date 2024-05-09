@@ -10,9 +10,7 @@ import utils.data_loaders
 import utils.data_transforms
 import utils.network_utils
 import utils.packing
-import models
-import importlib
-# from models.STDAN_Stack import STDAN_Stack
+from models.Stack import Stack
 # from models.STDAN_RAFT_Stack import STDAN_RAFT_Stack
 from datetime import datetime as dt
 from tensorboardX import SummaryWriter
@@ -52,9 +50,11 @@ def  bulid_net(cfg,output_dir):
     
     # Set up networks
     device = 'cuda' if torch.cuda.device_count() > 0 else 'cpu'
-    module = importlib.import_module('models.' + cfg.NETWORK.DEBLURNETARCH)
-    # deblurnet = module.__dict__[cfg.NETWORK.DEBLURNETARCH](cfg = cfg)
-    deblurnet = module.__dict__[cfg.NETWORK.DEBLURNETARCH](device = device)
+    deblurnet = Stack(  
+                        network_arch=cfg.NETWORK.DEBLURNETARCH, 
+                        use_stack=cfg.NETWORK.USE_STACK, 
+                        n_sequence=cfg.DATA.INPUT_LENGTH, 
+                        device = device)
     
     log.info(f'{dt.now()} Parameters in {cfg.NETWORK.DEBLURNETARCH}: {utils.network_utils.count_parameters(deblurnet)}.')
     log.info(f'Loss: {cfg.LOSS_DICT_LIST} ')
@@ -66,8 +66,6 @@ def  bulid_net(cfg,output_dir):
     base_params = []
     motion_branch_params = []
     attention_params = []
-
-
 
     for name,param in deblurnet.named_parameters():
         if 'reference_points' in name or 'sampling_offsets' in name:
@@ -102,7 +100,7 @@ def  bulid_net(cfg,output_dir):
     Best_Epoch       = -1
     Best_Img_PSNR    = 0
     
-    if cfg.CONST.WEIGHTS != '':
+    if cfg.NETWORK.PHASE in ['train', 'resume'] and cfg.CONST.WEIGHTS != '':
         log.info(f'{dt.now()} Recovering from {cfg.CONST.WEIGHTS} ...')
         
         checkpoint = torch.load(os.path.join(cfg.CONST.WEIGHTS),map_location='cpu')
@@ -156,24 +154,4 @@ def  bulid_net(cfg,output_dir):
             deblurnet = deblurnet, deblurnet_solver = deblurnet_solver, 
             deblurnet_lr_scheduler = deblurnet_lr_scheduler,
             ckpt_dir = ckpt_dir, visualize_dir = visualize_dir,
-            tb_writer = train_writer, Best_Img_PSNR = Best_Img_PSNR, Best_Epoch = Best_Epoch)
-    
-    elif cfg.NETWORK.PHASE in ['test']:
-
-        # Test for each dataset list
-        for test_dataset_name, test_image_blur_path, test_image_clear_path, test_json_file_path\
-            in zip(cfg.DATASET.TEST_DATASET_LIST, cfg.DIR.TEST_IMAGE_BLUR_PATH_LIST, cfg.DIR.TEST_IMAGE_CLEAR_PATH_LIST, cfg.DIR.TEST_JSON_FILE_PATH_LIST):
-            test_loader = utils.data_loaders.VideoDeblurDataLoader_No_Slipt(
-                image_blur_path = test_image_blur_path, 
-                image_clear_path = test_image_clear_path,
-                json_file_path = test_json_file_path,
-                input_length = cfg.DATA.INPUT_LENGTH)
-            
-            save_dir = os.path.join(output_dir, test_dataset_name)
-
-            _, _ = evaluation(cfg = cfg, 
-                eval_dataset_name = test_dataset_name,
-                save_dir = save_dir,
-                eval_loader = test_loader,
-                eval_transforms = test_transforms,
-                deblurnet = deblurnet)        
+            tb_writer = train_writer, Best_Img_PSNR = Best_Img_PSNR, Best_Epoch = Best_Epoch)  

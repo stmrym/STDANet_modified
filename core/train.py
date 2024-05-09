@@ -70,7 +70,8 @@ def train(cfg, init_epoch,
 
         total_losses = utils.network_utils.AverageMeter()
 
-        img_PSNRs_mid = utils.network_utils.AverageMeter()
+        if cfg.NETWORK.USE_STACK:
+            img_PSNRs_mid = utils.network_utils.AverageMeter()
         img_PSNRs_out    = utils.network_utils.AverageMeter()
 
         tqdm_train = tqdm(train_data_loader)
@@ -88,17 +89,26 @@ def train(cfg, init_epoch,
             input_seq = torch.cat(seq_blur,1)
             gt_seq = torch.cat(seq_clear,1)
             
-            # recons_1, recons_2, recons_3, out, flow_forward, flow_backward = deblurnet(input_seq)
-            output_dict = deblurnet(input_seq) # {'recons_1': first output, 'recons_2': second output, 'recons_3': third output, 'out': final output, 'flow_forwards': fowards_list, 'flow_backwards': backwards_list}
+            if len(seq_clear) == 3:
+                gt_tensor = gt_seq[:,1,:,:,:]
+            elif len(seq_clear) == 5:
+                gt_tensor = gt_seq[:,2,:,:,:]
+
+            # {'out':           {'recons_1', 'recons_2', 'recons_3', 'final'},
+            #  'flow_forwards': {'recons_1', 'recons_2', 'recons_3', 'final'},
+            #  'flow_backwards':{'recons_1', 'recons_2', 'recons_3', 'final'},
+            #  ...}
+            output_dict = deblurnet(input_seq) 
             
             # Calculate & update loss
             total_loss, total_losses, losses_dict_list = calc_update_losses(output_dict=output_dict, gt_seq=gt_seq, losses_dict_list=losses_dict_list, total_losses=total_losses, batch_size=cfg.CONST.TRAIN_BATCH_SIZE)
 
-            img_PSNR_out = util.calc_psnr(output_dict['out'].detach(),gt_seq[:,2,:,:,:].detach())
+            img_PSNR_out = util.calc_psnr(output_dict['out']['final'].detach(),gt_tensor.detach())
             img_PSNRs_out.update(img_PSNR_out, cfg.CONST.TRAIN_BATCH_SIZE)
 
-            img_PSNR_mid = util.calc_psnr(output_dict['recons_2'].detach(),gt_seq[:,2,:,:,:].detach())
-            img_PSNRs_mid.update(img_PSNR_mid, cfg.CONST.TRAIN_BATCH_SIZE)
+            if cfg.NETWORK.USE_STACK:
+                img_PSNR_mid = util.calc_psnr(output_dict['out']['recons_2'].detach(),gt_tensor.detach())
+                img_PSNRs_mid.update(img_PSNR_mid, cfg.CONST.TRAIN_BATCH_SIZE)
             deblurnet_solver.zero_grad()
             total_loss.backward()
             deblurnet_solver.step()
@@ -106,7 +116,10 @@ def train(cfg, init_epoch,
             n_itr = n_itr + 1
 
             # Tick / tock
-            tqdm_train.set_postfix_str(f'PSNR_mid {img_PSNRs_mid} PSNR_out {img_PSNRs_out}')        
+            if cfg.NETWORK.USE_STACK:
+                tqdm_train.set_postfix_str(f'PSNR_mid {img_PSNRs_mid} PSNR_out {img_PSNRs_out}')        
+            else:
+                tqdm_train.set_postfix_str(f'PSNR_out {img_PSNRs_out}')
             
         # Append epoch loss to TensorBoard
         for losses_dict in losses_dict_list:
@@ -117,15 +130,16 @@ def train(cfg, init_epoch,
         tb_writer.add_scalar('lr/lr', deblurnet_lr_scheduler.get_last_lr()[0], epoch_idx)
         deblurnet_lr_scheduler.step()
 
-        log.info(f'[TRAIN][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}] PSNR_mid: {img_PSNRs_mid.avg}, PSNR_out: {img_PSNRs_out.avg}')
+        if cfg.NETWORK.USE_STACK:
+            log.info(f'[TRAIN][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}] PSNR_mid: {img_PSNRs_mid.avg}, PSNR_out: {img_PSNRs_out.avg}')
+        else:
+            log.info(f'[TRAIN][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}] PSNR_out: {img_PSNRs_out.avg}')
 
-        
         if epoch_idx % cfg.TRAIN.SAVE_FREQ == 0:
             utils.network_utils.save_checkpoints(os.path.join(ckpt_dir, 'ckpt-epoch-%04d.pth.tar' % (epoch_idx)), \
                                                     epoch_idx, deblurnet,deblurnet_solver, \
                                                     Best_Img_PSNR, Best_Epoch)
-            
-        
+                    
         utils.network_utils.save_checkpoints(os.path.join(ckpt_dir, 'latest-ckpt.pth.tar'), \
                                                     epoch_idx, deblurnet, deblurnet_solver,\
                                                     Best_Img_PSNR, Best_Epoch)

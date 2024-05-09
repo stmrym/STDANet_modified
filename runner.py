@@ -44,7 +44,6 @@ def main():
     elif cfg.NETWORK.PHASE == 'train':
         timestr = dt.now().isoformat(timespec='seconds').replace(':', '')
         output_dir = os.path.join(cfg.DIR.OUT_PATH,'train', cfg.CONST.PREFIX + timestr + '_' + cfg.NETWORK.DEBLURNETARCH + '_' + '_'.join(cfg.DATASET.TRAIN_DATASET_LIST)) # changed to use timestr
-
         
         ckpt_dir     = os.path.join(output_dir, 'checkpoints')
         if not os.path.exists(ckpt_dir):
@@ -57,10 +56,7 @@ def main():
         print('Invalid NETWORK.PHASE!')
         exit()
 
-    log.setFileHandler(print_log,mode="w")
-    # Print config
-    log.info('Use config:')
-    log.info(cfg)
+    log.setFileHandler(print_log,mode='a')
 
     # Set GPU to use
     if type(cfg.CONST.DEVICE) == str and not cfg.CONST.DEVICE == 'all':

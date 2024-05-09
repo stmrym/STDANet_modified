@@ -2,10 +2,10 @@
 
 
 import os
-import sys
 import torch.backends.cudnn
 import torch.utils.data
 
+from models.Stack import Stack
 import utils.data_loaders
 import utils.data_transforms
 import utils.network_utils
@@ -40,9 +40,12 @@ def test(cfg,output_dir):
     
     # Set up networks
     device = 'cuda' if torch.cuda.device_count() > 0 else 'cpu'
-    module = importlib.import_module('models.' + cfg.NETWORK.DEBLURNETARCH)
     # deblurnet = module.__dict__[cfg.NETWORK.DEBLURNETARCH](cfg = cfg)
-    deblurnet = module.__dict__[cfg.NETWORK.DEBLURNETARCH](device = device)
+    deblurnet = Stack(  
+                    network_arch=cfg.NETWORK.DEBLURNETARCH, 
+                    use_stack=cfg.NETWORK.USE_STACK, 
+                    n_sequence=cfg.DATA.INPUT_LENGTH, 
+                    device = device)
     
     if torch.cuda.is_available():
         deblurnet = torch.nn.DataParallel(deblurnet).cuda()
@@ -51,7 +54,7 @@ def test(cfg,output_dir):
     log.info(f'Loss: {cfg.LOSS_DICT_LIST} ')
 
     # Load pretrained model if exists
-    weights = get_weights(cfg.CONST.WEIGHTS, multi_file = True)
+    weights = get_weights(cfg.CONST.WEIGHTS, multi_file = False)
     test_writer = SummaryWriter(output_dir) if cfg.EVAL.USE_TENSORBOARD else None
 
     for weight in weights:

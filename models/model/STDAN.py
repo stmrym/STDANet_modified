@@ -15,7 +15,7 @@ def make_model(args):
 class STDAN(nn.Module):
 
     def __init__(self, in_channels=3, n_sequence=3, out_channels=3, n_resblock=3, n_feat=32,
-                 kernel_size=5, feat_in=False, n_in_feat=32):
+                 kernel_size=5, feat_in=False, n_in_feat=32, device='cuda'):
         super(STDAN, self).__init__()
 
         self.feat_in = feat_in
@@ -135,6 +135,4 @@ class STDAN(nn.Module):
         
         first_scale_outBlock = self.outBlock(first_scale_decoder_first+first_scale_inblock.view(b,n,32,h,w)[:,1])
         
-        mid_loss = None
-
-        return first_scale_outBlock, flow_forward,flow_backward
+        return {'out':first_scale_outBlock, 'flow_forwards':flow_forward, 'flow_backwards':flow_backward}
