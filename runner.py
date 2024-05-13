@@ -16,8 +16,8 @@ import argparse
 import shutil
 matplotlib.use('Agg')
 from datetime import datetime as dt
-import warnings
-warnings.filterwarnings("ignore") 
+# import warnings
+# warnings.filterwarnings("ignore") 
 
 def main():
 
@@ -79,10 +79,7 @@ def main():
 
 
     # Setup Network & Start train/test process
-    if cfg.NETWORK.PHASE in ['train', 'resume']:
-        bulid_net(cfg = cfg, output_dir = output_dir)
-    elif cfg.NETWORK.PHASE in ['test']:
-        test(cfg = cfg, output_dir = output_dir)
+    bulid_net(cfg = cfg, output_dir = output_dir)
 
 
 if __name__ == '__main__':

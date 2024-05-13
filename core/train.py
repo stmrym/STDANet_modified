@@ -143,13 +143,6 @@ def train(cfg, init_epoch,
         utils.network_utils.save_checkpoints(os.path.join(ckpt_dir, 'latest-ckpt.pth.tar'), \
                                                     epoch_idx, deblurnet, deblurnet_solver,\
                                                     Best_Img_PSNR, Best_Epoch)
-
-        if cfg.EVAL.WEIGHTS_SAVE_FILE_MAX != -1:
-            files = sorted(glob.glob(os.path.join(ckpt_dir, '*.pth.tar')))
-            remove_num = len(files) - cfg.EVAL.WEIGHTS_SAVE_FILE_MAX
-            if remove_num > 0:
-                for i in range(remove_num):
-                    os.remove(files[i])
         
         if epoch_idx % cfg.EVAL.VALID_FREQ == 0:
             

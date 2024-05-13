@@ -85,6 +85,7 @@ def calc_psnr(img1, img2, rgb_range=1., shave=4):
         img2 = img2[:, :, shave:-shave, shave:-shave]
         img2 = img2.to('cpu')
     mse = torch.mean((img1 / rgb_range - img2 / rgb_range) ** 2,[1,2,3])
+    
     """ if mse == 0:
         return 100 """
     PIXEL_MAX = 1
@@ -121,7 +122,7 @@ def calc_meanFilter(img, kernel_size=11, n_channel=1, device='cuda'):
                                              stride=1, padding=kernel_size // 2)
     return new_img
 def ssim_calculate(x, y, val_range=255.0):
-    ssim = compare_ssim(y, x, multichannel=True, channel_axis=1, gaussian_weights=True, sigma=1.5, use_sample_covariance=False,
+    ssim = compare_ssim(y, x, channel_axis=2, gaussian_weights=True, sigma=1.5, use_sample_covariance=False,
                         data_range=val_range)
     return ssim
 
