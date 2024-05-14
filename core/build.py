@@ -105,7 +105,6 @@ def  bulid_net(cfg,output_dir):
                 if param.requires_grad:
                     base_params.append(param)
         
-
         optim_param = [
                 {'params':base_params,'initial_lr':cfg.TRAIN.LEARNING_RATE,"lr":cfg.TRAIN.LEARNING_RATE},
                 {'params':motion_branch_params,'initial_lr':cfg.TRAIN.LEARNING_RATE,"lr":cfg.TRAIN.LEARNING_RATE},
