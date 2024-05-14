@@ -135,14 +135,12 @@ def  bulid_net(cfg,output_dir):
             Best_Img_PSNR = checkpoint['Best_Img_PSNR']
             Best_Epoch = checkpoint['Best_Epoch']
 
-        
         deblurnet_lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(deblurnet_solver,
                                                                     milestones=cfg.TRAIN.LR_MILESTONES,
                                                                     gamma=cfg.TRAIN.LR_DECAY,last_epoch=(init_epoch))
         
         if torch.cuda.is_available():
             deblurnet = torch.nn.DataParallel(deblurnet).cuda()
-
 
         ckpt_dir      = os.path.join(output_dir, 'checkpoints')
         visualize_dir = os.path.join(output_dir, 'visualization')
