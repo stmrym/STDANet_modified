@@ -16,26 +16,17 @@ def make_model(args):
 
 class ESTDAN_middle(nn.Module):
 
-    def __init__(self, in_channels=3, n_sequence=3, out_channels=3, sobel_out_channels=2, n_resblock=3, n_feat=32,
-                 kernel_size=5, feat_in=False, n_in_feat=32):
+    def __init__(self, in_channels=3, out_channels=3, sobel_out_channels=2, n_resblock=3, n_feat=32,
+                 kernel_size=5, device='cuda', **kwargs):
         super(ESTDAN_middle, self).__init__()
-
-        self.feat_in = feat_in
-
+        self.n_feat = n_feat
         InBlock = []
-        if not feat_in:
-            InBlock.extend([nn.Sequential(
-                nn.Conv2d(in_channels, n_feat, kernel_size=3, stride=1,
-                          padding=3 // 2),
-                nn.LeakyReLU(0.1,inplace=True)
-            )])
-            # print("The input of STDAN is image")
-        else:
-            InBlock.extend([nn.Sequential(
-                nn.Conv2d(n_in_feat, n_feat, kernel_size=3, stride=1, padding=3 // 2),
-                nn.LeakyReLU(0.1,inplace=True)
-            )])
-            # print("The input of STDAN is feature")
+        InBlock.extend([nn.Sequential(
+            nn.Conv2d(in_channels, n_feat, kernel_size=3, stride=1,
+                        padding=3 // 2),
+            nn.LeakyReLU(0.1,inplace=True)
+        )])
+        # print("The input of STDAN is image")
         InBlock.extend([blocks.ResBlock(n_feat, n_feat, kernel_size=3, stride=1)
                         for _ in range(3)])
 
@@ -82,7 +73,7 @@ class ESTDAN_middle(nn.Module):
         self.decoder_first = nn.Sequential(*Decoder_first)
         self.outBlock = nn.Sequential(*OutBlock)
 
-        self.edge_extractor = nn.Sequential(extractor.Edge_extractor_light(inplanes=1, planes=sobel_out_channels, kernel_size=3, stride=1))
+        self.edge_extractor = nn.Sequential(extractor.Edge_extractor_light(inplanes=1, planes=sobel_out_channels, kernel_size=3, stride=1, device=device))
 
         self.inBlock_channel_conv = nn.Sequential(
                         nn.Conv2d(n_feat + sobel_out_channels, n_feat, kernel_size=1, stride=1, padding='same', dilation=1),
@@ -157,19 +148,31 @@ class ESTDAN_middle(nn.Module):
     def forward(self, x):
         b, n, c, h, w = x.size()
         
-            # input (B, C, H, W) -> (B, 2, H, W)
-        sobel_feat = self.edge_extractor(x[:,1,:,:,:])
-        sobel_first_downsample = F.interpolate(sobel_feat, size=(h//4, w//4),mode='bilinear', align_corners=True)
-        sobel_second_downsample = F.interpolate(sobel_first_downsample, size=(h//4, w//4), mode='bilinear', align_corners=True)
+        # input (B*N, C, H, W) -> (B*N, 2, H, W)
+        sobel_feat = self.edge_extractor(x.view(b*n, c, h, w))
+        sobel_first_downsample = F.interpolate(sobel_feat, size=(h//2, w//2),mode='bilinear', align_corners=True)
+        sobel_second_downsample = F.interpolate(sobel_feat, size=(h//4, w//4), mode='bilinear', align_corners=True)
 
         first_scale_inblock = self.inBlock_t(x.view(b*n,c,h,w))
-        first_scale_inblock = self.inBlock_channel_conv(torch.cat([first_scale_inblock, sobel_feat], dim=1))
 
+        # concat (B,N,32,H,W) & (B,N,2,H,W) -> (B*N,32,H,W)
+        first_scale_inblock = self.inBlock_channel_conv(torch.cat(
+            [first_scale_inblock.view(b, n, self.n_feat, h, w), sobel_feat.view(b, n, -1, h, w)], dim=2)
+            .view(b*n, -1, h, w))
+  
+        # Encoder 1st downsampling H, W -> H/2, W/2
         first_scale_encoder_first = self.encoder_first(first_scale_inblock)
-        first_scale_encoder_first = self.encoder_first_channel_conv(torch.cat([first_scale_encoder_first, sobel_first_downsample], dim=1))
-        
+        # concat (B,N,64,H/2,W/2) & (B,N,2,H/2,W/2) -> (B*N,64,H/2,W/2)
+        first_scale_encoder_first = self.encoder_first_channel_conv(torch.cat(
+            [first_scale_encoder_first.view(b, n, self.n_feat*2, h//2, w//2), sobel_first_downsample.view(b, n, -1, h//2, w//2)], dim=2)
+            .view(b*n, -1, h//2, w//2))
+ 
+        # Encoder 2nd downsampling H/2, W/2 -> H/4, W/4
         first_scale_encoder_second = self.encoder_second(first_scale_encoder_first)
-        first_scale_encoder_second = self.encoder_second_channel_conv(torch.cat([first_scale_encoder_second, sobel_second_downsample], dim=1))
+        # concat (B,N,128,H/4,W/4) & (B,N,2,H/4,W/4) -> (B*N,128,H/4,W/4)
+        first_scale_encoder_second = self.encoder_second_channel_conv(torch.cat(
+            [first_scale_encoder_second.view(b, n, self.n_feat*4, h//4, w//4), sobel_second_downsample.view(b, n, -1, h//4, w//4)], dim=2)
+            .view(b*n, -1, h//4, w//4))
 
         first_scale_encoder_second = first_scale_encoder_second.view(b,n,128,h//4,w//4)
         
@@ -179,9 +182,10 @@ class ESTDAN_middle(nn.Module):
         
         first_scale_encoder_second = self.MSA(frame,srcframe,flow_forward,flow_backward)
         
-
-        # (B, 2, 2, H, W) -> (B, 2, H, W)
-        orthogonal_weight = self.orthogonal_feat_extractor(sobel_second_downsample, flow_forward, flow_backward)
+        # (B*N, 2, H/4, W/4) -> (B, N, 2, H/4, W/4) -> center frame (B, 2, H/4, W/4)
+        sobel_second_downsample = sobel_second_downsample.view(b,n,-1,h//4,w//4)
+        # (B, 2, H/4, W/4) -> (B, 2, H/4, W/4)
+        orthogonal_weight = self.orthogonal_feat_extractor(sobel_second_downsample[:,1,:,:,:], flow_forward, flow_backward)
         orthogonal_feat = self.orthogonal_feat_conv(orthogonal_weight)
         orthogonal_feat_second = self.orthogonal_second_upsampler(orthogonal_feat)
         orthogonal_feat_first = self.orthogonal_first_upsampler(orthogonal_feat_second)
@@ -190,4 +194,4 @@ class ESTDAN_middle(nn.Module):
         first_scale_decoder_first = self.decoder_first(first_scale_decoder_second + first_scale_encoder_first.view(b,n,64,h//2,w//2)[:,1] + orthogonal_feat_second)
         first_scale_outBlock = self.outBlock(first_scale_decoder_first + first_scale_inblock.view(b,n,32,h,w)[:,1] + orthogonal_feat_first)
         
-        return first_scale_outBlock, flow_forward,flow_backward
+        return {'out':first_scale_outBlock, 'flow_forwards':flow_forward, 'flow_backwards':flow_backward, 'ortho_weight':orthogonal_weight}

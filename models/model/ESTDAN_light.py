@@ -16,26 +16,17 @@ def make_model(args):
 
 class ESTDAN_light(nn.Module):
 
-    def __init__(self, in_channels=3, n_sequence=3, out_channels=3, sobel_out_channels=2, n_resblock=3, n_feat=32,
-                 kernel_size=5, feat_in=False, n_in_feat=32, device='cuda'):
+    def __init__(self, in_channels=3, out_channels=3, sobel_out_channels=2, n_resblock=3, n_feat=32,
+                 kernel_size=5, device='cuda', **kwargs):
         super(ESTDAN_light, self).__init__()
 
-        self.feat_in = feat_in
-
         InBlock = []
-        if not feat_in:
-            InBlock.extend([nn.Sequential(
-                nn.Conv2d(in_channels, n_feat, kernel_size=3, stride=1,
-                          padding=3 // 2),
-                nn.LeakyReLU(0.1,inplace=True)
-            )])
-            # print("The input of STDAN is image")
-        else:
-            InBlock.extend([nn.Sequential(
-                nn.Conv2d(n_in_feat, n_feat, kernel_size=3, stride=1, padding=3 // 2),
-                nn.LeakyReLU(0.1,inplace=True)
-            )])
-            # print("The input of STDAN is feature")
+        InBlock.extend([nn.Sequential(
+            nn.Conv2d(in_channels, n_feat, kernel_size=3, stride=1,
+                        padding=3 // 2),
+            nn.LeakyReLU(0.1,inplace=True)
+        )])
+        # print("The input of STDAN is image")
         InBlock.extend([blocks.ResBlock(n_feat, n_feat, kernel_size=3, stride=1)
                         for _ in range(3)])
 
@@ -161,6 +152,8 @@ class ESTDAN_light(nn.Module):
         sobel_feat_downsampled = F.interpolate(sobel_feat, size=(h//4, w//4),mode='bilinear', align_corners=True)
 
         # (B, 2, 2, H, W) -> (B, 2, H, W)
+        print(sobel_feat_downsampled.shape)
+        exit()
         orthogonal_weight = self.orthogonal_feat_extractor(sobel_feat_downsampled, flow_forward, flow_backward)
         orthogonal_feat = self.orthogonal_feat_conv(orthogonal_weight)
         orthogonal_feat_second = self.orthogonal_second_upsampler(orthogonal_feat)

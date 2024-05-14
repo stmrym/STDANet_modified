@@ -37,7 +37,7 @@ def train(cfg, init_epoch,
                 image_blur_path = train_image_blur_path, 
                 image_clear_path = train_image_clear_path,
                 json_file_path = train_json_file_path,
-                input_length = cfg.DATA.INPUT_LENGTH)
+                input_length = cfg.NETWORK.INPUT_LENGTH)
             
             dataset = dataset_loader.get_dataset(transforms = train_transforms)
             dataset_list.append(dataset)
@@ -153,7 +153,7 @@ def train(cfg, init_epoch,
                     image_blur_path = val_image_blur_path, 
                     image_clear_path = val_image_clear_path,
                     json_file_path = val_json_file_path,
-                    input_length = cfg.DATA.INPUT_LENGTH)
+                    input_length = cfg.NETWORK.INPUT_LENGTH)
 
                 save_dir = os.path.join(visualize_dir, 'epoch-' + str(epoch_idx).zfill(4))
 

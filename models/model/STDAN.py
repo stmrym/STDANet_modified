@@ -14,28 +14,14 @@ def make_model(args):
 
 class STDAN(nn.Module):
 
-    def __init__(self, in_channels=3, n_sequence=3, out_channels=3, n_resblock=3, n_feat=32,
-                 kernel_size=5, feat_in=False, n_in_feat=32, device='cuda'):
+    def __init__(self, in_channels=3, out_channels=3, n_resblock=3, n_feat=32, kernel_size=5, **kwargs):
         super(STDAN, self).__init__()
-
-        self.feat_in = feat_in
-
         InBlock = []
-        if not feat_in:
-            InBlock.extend([nn.Sequential(
-                nn.Conv2d(in_channels, n_feat, kernel_size=3, stride=1,
-                          padding=3 // 2),
-                nn.LeakyReLU(0.1,inplace=True)
-            )])
-            # print("The input of STDAN is image")
-        else:
-            InBlock.extend([nn.Sequential(
-                nn.Conv2d(n_in_feat, n_feat, kernel_size=3, stride=1, padding=3 // 2),
-                nn.LeakyReLU(0.1,inplace=True)
-            )])
-            # print("The input of STDAN is feature")
-        InBlock.extend([blocks.ResBlock(n_feat, n_feat, kernel_size=3, stride=1)
-                        for _ in range(3)])
+        InBlock.extend([nn.Sequential(
+            nn.Conv2d(in_channels, n_feat, kernel_size=3, stride=1,
+                        padding=3 // 2),
+            nn.LeakyReLU(0.1,inplace=True)
+        )])
         # encoder1
         Encoder_first = [nn.Sequential(
             nn.Conv2d(n_feat, n_feat * 2, kernel_size=3, stride=2, padding=3 // 2),

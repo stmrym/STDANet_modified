@@ -6,17 +6,17 @@ import torch.nn.functional as F
 
 class Stack(nn.Module):
 
-    def __init__(self, network_arch, use_stack = True, in_channels=3, n_sequence=5, out_channels=3, n_resblock=3, n_feat=32, device='cuda'):
+    def __init__(self, **kwargs):
         super(Stack, self).__init__()
 
-        self.n_sequence = n_sequence
-        self.device = device
-        self._network_arch = network_arch
-        self._use_stack = use_stack
+        self.in_channels = kwargs['in_channels']
+        self.n_sequence = kwargs['n_sequence']
+        self.device = kwargs['device']
+        self._network_arch = kwargs['network_arch']
+        self._use_stack = kwargs['use_stack']
 
         self._module = importlib.import_module('models.model.' + self._network_arch)
-        self.recons_net = self._module.__dict__[self._network_arch](in_channels=in_channels, n_sequence=3, out_channels=out_channels,
-                                                    n_resblock=n_resblock, n_feat=n_feat, device=device)
+        self.recons_net = self._module.__dict__[self._network_arch](**kwargs)
 
     def down_size(self,frame):
         _,_,h,w = frame.shape

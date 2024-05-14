@@ -61,10 +61,17 @@ def  bulid_net(cfg,output_dir):
     # Set up networks
     device = 'cuda' if torch.cuda.device_count() > 0 else 'cpu'
     deblurnet = Stack(  
-                        network_arch=cfg.NETWORK.DEBLURNETARCH, 
-                        use_stack=cfg.NETWORK.USE_STACK, 
-                        n_sequence=cfg.DATA.INPUT_LENGTH, 
-                        device = device)
+                        network_arch = cfg.NETWORK.DEBLURNETARCH, 
+                        use_stack = cfg.NETWORK.USE_STACK, 
+                        n_sequence = cfg.NETWORK.INPUT_LENGTH, 
+                        in_channels = cfg.NETWORK.INPUT_CHANNEL,
+                        n_feat = cfg.NETWORK.NUM_FEAT,
+                        out_channels = cfg.NETWORK.OUTPUT_CHANNEL,
+                        n_resblock = cfg.NETWORK.NUM_RESBLOCK,
+                        kernel_size = cfg.NETWORK.KERNEL_SIZE,
+                        sobel_out_channels = cfg.NETWORK.SOBEL_OUT_CHANNEL,
+                        device = device
+                        )
     
     log.info(f'{dt.now()} Parameters in {cfg.NETWORK.DEBLURNETARCH}: {utils.network_utils.count_parameters(deblurnet)}.')
     log.info(f'Loss: {cfg.LOSS_DICT_LIST} ')
@@ -80,16 +87,18 @@ def  bulid_net(cfg,output_dir):
         for name,param in deblurnet.named_parameters():
             if 'reference_points' in name or 'sampling_offsets' in name:
                 if param.requires_grad:
+
+
                     attention_params.append(param)
             # elif "spynet" in name or "flow_pwc" in name or "flow_net" in name:
             elif 'motion_branch' in name or 'motion_out' in name:
                 if param.requires_grad:
                     # Fix weigths for motion estimator
-                    if not cfg.NETWORK.MOTION_REQUIRES_GRAD:
+                    if not cfg.LOSS.MOTION_REQUIRES_GRAD:
                         log.info(f'Motion requires grad ... False')
                         param.requires_grad = False
                     motion_branch_params.append(param)
-            elif 'edge_extractor' in name and not cfg.NETWORK.SOBEL_REQUIRES_GRAD:
+            elif 'edge_extractor' in name and not cfg.LOSS.SOBEL_REQUIRES_GRAD:
                 param.requires_grad = False
 
             else:
@@ -177,7 +186,7 @@ def  bulid_net(cfg,output_dir):
                     image_blur_path = test_image_blur_path, 
                     image_clear_path = test_image_clear_path,
                     json_file_path = test_json_file_path,
-                    input_length = cfg.DATA.INPUT_LENGTH)
+                    input_length = cfg.NETWORK.INPUT_LENGTH)
                 
                 if len(weights) != 1:
                     save_dir = os.path.join(output_dir, test_dataset_name, epoch)
