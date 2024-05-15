@@ -4,19 +4,14 @@ import models.model.blocks as blocks
 from models.submodules import DeformableAttnBlock, DeformableAttnBlock_FUSION
 # from positional_encodings import PositionalEncodingPermute3D
 from torch.nn.init import xavier_uniform_, constant_
-def make_model(args):
-    return STDAN(in_channels=args.n_colors,
-                        n_sequence=args.n_sequence,
-                        out_channels=args.n_colors,
-                        n_resblock=args.n_resblock,
-                        n_feat=args.n_feat)
 
 
-class STDAN(nn.Module):
+class STDAN_debug(nn.Module):
 
     def __init__(self, in_channels=3, out_channels=3, n_resblock=3, n_feat=32, kernel_size=5, **kwargs):
-        super(STDAN, self).__init__()
+        super(STDAN_debug, self).__init__()
         InBlock = []
+    
         InBlock.extend([nn.Sequential(
             nn.Conv2d(in_channels, n_feat, kernel_size=3, stride=1,
                         padding=3 // 2),
@@ -124,4 +119,4 @@ class STDAN(nn.Module):
         
         first_scale_outBlock = self.outBlock(first_scale_decoder_first+first_scale_inblock.view(b,n,32,h,w)[:,1])
         
-        return {'out':first_scale_outBlock, 'flow_forwards':flow_forward, 'flow_backwards':flow_backward}
+        return {'out':first_scale_outBlock, 'flow_forwards':flow_forward, 'flow_backwards':flow_backward, 'first_scale_inblock': first_scale_inblock}

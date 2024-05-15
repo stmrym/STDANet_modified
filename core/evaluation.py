@@ -113,7 +113,11 @@ def evaluation(cfg,
             #  'flow_backwards':{'recons_1', 'recons_2', 'recons_3', 'final'},
             #  ...}
             output_dict = deblurnet(input_seq)
-            
+
+            # in_feat = output_dict['first_scale_inblock']['final']
+            # print(in_feat.shape)
+            # exit()
+
             torch.cuda.synchronize()
             inference_time.update((time() - inference_start_time))
 
