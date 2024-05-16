@@ -65,14 +65,13 @@ def main():
     
     import torch
     from core.build import bulid_net
-    from core.test import test
     
     random.seed(cfg.CONST.SEED)
     np.random.seed(cfg.CONST.SEED)
     torch.manual_seed(cfg.CONST.SEED)
     torch.cuda.manual_seed(cfg.CONST.SEED)
     torch.cuda.manual_seed_all(cfg.CONST.SEED)
-    torch.autograd.set_detect_anomaly(True)
+    # torch.autograd.set_detect_anomaly(True)   # detect backward anomaly, only use in debug
     
     log.info('CUDA DEVICES NUMBER: '+ str(torch.cuda.device_count()))
     log.info(f' Output_dir： {output_dir}')

@@ -114,9 +114,12 @@ def evaluation(cfg,
             #  ...}
             output_dict = deblurnet(input_seq)
 
-            # in_feat = output_dict['first_scale_inblock']['final']
-            # print(in_feat.shape)
-            # exit()
+            in_feat = output_dict['first_scale_inblock']['final']
+            print(in_feat.shape)
+            img = torchvision.utils.make_grid(in_feat, nrow=3, padding=2, normalize=False)
+            print(type(img))
+            print(img.shape)
+            exit()
 
             torch.cuda.synchronize()
             inference_time.update((time() - inference_start_time))
