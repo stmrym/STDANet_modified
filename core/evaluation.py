@@ -261,6 +261,7 @@ def evaluation(cfg,
         tb_writer.add_scalar(f'Loss_VALID_{eval_dataset_name}/TotalLoss', total_losses.avg, epoch_idx)
         tb_writer.add_scalar(f'PSNR/VALID_{eval_dataset_name}', img_PSNRs_out.avg, epoch_idx)
         tb_writer.add_scalar(f'SSIM/VALID_{eval_dataset_name}', eval_df.at['Avg.', 'out_SSIM'], epoch_idx)
+        tb_writer.add_scalar(f'LPIPS/VALID_{eval_dataset_name}', img_LPIPSs_out.avg, epoch_idx)
 
         if img_PSNRs_out.avg  >= Best_Img_PSNR:
 
