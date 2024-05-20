@@ -209,19 +209,19 @@ def evaluation(cfg,
 
 
 
-                    save_feat_grid((output_dict['first_scale_inblock']['final'])[batch,1], save_dir + f'{seq}_{img_name}_0_in_feat', nrow=4)
-                    save_feat_grid((output_dict['first_scale_encoder_first']['final'])[batch,1], save_dir + f'{seq}_{img_name}_1_en_feat', nrow=8)
-                    save_feat_grid((output_dict['first_scale_encoder_second']['final'])[batch,1], save_dir + f'{seq}_{img_name}_2_en_feat', nrow=8)
-                    save_feat_grid((output_dict['first_scale_encoder_second_out']['final'])[batch], save_dir + f'{seq}_{img_name}_3_en_out_feat', nrow=8)
-                    save_feat_grid((output_dict['first_scale_decoder_second']['final'])[batch], save_dir + f'{seq}_{img_name}_4_de_feat', nrow=8)
-                    save_feat_grid((output_dict['first_scale_decoder_first']['final'])[batch], save_dir + f'{seq}_{img_name}_5_de_feat', nrow=4)
+                    # save_feat_grid((output_dict['first_scale_inblock']['final'])[batch,1], save_dir + f'{seq}_{img_name}_0_in_feat', nrow=4)
+                    # save_feat_grid((output_dict['first_scale_encoder_first']['final'])[batch,1], save_dir + f'{seq}_{img_name}_1_en_feat', nrow=8)
+                    # save_feat_grid((output_dict['first_scale_encoder_second']['final'])[batch,1], save_dir + f'{seq}_{img_name}_2_en_feat', nrow=8)
+                    # save_feat_grid((output_dict['first_scale_encoder_second_out']['final'])[batch], save_dir + f'{seq}_{img_name}_3_en_out_feat', nrow=8)
+                    # save_feat_grid((output_dict['first_scale_decoder_second']['final'])[batch], save_dir + f'{seq}_{img_name}_4_de_feat', nrow=8)
+                    # save_feat_grid((output_dict['first_scale_decoder_first']['final'])[batch], save_dir + f'{seq}_{img_name}_5_de_feat', nrow=4)
                 
 
-                    save_feat_grid((output_dict['sobel_feat']['final'])[batch], save_dir + f'{seq}_{img_name}_6_sobel_feat', nrow=1)
-                    save_feat_grid((output_dict['ortho_weight']['final'])[batch], save_dir + f'{seq}_{img_name}_7_ortho_weight', nrow=1)
-                    save_feat_grid((output_dict['orthogonal_feat']['final'])[batch], save_dir + f'{seq}_{img_name}_8_ortho_feat', nrow=8)
-                    save_feat_grid((output_dict['orthogonal_feat_second']['final'])[batch], save_dir + f'{seq}_{img_name}_9_ortho_feat', nrow=8)
-                    save_feat_grid((output_dict['orthogonal_feat_first']['final'])[batch], save_dir + f'{seq}_{img_name}_10_ortho_feat', nrow=4)
+                    # save_feat_grid((output_dict['sobel_feat']['final'])[batch], save_dir + f'{seq}_{img_name}_6_sobel_feat', nrow=1)
+                    # save_feat_grid((output_dict['ortho_weight']['final'])[batch], save_dir + f'{seq}_{img_name}_7_ortho_weight', nrow=1)
+                    # save_feat_grid((output_dict['orthogonal_feat']['final'])[batch], save_dir + f'{seq}_{img_name}_8_ortho_feat', nrow=8)
+                    # save_feat_grid((output_dict['orthogonal_feat_second']['final'])[batch], save_dir + f'{seq}_{img_name}_9_ortho_feat', nrow=8)
+                    # save_feat_grid((output_dict['orthogonal_feat_first']['final'])[batch], save_dir + f'{seq}_{img_name}_10_ortho_feat', nrow=4)
 
                     
 
