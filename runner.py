@@ -76,7 +76,6 @@ def main():
     log.info('CUDA DEVICES NUMBER: '+ str(torch.cuda.device_count()))
     log.info(f' Output_dir： {output_dir}')
 
-
     # Setup Network & Start train/test process
     bulid_net(cfg = cfg, output_dir = output_dir)
 

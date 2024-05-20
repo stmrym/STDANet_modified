@@ -111,12 +111,15 @@ class STDAN_debug(nn.Module):
         
         frame,srcframe = self.MMA(first_scale_encoder_second,first_scale_encoder_second,flow_forward,flow_backward)
         
-        first_scale_encoder_second = self.MSA(frame,srcframe,flow_forward,flow_backward)
+        first_scale_encoder_second_out = self.MSA(frame,srcframe,flow_forward,flow_backward)
         
-        first_scale_decoder_second = self.decoder_second(first_scale_encoder_second)
+        first_scale_decoder_second = self.decoder_second(first_scale_encoder_second_out)
         first_scale_decoder_first = self.decoder_first(first_scale_decoder_second + first_scale_encoder_first.view(b,n,64,h//2,w//2)[:,1])
         
         
         first_scale_outBlock = self.outBlock(first_scale_decoder_first+first_scale_inblock.view(b,n,32,h,w)[:,1])
         
-        return {'out':first_scale_outBlock, 'flow_forwards':flow_forward, 'flow_backwards':flow_backward, 'first_scale_inblock': first_scale_inblock}
+        return {'out':first_scale_outBlock, 'flow_forwards':flow_forward, 'flow_backwards':flow_backward, 
+                'first_scale_inblock': first_scale_inblock.view(b,n,-1,h,w), 'first_scale_encoder_first':first_scale_encoder_first.view(b,n,-1,h//2,w//2),
+                'first_scale_encoder_second':first_scale_encoder_second, 'first_scale_encoder_second_out':first_scale_encoder_second_out,
+                'first_scale_decoder_second':first_scale_decoder_second, 'first_scale_decoder_first':first_scale_decoder_first}

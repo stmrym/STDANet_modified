@@ -1,3 +1,4 @@
+
 import torch.backends.cudnn
 import torch.utils.data
 import utils.data_loaders
@@ -5,6 +6,7 @@ import utils.data_transforms
 import utils.network_utils
 from losses.multi_loss import *
 from utils import util
+import lpips
 import shutil
 import cv2
 import numpy as np
@@ -13,10 +15,10 @@ from utils import log
 from utils.util import ssim_calculate
 import pandas as pd
 from tqdm import tqdm
-
+import matplotlib.pyplot as plt
 from models.submodules import warp
 
-def make_eval_df(cfg, epoch_average_list, save_name):
+def make_eval_df(cfg, epoch_average_list: list, save_name: str) -> pd.DataFrame:
     col_name = ['seq', 'mid_SSIM', 'out_SSIM', 'mid_SSIM_sd', 'out_SSIM_sd'] if cfg.NETWORK.USE_STACK else ['seq', 'out_SSIM', 'out_SSIM_sd']
     eval_df = pd.DataFrame(epoch_average_list, columns=col_name)
     for col in col_name[1:]:
@@ -24,14 +26,14 @@ def make_eval_df(cfg, epoch_average_list, save_name):
     eval_df.to_csv(save_name, index=False)
     return eval_df
 
-def add_epoch_average_list(cfg, epoch_average_list, seq_df):
+def add_epoch_average_list(cfg, epoch_average_list: list, seq_df: pd.DataFrame) -> list:
     if cfg.NETWORK.USE_STACK:
         epoch_average_list.append([seq_df['seq'][0], seq_df['mid_SSIM'].mean(), seq_df['out_SSIM'].mean(), np.sqrt(seq_df['mid_SSIM'].var()), np.sqrt(seq_df['out_SSIM'].var())])
     else:
         epoch_average_list.append([seq_df['seq'][0], seq_df['out_SSIM'].mean(), np.sqrt(seq_df['out_SSIM'].var())])
     return epoch_average_list
 
-def make_seq_df(cfg, seq_frame_value_list, epoch_average_list, save_dir, save_name):
+def make_seq_df(cfg, seq_frame_value_list: list, epoch_average_list: list, save_dir: str, save_name: str) -> list:
     col_name = ['seq', 'frame', 'mid_SSIM', 'out_SSIM'] if cfg.NETWORK.USE_STACK else ['seq', 'frame', 'out_SSIM']
     seq_df = pd.DataFrame(seq_frame_value_list, columns=col_name)
     if not os.path.isdir(os.path.join(save_dir)):
@@ -40,14 +42,33 @@ def make_seq_df(cfg, seq_frame_value_list, epoch_average_list, save_dir, save_na
     epoch_average_list = add_epoch_average_list(cfg, epoch_average_list, seq_df)
     return epoch_average_list
 
+def save_feat_grid(feat: torch.Tensor, save_name: str, nrow: int) -> None:
+    # feat: (N, H, W)
+    # sums = feat.sum(dim=(-2,-1))
+    # sorted_feat = feat[torch.argsort(sums)]
+    feat = feat.unsqueeze(dim=1)
+    
+    # Normalize to [0, 1]
+    # sorted_feat = (sorted_feat - sorted_feat.min())/(sorted_feat.max() - sorted_feat.min())
+    
+    # Scaling [-1, 1] -> [0, 1]
+    feat = 0.5 * (feat + 1)
+
+    feat_img = torchvision.utils.make_grid(torch.clamp(feat, min=0, max=1), nrow=nrow, padding=2, normalize=False)
+    torchvision.utils.save_image(feat_img, f'{save_name}.png')
+
 
 
 def evaluation(cfg, 
-        eval_dataset_name,
-        save_dir,
-        eval_loader, eval_transforms, deblurnet,
-        epoch_idx = 0, init_epoch = 0,
-        Best_Img_PSNR = 0, Best_Epoch = 0,
+        eval_dataset_name: str,
+        save_dir: str,
+        eval_loader: utils.data_loaders.VideoDeblurDataLoader_No_Slipt, 
+        eval_transforms: utils.data_transforms.Compose, 
+        deblurnet: torch.nn.DataParallel,
+        epoch_idx: int = 0, 
+        init_epoch: int = 0,
+        Best_Img_PSNR: int = 0, 
+        Best_Epoch: int = 0,
         tb_writer = None):
     
     # Set up data loader
@@ -59,10 +80,14 @@ def evaluation(cfg,
     inference_time = utils.network_utils.AverageMeter()
     process_time   = utils.network_utils.AverageMeter()
     img_PSNRs_out = utils.network_utils.AverageMeter()
-    img_ssims_out = utils.network_utils.AverageMeter()
+    # img_ssims_out = utils.network_utils.AverageMeter()
+    img_LPIPSs_out = utils.network_utils.AverageMeter()
+    loss_fn_alex = lpips.LPIPS(net='alex').cuda()
+
     if cfg.NETWORK.USE_STACK:    
         img_PSNRs_mid = utils.network_utils.AverageMeter()
-        img_ssims_mid = utils.network_utils.AverageMeter()
+        # img_ssims_mid = utils.network_utils.AverageMeter()
+        img_LPIPSs_mid = utils.network_utils.AverageMeter()
 
     losses_dict_list = []
     for loss_config_dict in cfg.LOSS_DICT_LIST:
@@ -114,13 +139,6 @@ def evaluation(cfg,
             #  ...}
             output_dict = deblurnet(input_seq)
 
-            in_feat = output_dict['first_scale_inblock']['final']
-            print(in_feat.shape)
-            img = torchvision.utils.make_grid(in_feat, nrow=3, padding=2, normalize=False)
-            print(type(img))
-            print(img.shape)
-            exit()
-
             torch.cuda.synchronize()
             inference_time.update((time() - inference_start_time))
 
@@ -128,12 +146,15 @@ def evaluation(cfg,
             total_loss, total_losses, losses_dict_list = calc_update_losses(output_dict=output_dict, gt_seq=gt_seq, losses_dict_list=losses_dict_list, total_losses=total_losses, batch_size=cfg.CONST.EVAL_BATCH_SIZE)
 
             img_PSNRs_out.update(util.calc_psnr(output_dict['out']['final'].detach(),gt_tensor.detach()), cfg.CONST.EVAL_BATCH_SIZE)
+            img_LPIPSs_out.update(loss_fn_alex(output_dict['out']['final'], gt_tensor).mean().detach().cpu(), cfg.CONST.EVAL_BATCH_SIZE)
+            
 
             output_ndarrays = output_dict['out']['final'].detach().cpu().permute(0,2,3,1).numpy()*255
             gt_ndarrays = gt_tensor.detach().cpu().permute(0,2,3,1).numpy()*255        
             
             if cfg.NETWORK.USE_STACK: 
                 img_PSNRs_mid.update(util.calc_psnr(output_dict['out']['recons_2'].detach(),gt_tensor.detach()), cfg.CONST.EVAL_BATCH_SIZE)
+                img_LPIPSs_mid.update(loss_fn_alex(output_dict['out']['recons_2'], gt_tensor).mean().detach().cpu(), cfg.CONST.EVAL_BATCH_SIZE)
                 mid_ndarrays = output_dict['out']['recons_2'].detach().cpu().permute(0,2,3,1).numpy()*255
 
 
@@ -186,6 +207,25 @@ def evaluation(cfg,
                         mid_image_bgr = cv2.cvtColor(np.clip(mid_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)                    
                         cv2.imwrite(os.path.join(save_dir + '_mid', seq, img_name + '.png'), mid_image_bgr)
 
+
+
+                    save_feat_grid((output_dict['first_scale_inblock']['final'])[batch,1], save_dir + f'{seq}_{img_name}_0_in_feat', nrow=4)
+                    save_feat_grid((output_dict['first_scale_encoder_first']['final'])[batch,1], save_dir + f'{seq}_{img_name}_1_en_feat', nrow=8)
+                    save_feat_grid((output_dict['first_scale_encoder_second']['final'])[batch,1], save_dir + f'{seq}_{img_name}_2_en_feat', nrow=8)
+                    save_feat_grid((output_dict['first_scale_encoder_second_out']['final'])[batch], save_dir + f'{seq}_{img_name}_3_en_out_feat', nrow=8)
+                    save_feat_grid((output_dict['first_scale_decoder_second']['final'])[batch], save_dir + f'{seq}_{img_name}_4_de_feat', nrow=8)
+                    save_feat_grid((output_dict['first_scale_decoder_first']['final'])[batch], save_dir + f'{seq}_{img_name}_5_de_feat', nrow=4)
+                
+
+                    save_feat_grid((output_dict['sobel_feat']['final'])[batch], save_dir + f'{seq}_{img_name}_6_sobel_feat', nrow=1)
+                    save_feat_grid((output_dict['ortho_weight']['final'])[batch], save_dir + f'{seq}_{img_name}_7_ortho_weight', nrow=1)
+                    save_feat_grid((output_dict['orthogonal_feat']['final'])[batch], save_dir + f'{seq}_{img_name}_8_ortho_feat', nrow=8)
+                    save_feat_grid((output_dict['orthogonal_feat_second']['final'])[batch], save_dir + f'{seq}_{img_name}_9_ortho_feat', nrow=8)
+                    save_feat_grid((output_dict['orthogonal_feat_first']['final'])[batch], save_dir + f'{seq}_{img_name}_10_ortho_feat', nrow=4)
+
+                    
+
+
                     if cfg.EVAL.SAVE_FLOW:
                         # saving out flow
                         out_flow_forward = (output_dict['flow_forwards']['final'])[0][1].permute(1,2,0).cpu().detach().numpy()  
@@ -230,6 +270,7 @@ def evaluation(cfg,
     elif cfg.NETWORK.PHASE in ['test'] and tb_writer is not None:
         tb_writer.add_scalar(f'PSNR/VALID_{eval_dataset_name}', img_PSNRs_out.avg, epoch_idx)
         tb_writer.add_scalar(f'SSIM/VALID_{eval_dataset_name}', eval_df.at['Avg.', 'out_SSIM'], epoch_idx)
+        tb_writer.add_scalar(f'LPIPS/VALID_{eval_dataset_name}', img_LPIPSs_out.avg, epoch_idx)
 
     if cfg.NETWORK.USE_STACK:
         log.info(f'[EVAL][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{eval_dataset_name}] PSNR(mid:{img_PSNRs_mid.avg}, out:{img_PSNRs_out.avg}), PSNR_best:{Best_Img_PSNR} at epoch {Best_Epoch}')

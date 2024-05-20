@@ -7,19 +7,19 @@ from models.submodules import DeformableAttnBlock, DeformableAttnBlock_FUSION
 # from positional_encodings import PositionalEncodingPermute3D
 from torch.nn.init import xavier_uniform_, constant_
 def make_model(args):
-    return ESTDAN_middle(in_channels=args.n_colors,
+    return ESTDAN_light_debug(in_channels=args.n_colors,
                         n_sequence=args.n_sequence,
                         out_channels=args.n_colors,
                         n_resblock=args.n_resblock,
                         n_feat=args.n_feat)
 
 
-class ESTDAN_middle(nn.Module):
+class ESTDAN_light_debug(nn.Module):
 
     def __init__(self, in_channels=3, out_channels=3, sobel_out_channels=2, n_resblock=3, n_feat=32,
                  kernel_size=5, device='cuda', **kwargs):
-        super(ESTDAN_middle, self).__init__()
-        self.n_feat = n_feat
+        super(ESTDAN_light_debug, self).__init__()
+
         InBlock = []
         InBlock.extend([nn.Sequential(
             nn.Conv2d(in_channels, n_feat, kernel_size=3, stride=1,
@@ -75,23 +75,20 @@ class ESTDAN_middle(nn.Module):
 
         self.edge_extractor = nn.Sequential(extractor.Edge_extractor_light(inplanes=1, planes=sobel_out_channels, kernel_size=3, stride=1, device=device))
 
-        self.inBlock_channel_conv = nn.Sequential(
-                        nn.Conv2d(n_feat + sobel_out_channels, n_feat, kernel_size=1, stride=1, padding='same', dilation=1),
-                        nn.GELU()
-        )
-        self.encoder_first_channel_conv = nn.Sequential(
-                        nn.Conv2d(n_feat*2 + sobel_out_channels, n_feat*2, kernel_size=1, stride=1, padding='same', dilation=1),
-                        nn.GELU()
-        )
-        self.encoder_second_channel_conv = nn.Sequential(
-                        nn.Conv2d(n_feat*4 + sobel_out_channels, n_feat*4, kernel_size=1, stride=1, padding='same', dilation=1),
-                        nn.GELU()
+        self.orthogonal_feat_conv = nn.Sequential(
+                        nn.Conv2d(in_channels=2, out_channels=n_feat*4, kernel_size=3, stride=1, padding='same', dilation=1),
+                        nn.GELU(),
         )
 
-        self.orthogonal_upsampler = nn.Sequential(
-                        nn.Conv2d(in_channels=2, out_channels=16, kernel_size=3, stride=1, padding='same', dilation=1),               
+        self.orthogonal_second_upsampler = nn.Sequential(
+                        nn.Conv2d(in_channels=n_feat*4, out_channels=n_feat*8, kernel_size=3, stride=1, padding='same', dilation=1),
                         nn.GELU(),
-                        nn.PixelShuffle(4)
+                        nn.PixelShuffle(2)
+        )
+        self.orthogonal_first_upsampler = nn.Sequential(
+                        nn.Conv2d(in_channels=n_feat*2, out_channels=n_feat*4, kernel_size=3, stride=1, padding='same', dilation=1),               
+                        nn.GELU(),
+                        nn.PixelShuffle(2)
         )
 
         self.MMA = DeformableAttnBlock(n_heads=4,d_model=128,n_levels=3,n_points=12)
@@ -138,47 +135,36 @@ class ESTDAN_middle(nn.Module):
     def forward(self, x):
         b, n, c, h, w = x.size()
         
-        # input (B*N, C, H, W) -> (B*N, 2, H, W)
-        sobel_feat = self.edge_extractor(x.view(b*n, c, h, w))
-        sobel_2x_downsample = F.interpolate(sobel_feat, size=(h//2, w//2),mode='bilinear', align_corners=True)
-        sobel_4x_downsample = F.interpolate(sobel_feat, size=(h//4, w//4), mode='bilinear', align_corners=True)
+        first_scale_inblock = self.inBlock_t(x.view(b*n,c,h,w))
+        first_scale_encoder_first = self.encoder_first(first_scale_inblock)
+        
+        first_scale_encoder_second = self.encoder_second(first_scale_encoder_first)
+        first_scale_encoder_second = first_scale_encoder_second.view(b,n,128,h//4,w//4)
+        
+        flow_forward,flow_backward = self.compute_flow(first_scale_encoder_second)
+        
+        frame,srcframe = self.MMA(first_scale_encoder_second,first_scale_encoder_second,flow_forward,flow_backward)
+        
+        first_scale_encoder_second_out = self.MSA(frame,srcframe,flow_forward,flow_backward)
+        
+        # input (B, C, H, W) -> (B, 2, H, W)
+        sobel_feat = self.edge_extractor(x[:,1,:,:,:])
+        sobel_feat_downsampled = F.interpolate(sobel_feat, size=(h//4, w//4),mode='bilinear', align_corners=True)
 
-        inblock = self.inBlock_t(x.view(b*n,c,h,w))
-        # concat (B,N,32,H,W) & (B,N,2,H,W) -> (B,N,34,H,W)
-        inblock = torch.cat([inblock.view(b, n, self.n_feat, h, w), sobel_feat.view(b, n, -1, h, w)], dim=2)
-        # (B*N,34,H,W) -> (B*N,32,H,W)
-        inblock = self.inBlock_channel_conv(inblock.view(b*n, -1, h, w))  
-        
-        # Encoder 1st downsampling H, W -> H/2, W/2
-        encoder_1st = self.encoder_first(inblock)
-        # concat (B,N,64,H/2,W/2) & (B,N,2,H/2,W/2) -> (B,N,66,H/2,W/2)
-        encoder_1st = torch.cat([encoder_1st.view(b, n, self.n_feat*2, h//2, w//2), sobel_2x_downsample.view(b, n, -1, h//2, w//2)], dim=2)
-        # (B,N,66,H/2,W/2) -> (B*N,64,H/2,W/2)
-        encoder_1st = self.encoder_first_channel_conv(encoder_1st.view(b*n, -1, h//2, w//2))
-        
-        # Encoder 2nd downsampling H/2, W/2 -> H/4, W/4
-        encoder_2nd = self.encoder_second(encoder_1st)
-        # concat (B,N,128,H/4,W/4) & (B,N,2,H/4,W/4) -> (B,N,130,H/4,W/4)
-        encoder_2nd = torch.cat([encoder_2nd.view(b, n, self.n_feat*4, h//4, w//4), sobel_4x_downsample.view(b, n, -1, h//4, w//4)], dim=2)
-        # (B,N,130,H/4,W/4) -> (B,N,128,H/4,W/4)
-        encoder_2nd = self.encoder_second_channel_conv(encoder_2nd.view(b*n, -1, h//4, w//4))
-        
-        mma_in = encoder_2nd.view(b,n,128,h//4,w//4)
-        
-        flow_forward,flow_backward = self.compute_flow(mma_in)
-        
-        frame,srcframe = self.MMA(mma_in,mma_in,flow_forward,flow_backward)
-        
-        mma_out = self.MSA(frame,srcframe,flow_forward,flow_backward)
-        
-        # (B*N, 2, H/4, W/4) -> (B, N, 2, H/4, W/4) -> center frame (B, 2, H/4, W/4)
-        sobel_4x_downsample = sobel_4x_downsample.view(b,n,-1,h//4,w//4)
-        # (B, 2, H/4, W/4) -> (B, 2, H/4, W/4)
-        orthogonal_weight = self.orthogonal_feat_extractor(sobel_4x_downsample[:,1,:,:,:], flow_forward, flow_backward)
-        orthogonal_upsample = self.orthogonal_upsampler(orthogonal_weight)
+        # (B, 2, 2, H, W) -> (B, 2, H, W)
+        orthogonal_weight = self.orthogonal_feat_extractor(sobel_feat_downsampled, flow_forward, flow_backward)
+        orthogonal_feat = self.orthogonal_feat_conv(orthogonal_weight)
+        orthogonal_feat_second = self.orthogonal_second_upsampler(orthogonal_feat)
+        orthogonal_feat_first = self.orthogonal_first_upsampler(orthogonal_feat_second)
 
-        decoder_2nd = self.decoder_second(mma_out)
-        decoder_1st = self.decoder_first(decoder_2nd + encoder_1st.view(b,n,64,h//2,w//2)[:,1])
-        outBlock = self.outBlock(decoder_1st + inblock.view(b,n,32,h,w)[:,1] + orthogonal_upsample)
+        first_scale_decoder_second = self.decoder_second(first_scale_encoder_second_out + orthogonal_feat)
+        first_scale_decoder_first = self.decoder_first(first_scale_decoder_second + first_scale_encoder_first.view(b,n,64,h//2,w//2)[:,1] + orthogonal_feat_second)
+        first_scale_outBlock = self.outBlock(first_scale_decoder_first + first_scale_inblock.view(b,n,32,h,w)[:,1] + orthogonal_feat_first)
         
-        return {'out':outBlock, 'flow_forwards':flow_forward, 'flow_backwards':flow_backward, 'ortho_weight':orthogonal_weight}
+        return {'out':first_scale_outBlock, 'flow_forwards':flow_forward, 'flow_backwards':flow_backward, 'ortho_weight':orthogonal_weight,
+                'first_scale_inblock': first_scale_inblock.view(b,n,-1,h,w), 'first_scale_encoder_first':first_scale_encoder_first.view(b,n,-1,h//2,w//2),
+                'first_scale_encoder_second':first_scale_encoder_second, 'first_scale_encoder_second_out':first_scale_encoder_second_out,
+                'first_scale_decoder_second':first_scale_decoder_second, 'first_scale_decoder_first':first_scale_decoder_first,
+                'sobel_feat':sobel_feat, 'orthogonal_feat':orthogonal_feat, 'orthogonal_feat_second':orthogonal_feat_second,
+                'orthogonal_feat_first':orthogonal_feat_first}
+

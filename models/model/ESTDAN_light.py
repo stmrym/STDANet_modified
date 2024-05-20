@@ -152,8 +152,6 @@ class ESTDAN_light(nn.Module):
         sobel_feat_downsampled = F.interpolate(sobel_feat, size=(h//4, w//4),mode='bilinear', align_corners=True)
 
         # (B, 2, 2, H, W) -> (B, 2, H, W)
-        print(sobel_feat_downsampled.shape)
-        exit()
         orthogonal_weight = self.orthogonal_feat_extractor(sobel_feat_downsampled, flow_forward, flow_backward)
         orthogonal_feat = self.orthogonal_feat_conv(orthogonal_weight)
         orthogonal_feat_second = self.orthogonal_second_upsampler(orthogonal_feat)
