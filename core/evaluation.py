@@ -109,12 +109,10 @@ def evaluation(cfg,
     epoch_average_list = []
 
     for seq_idx, (name, seq_blur, seq_clear) in enumerate(tqdm_eval):
+        
         # name: GT frame name (center frame name)
         seq_blur = [utils.network_utils.var_or_cuda(img).unsqueeze(1) for img in seq_blur]
         seq_clear = [utils.network_utils.var_or_cuda(img).unsqueeze(1) for img in seq_clear]
-        
-        torch.cuda.synchronize()
-        process_start_time = time()
 
         with torch.no_grad():
             input_seq = []
@@ -141,8 +139,15 @@ def evaluation(cfg,
 
             torch.cuda.synchronize()
             inference_time.update((time() - inference_start_time))
+            # print('inf. time')
+            # print(time() - inference_start_time)
 
+            # torch.cuda.synchronize()
+            # calc_loss = time()
             # calculate test loss
+            torch.cuda.synchronize()
+            process_start_time = time()
+            
             total_loss, total_losses, losses_dict_list = calc_update_losses(output_dict=output_dict, gt_seq=gt_seq, losses_dict_list=losses_dict_list, total_losses=total_losses, batch_size=cfg.CONST.EVAL_BATCH_SIZE)
 
             img_PSNRs_out.update(util.calc_psnr(output_dict['out']['final'].detach(),gt_tensor.detach()), cfg.CONST.EVAL_BATCH_SIZE)
@@ -156,7 +161,6 @@ def evaluation(cfg,
                 img_PSNRs_mid.update(util.calc_psnr(output_dict['out']['recons_2'].detach(),gt_tensor.detach()), cfg.CONST.EVAL_BATCH_SIZE)
                 img_LPIPSs_mid.update(loss_fn_alex(output_dict['out']['recons_2'], gt_tensor).mean().detach().cpu(), cfg.CONST.EVAL_BATCH_SIZE)
                 mid_ndarrays = output_dict['out']['recons_2'].detach().cpu().permute(0,2,3,1).numpy()*255
-
 
             for batch in range(0, output_ndarrays.shape[0]):
 
@@ -196,17 +200,13 @@ def evaluation(cfg,
                     # saving output image
                     if not os.path.isdir(os.path.join(save_dir + '_output', seq)):
                         os.makedirs(os.path.join(save_dir + '_output', seq), exist_ok=True)
-
-                    output_image_bgr = cv2.cvtColor(np.clip(output_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)                    
+                 
                     cv2.imwrite(os.path.join(save_dir + '_output', seq, img_name + '.png'), output_image_bgr)
 
                     if cfg.NETWORK.USE_STACK:
                         if not os.path.isdir(os.path.join(save_dir + '_mid', seq)):
-                            os.makedirs(os.path.join(save_dir + '_mid', seq), exist_ok=True)
-
-                        mid_image_bgr = cv2.cvtColor(np.clip(mid_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)                    
+                            os.makedirs(os.path.join(save_dir + '_mid', seq), exist_ok=True)               
                         cv2.imwrite(os.path.join(save_dir + '_mid', seq, img_name + '.png'), mid_image_bgr)
-
 
 
                     # save_feat_grid((output_dict['first_scale_inblock']['final'])[batch,1], save_dir + f'{seq}_{img_name}_0_in_feat', nrow=4)
@@ -224,8 +224,6 @@ def evaluation(cfg,
                     # save_feat_grid((output_dict['orthogonal_feat_first']['final'])[batch], save_dir + f'{seq}_{img_name}_10_ortho_feat', nrow=4)
 
                     
-
-
                     if cfg.EVAL.SAVE_FLOW:
                         # saving out flow
                         out_flow_forward = (output_dict['flow_forwards']['final'])[0][1].permute(1,2,0).cpu().detach().numpy()  

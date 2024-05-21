@@ -5,6 +5,8 @@ from utils import log, util
 import torch.backends.cudnn
 import torch.utils.data
 
+import cProfile
+
 import utils.data_loaders
 import utils.data_transforms
 import utils.network_utils
@@ -157,6 +159,11 @@ def train(cfg, init_epoch,
 
                 save_dir = os.path.join(visualize_dir, 'epoch-' + str(epoch_idx).zfill(4))
 
+                # kwargs = {'cfg':cfg, 'eval_dataset_name':val_dataset_name, 'save_dir':save_dir, 'eval_loader':val_loader, 'eval_transforms':val_transforms,
+                #           'deblurnet':deblurnet, 'epoch_idx':epoch_idx, 'init_epoch':init_epoch, 'Best_Epoch':Best_Epoch, 'tb_writer':tb_writer}
+                
+                # Best_Img_PSNR, Best_Epoch = evaluation(**kwargs)
+
                 # Validation
                 Best_Img_PSNR, Best_Epoch = evaluation(
                     cfg = cfg,
@@ -169,6 +176,7 @@ def train(cfg, init_epoch,
                     Best_Img_PSNR = Best_Img_PSNR,
                     Best_Epoch = Best_Epoch,
                     tb_writer = tb_writer)
-        
+    
+                
     # Close SummaryWriter for TensorBoard
     tb_writer.close()
