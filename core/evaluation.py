@@ -200,7 +200,7 @@ def evaluation(cfg,
                     # saving output image
                     if not os.path.isdir(os.path.join(save_dir + '_output', seq)):
                         os.makedirs(os.path.join(save_dir + '_output', seq), exist_ok=True)
-                 
+                    
                     cv2.imwrite(os.path.join(save_dir + '_output', seq, img_name + '.png'), output_image_bgr)
 
                     if cfg.NETWORK.USE_STACK:
