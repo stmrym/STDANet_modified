@@ -139,11 +139,7 @@ def evaluation(cfg,
 
             torch.cuda.synchronize()
             inference_time.update((time() - inference_start_time))
-            # print('inf. time')
-            # print(time() - inference_start_time)
-
-            # torch.cuda.synchronize()
-            # calc_loss = time()
+            
             # calculate test loss
             torch.cuda.synchronize()
             process_start_time = time()
@@ -208,6 +204,16 @@ def evaluation(cfg,
                             os.makedirs(os.path.join(save_dir + '_mid', seq), exist_ok=True)               
                         cv2.imwrite(os.path.join(save_dir + '_mid', seq, img_name + '.png'), mid_image_bgr)
 
+                    # channel = output_dict['first_scale_inblock']['final'].shape[2]
+                    # in_block_np = (output_dict['first_scale_inblock']['final'])[batch,1].detach().cpu().numpy()
+                    # for c in range(0, channel):
+                    #     feat = in_block_np[c]
+                    #     np.save(save_dir + f'feat_ch_{str(c)}.npy', feat)
+
+                    #     feat = 0.5 * (feat + 1)
+                    #     feat_int = (np.clip(feat, 0, 1)*255).astype(np.uint8)
+                    #     feat_bgr = cv2.cvtColor(feat_int, cv2.COLOR_RGB2BGR)
+                    #     cv2.imwrite(save_dir + f'feat_ch_{str(c)}.png', feat_bgr)
 
                     # save_feat_grid((output_dict['first_scale_inblock']['final'])[batch,1], save_dir + f'{seq}_{img_name}_0_in_feat', nrow=4)
                     # save_feat_grid((output_dict['first_scale_encoder_first']['final'])[batch,1], save_dir + f'{seq}_{img_name}_1_en_feat', nrow=8)

@@ -149,7 +149,6 @@ class ESTDAN_middle(nn.Module):
 
     def forward(self, x):
         b, n, c, h, w = x.size()
-        
         # input (B*N, C, H, W) -> (B*N, 2, H, W)
         sobel_feat = self.edge_extractor(x.view(b*n, c, h, w))
         sobel_2x_downsample = F.interpolate(sobel_feat, size=(h//2, w//2),mode='bilinear', align_corners=True)
@@ -191,8 +190,8 @@ class ESTDAN_middle(nn.Module):
         # (B, 128, H/4, W/4)
         mma_out = self.MSA(frame,srcframe,flow_forward,flow_backward)
         
-        # (B, 2, H/4, W/4)
-        orthogonal_center_weights = torch.squeeze(orthogonal_weights[:,1:3,:,:,:])
+        # (B, 2, 1, H/4, W/4) -> (B, 2, H/4, W/4)
+        orthogonal_center_weights = torch.squeeze(orthogonal_weights[:,1:3,:,:,:], dim=2)
         orthogonal_2nd_upsample = self.orthogonal_second_upsampler(orthogonal_center_weights)
         orthogonal_1st_upsample = self.orthogonal_first_upsampler(orthogonal_2nd_upsample)
 
