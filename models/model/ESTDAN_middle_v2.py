@@ -7,18 +7,18 @@ from models.submodules import DeformableAttnBlock, DeformableAttnBlock_FUSION
 # from positional_encodings import PositionalEncodingPermute3D
 from torch.nn.init import xavier_uniform_, constant_
 def make_model(args):
-    return ESTDAN_middle(in_channels=args.n_colors,
+    return ESTDAN_middle_v2(in_channels=args.n_colors,
                         n_sequence=args.n_sequence,
                         out_channels=args.n_colors,
                         n_resblock=args.n_resblock,
                         n_feat=args.n_feat)
 
 
-class ESTDAN_middle(nn.Module):
+class ESTDAN_middle_v2(nn.Module):
 
     def __init__(self, in_channels=3, out_channels=3, sobel_out_channels=2, n_resblock=3, n_feat=32,
                  kernel_size=5, device='cuda', **kwargs):
-        super(ESTDAN_middle, self).__init__()
+        super(ESTDAN_middle_v2, self).__init__()
         self.n_feat = n_feat
         InBlock = []
         InBlock.extend([nn.Sequential(
