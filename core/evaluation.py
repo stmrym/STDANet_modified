@@ -23,7 +23,12 @@ def make_eval_df(cfg, epoch_average_list: list, save_name: str) -> pd.DataFrame:
     eval_df = pd.DataFrame(epoch_average_list, columns=col_name)
     for col in col_name[1:]:
         eval_df.at['Avg.', col] = eval_df[col].mean()
-    eval_df.to_csv(save_name, index=False)
+
+    if os.path.isfile(save_name): # Add mode
+        eval_df.to_csv(save_name, mode='a', index=False, header=False)
+    else:   # Create csv file
+        eval_df.to_csv(save_name, mode='x', index=False)
+    
     return eval_df
 
 def add_epoch_average_list(cfg, epoch_average_list: list, seq_df: pd.DataFrame) -> list:
@@ -56,7 +61,6 @@ def save_feat_grid(feat: torch.Tensor, save_name: str, nrow: int) -> None:
 
     feat_img = torchvision.utils.make_grid(torch.clamp(feat, min=0, max=1), nrow=nrow, padding=2, normalize=False)
     torchvision.utils.save_image(feat_img, f'{save_name}.png')
-
 
 
 def evaluation(cfg, 
@@ -243,8 +247,6 @@ def evaluation(cfg,
                             os.makedirs(os.path.join(save_dir + '_orthoEdge', seq), exist_ok=True)
                         cv2.imwrite(os.path.join(save_dir + '_orthoEdge', seq, img_name + '.png'), np.clip(ortho_weight_ndarr, 0, 255).astype(np.uint8))
             
-
-
             torch.cuda.synchronize()
             process_time.update((time() - process_start_time))
             if cfg.EVAL.CALC_METRICS:
