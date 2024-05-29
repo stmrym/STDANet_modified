@@ -182,12 +182,14 @@ def evaluation(cfg,
                 output_image_bgr = cv2.cvtColor(np.clip(output_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
                 gt_image_bgr = cv2.cvtColor(np.clip(gt_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
                 
+                if cfg.NETWORK.USE_STACK:
+                    mid_ndarr = mid_ndarrays[batch,:,:,:]
+                    mid_image_bgr = cv2.cvtColor(np.clip(mid_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
+                
                 if cfg.EVAL.CALC_METRICS:
                     img_ssim_out = ssim_calculate(output_image_bgr, gt_image_bgr)
 
                     if cfg.NETWORK.USE_STACK:
-                        mid_ndarr = mid_ndarrays[batch,:,:,:]
-                        mid_image_bgr = cv2.cvtColor(np.clip(mid_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
                         img_ssim_mid = ssim_calculate(mid_image_bgr, gt_image_bgr)
                         seq_frame_value_list.append([seq, int(img_name), img_ssim_mid, img_ssim_out])
                     else:
@@ -237,7 +239,15 @@ def evaluation(cfg,
                     
                     if cfg.EVAL.SAVE_FLOW:
                         # saving out flow
-                        out_flow_forward = (output_dict['flow_forwards']['final'])[0][1].permute(1,2,0).cpu().detach().numpy()  
+                        # flow_forward_12 = (output_dict['flow_forwards']['final'])[batch,0,:,:,:].permute(1,2,0).cpu().detach().numpy()  
+
+                        torch.save(output_dict['out']['final'], './debug_results/output.pt')
+                        torch.save(gt_seq, './debug_results/gt_seq.pt')                            
+                        torch.save(output_dict['flow_forwards']['final'], './debug_results/flow_forwards.pt')
+                        torch.save(output_dict['flow_backwards']['final'], './debug_results/flow_backwards.pt')
+                        exit()
+
+                        out_flow_forward = (output_dict['flow_forwards']['final'])[batch,1,:,:,:].permute(1,2,0).cpu().detach().numpy()  
                         util.save_hsv_flow(save_dir=save_dir, seq=seq, img_name=img_name, out_flow=out_flow_forward)
 
                     if 'ortho_weight' in output_dict.keys():
