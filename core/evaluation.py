@@ -47,7 +47,7 @@ def make_seq_df(cfg, seq_frame_value_list: list, epoch_average_list: list, save_
     epoch_average_list = add_epoch_average_list(cfg, epoch_average_list, seq_df)
     return epoch_average_list
 
-def save_feat_grid(feat: torch.Tensor, save_name: str, nrow: int) -> None:
+def save_feat_grid(feat: torch.Tensor, save_name: str, nrow: int = 1) -> None:
     # feat: (N, H, W)
     # sums = feat.sum(dim=(-2,-1))
     # sorted_feat = feat[torch.argsort(sums)]
@@ -57,10 +57,11 @@ def save_feat_grid(feat: torch.Tensor, save_name: str, nrow: int) -> None:
     # sorted_feat = (sorted_feat - sorted_feat.min())/(sorted_feat.max() - sorted_feat.min())
     
     # Scaling [-1, 1] -> [0, 1]
-    feat = 0.5 * (feat + 1)
+    feat = 0.5*(feat + 1)
 
-    feat_img = torchvision.utils.make_grid(torch.clamp(feat, min=0, max=1), nrow=nrow, padding=2, normalize=False)
-    torchvision.utils.save_image(feat_img, f'{save_name}.png')
+    # feat_img = torchvision.utils.make_grid(torch.clamp(feat, min=0, max=1), nrow=nrow, padding=2, normalize=False)
+    # torchvision.utils.save_image(feat_img, f'{save_name}.png')
+    torchvision.utils.save_image(feat, f'{save_name}')
 
 
 def evaluation(cfg, 
@@ -211,16 +212,6 @@ def evaluation(cfg,
                             os.makedirs(os.path.join(save_dir + '_mid', seq), exist_ok=True)               
                         cv2.imwrite(os.path.join(save_dir + '_mid', seq, img_name + '.png'), mid_image_bgr)
 
-                    # channel = output_dict['first_scale_inblock']['final'].shape[2]
-                    # in_block_np = (output_dict['first_scale_inblock']['final'])[batch,1].detach().cpu().numpy()
-                    # for c in range(0, channel):
-                    #     feat = in_block_np[c]
-                    #     np.save(save_dir + f'feat_ch_{str(c)}.npy', feat)
-
-                    #     feat = 0.5 * (feat + 1)
-                    #     feat_int = (np.clip(feat, 0, 1)*255).astype(np.uint8)
-                    #     feat_bgr = cv2.cvtColor(feat_int, cv2.COLOR_RGB2BGR)
-                    #     cv2.imwrite(save_dir + f'feat_ch_{str(c)}.png', feat_bgr)
 
                     # save_feat_grid((output_dict['first_scale_inblock']['final'])[batch,1], save_dir + f'{seq}_{img_name}_0_in_feat', nrow=4)
                     # save_feat_grid((output_dict['first_scale_encoder_first']['final'])[batch,1], save_dir + f'{seq}_{img_name}_1_en_feat', nrow=8)
@@ -228,27 +219,22 @@ def evaluation(cfg,
                     # save_feat_grid((output_dict['first_scale_encoder_second_out']['final'])[batch], save_dir + f'{seq}_{img_name}_3_en_out_feat', nrow=8)
                     # save_feat_grid((output_dict['first_scale_decoder_second']['final'])[batch], save_dir + f'{seq}_{img_name}_4_de_feat', nrow=8)
                     # save_feat_grid((output_dict['first_scale_decoder_first']['final'])[batch], save_dir + f'{seq}_{img_name}_5_de_feat', nrow=4)
-                
 
-                    # save_feat_grid((output_dict['sobel_feat']['final'])[batch], save_dir + f'{seq}_{img_name}_6_sobel_feat', nrow=1)
-                    # save_feat_grid((output_dict['ortho_weight']['final'])[batch], save_dir + f'{seq}_{img_name}_7_ortho_weight', nrow=1)
-                    # save_feat_grid((output_dict['orthogonal_feat']['final'])[batch], save_dir + f'{seq}_{img_name}_8_ortho_feat', nrow=8)
-                    # save_feat_grid((output_dict['orthogonal_feat_second']['final'])[batch], save_dir + f'{seq}_{img_name}_9_ortho_feat', nrow=8)
-                    # save_feat_grid((output_dict['orthogonal_feat_first']['final'])[batch], save_dir + f'{seq}_{img_name}_10_ortho_feat', nrow=4)
-
+                    # save_feat_grid((output_dict['sobel_edge']['final'])[batch,1], save_dir + f'{seq}_{img_name}_6_sobel_edge', nrow=1)
+                    # save_feat_grid((output_dict['motion_orthogonal_edge']['final'])[batch], save_dir + f'{seq}_{img_name}_7_motion_orthogonal_edge', nrow=1)
+                    # save_feat_grid((torch.abs(output_dict['motion_orthogonal_edge']['final']))[batch], save_dir + f'{seq}_{img_name}_8_abs_motion_orthogonal_edge', nrow=1)
                     
                     if cfg.EVAL.SAVE_FLOW:
                         # saving out flow
-                        # flow_forward_12 = (output_dict['flow_forwards']['final'])[batch,0,:,:,:].permute(1,2,0).cpu().detach().numpy()  
 
-                        torch.save(output_dict['out']['final'], './debug_results/output.pt')
-                        torch.save(gt_seq, './debug_results/gt_seq.pt')                            
-                        torch.save(output_dict['flow_forwards']['final'], './debug_results/flow_forwards.pt')
-                        torch.save(output_dict['flow_backwards']['final'], './debug_results/flow_backwards.pt')
-                        exit()
+                        # torch.save(input_seq, './debug_results/input.pt')                 
+                        # torch.save(output_dict['flow_forwards']['final'], './debug_results/flow_forwards.pt')
+                        # torch.save(output_dict['flow_backwards']['final'], './debug_results/flow_backwards.pt')
+                        
 
                         out_flow_forward = (output_dict['flow_forwards']['final'])[batch,1,:,:,:].permute(1,2,0).cpu().detach().numpy()  
                         util.save_hsv_flow(save_dir=save_dir, seq=seq, img_name=img_name, out_flow=out_flow_forward)
+
 
                     if 'ortho_weight' in output_dict.keys():
                         ortho_weight = output_dict['ortho_weight']['final'][batch,0,:,:]

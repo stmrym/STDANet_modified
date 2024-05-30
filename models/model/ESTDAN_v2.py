@@ -146,7 +146,8 @@ class ESTDAN_v2(nn.Module):
         orthogonal_weights = (torch.stack([frame1_weight, frame2_f_weight, frame2_b_weight, frame3_weight], dim=1)).unsqueeze(dim=2)
         # (B, 4, 1, H/4, W/4)
         return torch.abs(orthogonal_weights)
-
+        # return orthogonal_weights
+    
     def forward(self, x):
         b, n, c, h, w = x.size()
         # input (B*N, C, H, W) -> (B*N, 2, H, W)
@@ -196,7 +197,8 @@ class ESTDAN_v2(nn.Module):
         orthogonal_1st_upsample = self.orthogonal_first_upsampler(orthogonal_2nd_upsample)
 
         # (B, 130, H/4, W/4) -> (B, 64, H/2, W/2)
-        decoder_2nd = self.decoder_second(torch.cat([mma_out, orthogonal_center_weights], dim=1))
+        mma_out = torch.cat([mma_out, orthogonal_center_weights], dim=1)
+        decoder_2nd = self.decoder_second(mma_out)
         decoder_2nd = torch.cat([decoder_2nd, orthogonal_2nd_upsample], dim=1)
         
         # (B, 66, H/2, W/2) -> (B, 32, H, W)
@@ -206,4 +208,12 @@ class ESTDAN_v2(nn.Module):
         # (B, 34, H, W) -> (B, 3, H, W)
         outBlock = self.outBlock(decoder_1st + inblock.view(b,n,-1,h,w)[:,1])
 
+        # sobel_4x_downsample = torch.sqrt((sobel_4x_downsample[:,0]**2 + sobel_4x_downsample[:,1]**2))
         return {'out':outBlock, 'flow_forwards':flow_forward, 'flow_backwards':flow_backward, 'ortho_weight':orthogonal_center_weights}
+        # return {'out':outBlock, 'flow_forwards':flow_forward, 'flow_backwards':flow_backward, 
+        #     'first_scale_inblock': inblock.view(b,n,-1,h,w), 'first_scale_encoder_first':encoder_1st.view(b,n,-1,h//2,w//2),
+        #     'first_scale_encoder_second':mma_in, 'first_scale_encoder_second_out':mma_out,
+        #     'first_scale_decoder_second':decoder_2nd, 'first_scale_decoder_first':decoder_1st,
+        #     'sobel_edge':sobel_4x_downsample.view(b,n,-1,h//4,w//4), 'motion_orthogonal_edge':orthogonal_center_weights
+        #     }
+    

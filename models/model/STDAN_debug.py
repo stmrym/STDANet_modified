@@ -108,7 +108,8 @@ class STDAN_debug(nn.Module):
         first_scale_encoder_second = first_scale_encoder_second.view(b,n,128,h//4,w//4)
         
         flow_forward,flow_backward = self.compute_flow(first_scale_encoder_second)
-        
+
+
         frame,srcframe = self.MMA(first_scale_encoder_second,first_scale_encoder_second,flow_forward,flow_backward)
         
         first_scale_encoder_second_out = self.MSA(frame,srcframe,flow_forward,flow_backward)
