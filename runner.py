@@ -36,14 +36,15 @@ def main():
         print_log  = os.path.join(output_dir, 'print.log')
 
     elif  cfg.NETWORK.PHASE == 'test':
-        output_dir = os.path.join(cfg.DIR.OUT_PATH,'test', cfg.CONST.PREFIX)
+        timestr = dt.now().isoformat(timespec='seconds').replace(':', '')
+        output_dir = os.path.join(cfg.DIR.OUT_PATH,'test', timestr + '_' + cfg.CONST.PREFIX)
         print_log    = os.path.join(output_dir, 'print.log')
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)        
 
     elif cfg.NETWORK.PHASE == 'train':
         timestr = dt.now().isoformat(timespec='seconds').replace(':', '')
-        output_dir = os.path.join(cfg.DIR.OUT_PATH,'train', cfg.CONST.PREFIX + timestr + '_' + cfg.NETWORK.DEBLURNETARCH + '_' + '_'.join(cfg.DATASET.TRAIN_DATASET_LIST)) # changed to use timestr
+        output_dir = os.path.join(cfg.DIR.OUT_PATH,'train', timestr + '_' + cfg.CONST.PREFIX + '_' + cfg.NETWORK.DEBLURNETARCH + '_' + '_'.join(cfg.DATASET.TRAIN_DATASET_LIST)) # changed to use timestr
         
         ckpt_dir     = os.path.join(output_dir, 'checkpoints')
         if not os.path.exists(ckpt_dir):
