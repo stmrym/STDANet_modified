@@ -59,9 +59,9 @@ def save_feat_grid(feat: torch.Tensor, save_name: str, nrow: int = 1) -> None:
     # Scaling [-1, 1] -> [0, 1]
     feat = 0.5*(feat + 1)
 
-    # feat_img = torchvision.utils.make_grid(torch.clamp(feat, min=0, max=1), nrow=nrow, padding=2, normalize=False)
-    # torchvision.utils.save_image(feat_img, f'{save_name}.png')
-    torchvision.utils.save_image(feat, f'{save_name}')
+    feat_img = torchvision.utils.make_grid(torch.clamp(feat, min=0, max=1), nrow=nrow, padding=2, normalize=False)
+    torchvision.utils.save_image(feat_img, f'{save_name}.png')
+    # torchvision.utils.save_image(feat, f'{save_name}')
 
 
 def evaluation(cfg, 
@@ -224,12 +224,14 @@ def evaluation(cfg,
                     # save_feat_grid((output_dict['motion_orthogonal_edge']['final'])[batch], save_dir + f'{seq}_{img_name}_7_motion_orthogonal_edge', nrow=1)
                     # save_feat_grid((torch.abs(output_dict['motion_orthogonal_edge']['final']))[batch], save_dir + f'{seq}_{img_name}_8_abs_motion_orthogonal_edge', nrow=1)
                     
+                    # exit()
+
                     if cfg.EVAL.SAVE_FLOW:
                         # saving out flow
 
-                        torch.save(input_seq, save_dir + '_input.pt')                 
-                        torch.save(output_dict['flow_forwards']['final'], save_dir + '_flow_forwards.pt')
-                        torch.save(output_dict['flow_backwards']['final'], save_dir + '_flow_backwards.pt')
+                        # torch.save(input_seq, save_dir + '_input.pt')                 
+                        # torch.save(output_dict['flow_forwards']['final'], save_dir + '_flow_forwards.pt')
+                        # torch.save(output_dict['flow_backwards']['final'], save_dir + '_flow_backwards.pt')
                         
                         out_flow_forward = (output_dict['flow_forwards']['final'])[batch,1,:,:,:].permute(1,2,0).cpu().detach().numpy()  
                         util.save_hsv_flow(save_dir=save_dir, seq=seq, img_name=img_name, out_flow=out_flow_forward)

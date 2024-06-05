@@ -114,6 +114,8 @@ def examine_stda_module():
 
     print(first_scale_encoder_second_out.shape)
 
+
+
 if __name__ == '__main__':
     examine_stda_module()
 

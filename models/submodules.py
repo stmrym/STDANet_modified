@@ -54,7 +54,7 @@ class DeformableAttnBlock(nn.Module):
         super().__init__()
         self.n_levels = n_levels
         
-        self.defor_attn = MSDeformAttn(d_model=d_model,n_levels=3,n_heads=n_heads,n_points=n_points)
+        self.defor_attn = MSDeformAttn(d_model=d_model,n_levels=self.n_levels,n_heads=n_heads,n_points=n_points)
         self.feed_forward = nn.Conv2d(d_model, d_model, kernel_size=3, padding=1)
         self.emb_qk = nn.Conv2d(3*d_model+8, 3*d_model, kernel_size=3, padding=1)
         self.emb_v = nn.Conv2d(3*d_model, 3*d_model, kernel_size=3, padding=1)
