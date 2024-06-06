@@ -3,24 +3,14 @@
 #
 # Developed by Shangchen Zhou <shangchenzhou@gmail.com>
 
-
-from os import terminal_size
-from time import thread_time_ns
-from utils import log
-from warnings import simplefilter
 import torch.nn as nn
 import torch
-from torch.nn.init import xavier_uniform_, constant_, uniform_, normal_
-import numpy as np
-from einops import rearrange, repeat
-from einops.layers.torch import Rearrange
-from torch import einsum, rand
 from models.ops.modules.ms_deform_attn import MSDeformAttn, MSDeformAttn_Fusion
 # from models.position_encoding import PositionEmbeddingSine
-from torch.utils.checkpoint import checkpoint
-import torch.nn.functional as F
 # from utils.network_utils import warp
 from torch.autograd import Variable
+from utils.save_util import save_multi_tensor
+
 def conv(in_channels, out_channels, kernel_size=3, stride=1,dilation=1, bias=True,act=nn.LeakyReLU(0.1,inplace=True)):
     return nn.Sequential(
         nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation, padding=((kernel_size-1)//2)*dilation, bias=bias),
@@ -203,14 +193,12 @@ class DeformableAttnBlock_FUSION(nn.Module):
         
         output = self.feed_forward(output)
         output = output.reshape(b,c,h,w) + frame[:,1]
-
-
-
         
         tseq_encoder_0 = torch.cat([output,srcframe[:,1]],1)
         output = output.reshape(b,c,h,w) + self.feedforward(tseq_encoder_0)
         output = self.fusion(output)
         return output
+    
 def warp(x, flo):
         """
         warp an image/tensor (im2) back to im1, according to the optical flow

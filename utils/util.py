@@ -12,6 +12,7 @@ from mmflow.datasets import visualize_flow
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.pyplot as plt
 from losses.multi_loss import *
+from typing import List, Tuple
 
 def get_patch(*args, patch_size=17, scale=1):
     """
@@ -261,4 +262,3 @@ def save_hsv_flow(save_dir:str, seq:str, img_name:str, out_flow):
         os.makedirs(os.path.join(save_dir + '_out_flow', seq), exist_ok=True)
     
     cv2.imwrite(os.path.join(save_dir + '_out_flow', seq, img_name + '.png'), flow_map) 
-

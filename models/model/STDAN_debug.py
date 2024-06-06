@@ -117,6 +117,11 @@ class STDAN_debug(nn.Module):
         first_scale_decoder_second = self.decoder_second(first_scale_encoder_second_out)
         first_scale_decoder_first = self.decoder_first(first_scale_decoder_second + first_scale_encoder_first.view(b,n,64,h//2,w//2)[:,1])
         
+        # save_dir = './debug_results/F_2024-05-31T115702_ESTDAN_v2_BSD_3ms24ms_GOPRO_stda'
+        # torch.save(mma_in, save_dir + '/mma_in.pt')                 
+        # torch.save(flow_forward, save_dir + '/flow_forwards.pt')
+        # torch.save(flow_backward, save_dir + '/flow_backwards.pt')
+        # exit()
         
         first_scale_outBlock = self.outBlock(first_scale_decoder_first+first_scale_inblock.view(b,n,32,h,w)[:,1])
         

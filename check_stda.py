@@ -7,7 +7,9 @@ from models.submodules import warp
 import torch.nn.functional as F
 from torchvision.utils import save_image
 from typing import List, Tuple
+from matplotlib import cm
 from models.submodules import DeformableAttnBlock, DeformableAttnBlock_FUSION
+from utils.save_util import save_multi_tensor
 
 
 def read_image_from_filename(filename_list: List[str]) -> List[np.ndarray]:
@@ -95,27 +97,49 @@ def vis_flow():
     save_image(forward_frames[0,1], './debug_results/gt_forword_2.png')
 
 
+def get_cmap_rgb(image_tensor: torch.tensor, cmap_name: str = 'bwr') -> torch.tensor:
+    colormap = cm.get_cmap(cmap_name, 256)
+    converted_tensor = torch.stack([torch.tensor(colormap(x.item())[0:3]) for x in image_tensor])
+    return converted_tensor
 
 
 def examine_stda_module():
 
     device = 'cuda:0'
-
-    first_scale_encoder_second = torch.load('./debug_results/encoder_2nd.pt').to(device)
-    flow_forward = torch.load('./debug_results/flow_forward.pt').to(device)
-    flow_backward = torch.load('./debug_results/flow_backward.pt').to(device)
-
-
+    weight = './exp_log/train/F_2024-05-31T115702_ESTDAN_v2_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-1200.pth.tar'
+    checkpoint = torch.load(weight, map_location='cpu')
+    base_dir = './debug_results/F_2024-05-31T115702_ESTDAN_v2_BSD_3ms24ms_GOPRO_stda'
+    
+    first_scale_encoder_second = torch.load(base_dir + '/encoder_2nd.pt').to(device)
+    flow_forward = torch.load(base_dir + '/flow_forwards.pt').to(device)
+    flow_backward = torch.load(base_dir + '/flow_backwards.pt').to(device)
+    
     mma = DeformableAttnBlock(n_heads=4,d_model=128,n_levels=3,n_points=12).to(device)
     msa = DeformableAttnBlock_FUSION(n_heads=4,d_model=128,n_levels=3,n_points=12).to(device)
 
-    frame,srcframe = mma(first_scale_encoder_second,first_scale_encoder_second,flow_forward,flow_backward)
-    first_scale_encoder_second_out = msa(frame,srcframe,flow_forward,flow_backward)
+    mma.load_state_dict({k.replace('module.recons_net.MMA.', ''):v for k,v in checkpoint['deblurnet_state_dict'].items() if 'MMA' in k })
+    msa.load_state_dict({k.replace('module.recons_net.MSA.', ''):v for k,v in checkpoint['deblurnet_state_dict'].items() if 'MSA' in k })
 
-    print(first_scale_encoder_second_out.shape)
+    frame,srcframe = mma(first_scale_encoder_second,first_scale_encoder_second,flow_forward,flow_backward)
+    encoder_2nd_out = msa(frame,srcframe,flow_forward,flow_backward)
+
+    print(first_scale_encoder_second.shape)
+    print(flow_forward.shape)
+    print(frame.shape)
+    print(encoder_2nd_out.shape)
+
+    b, t, c, h, w = first_scale_encoder_second.shape
+
+    save_multi_tensor(first_scale_encoder_second[0], base_dir + '/encoder_2nd', [-1, 1], nrow=8)
+    save_multi_tensor(flow_forward.reshape(b,-1,h,w), base_dir + '/flow_forwards', [-20, 20], nrow=2)
+    save_multi_tensor(flow_backward.reshape(b,-1,h,w), base_dir + '/flow_backwards', [-20, 20], nrow=2)
+    save_multi_tensor(frame[0], base_dir + '/encoder_2nd_mid', [-1, 1], nrow=8) 
+    save_multi_tensor(encoder_2nd_out[0], base_dir + '/encoder_2nd_out', [-1, 1], nrow=8)
 
 
 
 if __name__ == '__main__':
     examine_stda_module()
+    # tensor = torch.load('./debug_results/F_2024-05-31T115702_ESTDAN_v2_BSD_3ms24ms_GOPRO_stda/encoder_2nd.pt')
+    # save_multi_tensor(tensor[0], './debug_results/F_2024-05-31T115702_ESTDAN_v2_BSD_3ms24ms_GOPRO_stda/ff.png', normalize_range = [-1, 1], nrow=8, cmap='jet')
 
