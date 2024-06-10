@@ -106,7 +106,9 @@ def get_cmap_rgb(image_tensor: torch.tensor, cmap_name: str = 'bwr') -> torch.te
 def examine_stda_module():
 
     device = 'cuda:0'
-    weight = './exp_log/train/F_2024-05-31T115702_ESTDAN_v2_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-1200.pth.tar'
+    weight = './exp_log/train/F_2024-05-29T122237_STDAN_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-1200.pth.tar'
+    # weight = './exp_log/train/2024-06-02T141809_FFTloss_added_at_E700_STDAN_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-1200.pth.tar'
+    # weight = './exp_log/train/F_2024-05-31T115702_ESTDAN_v2_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-1200.pth.tar'
     # weight = './exp_log/train/F_2024-05-31T115702_ESTDAN_v2_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-1200.pth.tar'
     checkpoint = torch.load(weight, map_location='cpu')
     base_dir = './exp_log/test/2024-06-10T104202_F_STDAN'
