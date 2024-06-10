@@ -229,9 +229,10 @@ def evaluation(cfg,
                     if cfg.EVAL.SAVE_FLOW:
                         # saving out flow
 
-                        # torch.save(input_seq, save_dir + '_input.pt')                 
-                        # torch.save(output_dict['flow_forwards']['final'], save_dir + '_flow_forwards.pt')
-                        # torch.save(output_dict['flow_backwards']['final'], save_dir + '_flow_backwards.pt')
+                        # torch.save(input_seq, save_dir + f'{seq}_{img_name}_input.pt')    
+                        torch.save(output_dict['first_scale_encoder_second']['final'], save_dir + f'{seq}_{img_name}_encoder2nd.pt')                 
+                        torch.save(output_dict['flow_forwards']['final'], save_dir + f'{seq}_{img_name}_flow_forwards.pt')
+                        torch.save(output_dict['flow_backwards']['final'], save_dir + f'{seq}_{img_name}_flow_backwards.pt')
                         
                         out_flow_forward = (output_dict['flow_forwards']['final'])[batch,1,:,:,:].permute(1,2,0).cpu().detach().numpy()  
                         util.save_hsv_flow(save_dir=save_dir, seq=seq, img_name=img_name, out_flow=out_flow_forward)

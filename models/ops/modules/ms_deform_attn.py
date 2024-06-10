@@ -197,19 +197,19 @@ class MSDeformAttn_Fusion(nn.Module):
             raise ValueError(
                 'Last dim of reference_points must be 2 or 4, but get {} instead.'.format(reference_points.shape[-1]))
     
-        # # visalization
-        # # (B, THW, M, d/M) -> (B, T, d, H, W)
-        # value = value.flatten(2).reshape(bs, t, h*w, -1).permute(0,1,3,2).reshape(bs,t,-1,h,w)
-        # # (B, HW, M, T, K) -> (B, MTK, H, W)
-        # attention_weights = attention_weights.flatten(2).permute(0,2,1).reshape(bs,-1,h,w)
-        # # (B, HW, M, T, K, 2) -> (B, 2, MTK, H, W)
-        # sampling_offsets = sampling_offsets.flatten(2,4).permute(0,3,2,1).reshape(bs, 2, -1, h, w)
-        # base_dir = './debug_results/F_2024-05-31T115702_ESTDAN_v2_BSD_3ms24ms_GOPRO_stda'
-        # save_multi_tensor(value[0], base_dir + '/value', normalize_range=[-5, 5], nrow=12, cmap=None)
-        # save_multi_tensor(attention_weights[0], base_dir + '/attention_weights', normalize_range=[0, 1], nrow=12, cmap='jet')
-        # save_multi_tensor(sampling_offsets[0,0], base_dir + '/sampling_offsets_x', normalize_range=[-40, 40], nrow=12, cmap='bwr')
-        # save_multi_tensor(sampling_offsets[0,1], base_dir + '/sampling_offsets_y', normalize_range=[-40, 40], nrow=12, cmap='bwr')
-        # exit()
+        # visalization
+        # (B, THW, M, d/M) -> (B, T, d, H, W)
+        value = value.flatten(2).reshape(bs, t, h*w, -1).permute(0,1,3,2).reshape(bs,t,-1,h,w)
+        # (B, HW, M, T, K) -> (B, MTK, H, W)
+        attention_weights = attention_weights.flatten(2).permute(0,2,1).reshape(bs,-1,h,w)
+        # (B, HW, M, T, K, 2) -> (B, 2, MTK, H, W)
+        sampling_offsets = sampling_offsets.flatten(2,4).permute(0,3,2,1).reshape(bs, 2, -1, h, w)
+        base_dir = './exp_log/test/2024-06-10T173929_F_ESTDAN_v2'
+        save_multi_tensor(value[0], base_dir + '/value', normalize_range=[-5, 5], nrow=12, cmap=None)
+        save_multi_tensor(attention_weights[0], base_dir + '/attention_weights', normalize_range=[0, 1], nrow=12, cmap='jet')
+        save_multi_tensor(sampling_offsets[0,0], base_dir + '/sampling_offsets_x', normalize_range=[-40, 40], nrow=12, cmap='bwr')
+        save_multi_tensor(sampling_offsets[0,1], base_dir + '/sampling_offsets_y', normalize_range=[-40, 40], nrow=12, cmap='bwr')
+        exit()
 
         output = MSDeformAttnFunction.apply(
             value, input_spatial_shapes, input_level_start_index, sampling_locations, attention_weights, self.im2col_step)
@@ -374,18 +374,18 @@ class MSDeformAttn(nn.Module):
             raise ValueError(
                 'Last dim of reference_points must be 2 or 4, but get {} instead.'.format(reference_points.shape[-1]))
         
-        # visalization
-        # # (B, THW, M, T, K) -> (B, T, MTK, H, W)
+        # # visalization
+        # # # (B, THW, M, T, K) -> (B, T, MTK, H, W)
         # attention_weights = attention_weights.reshape(bs, t, h*w, self.n_heads, t, self.n_points).flatten(3).permute(0,1,3,2).reshape(bs,t,-1,h,w)
         # # (B, THW, M, T, K, 2) -> (B, T, 2, MTK, H, W)
         # sampling_offsets = sampling_offsets.reshape(bs, t, h*w, self.n_heads, t, self.n_points, 2).flatten(3,5).permute(0,1,4,3,2).reshape(bs, t, 2, -1, h, w)
         # print(attention_weights.shape)
         # print(sampling_offsets.shape)
-        # base_dir = './debug_results/F_2024-05-31T115702_ESTDAN_v2_BSD_3ms24ms_GOPRO_stda'
-        # save_multi_tensor(attention_weights[0], base_dir + '/attention_weights2', normalize_range=[0, 1], nrow=12, cmap='jet')
+        # base_dir = './exp_log/test/2024-06-10T173929_F_ESTDAN_v2'
+        # save_multi_tensor(attention_weights[0], base_dir + '/attention_weights', normalize_range=[0, 1], nrow=12, cmap='jet')
         # save_multi_tensor(sampling_offsets[0,:,0], base_dir + '/sampling_offsets_x', normalize_range=[-40, 40], nrow=12, cmap='bwr')
         # save_multi_tensor(sampling_offsets[0,:,1], base_dir + '/sampling_offsets_y', normalize_range=[-40, 40], nrow=12, cmap='bwr')
-
+        # exit()
 
         output = MSDeformAttnFunction.apply(
             value, input_spatial_shapes, input_level_start_index, sampling_locations, attention_weights, self.im2col_step)

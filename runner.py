@@ -44,8 +44,13 @@ def main():
 
     elif cfg.NETWORK.PHASE == 'train':
         timestr = dt.now().isoformat(timespec='seconds').replace(':', '')
-        output_dir = os.path.join(cfg.DIR.OUT_PATH,'train', timestr + '_' + cfg.CONST.PREFIX + '_' + cfg.NETWORK.DEBLURNETARCH + '_' + '_'.join(cfg.DATASET.TRAIN_DATASET_LIST)) # changed to use timestr
-        
+        if cfg.NETWORK.USE_STACK:
+            output_dir = os.path.join(cfg.DIR.OUT_PATH,'train', timestr + '_' + cfg.CONST.PREFIX + '_' 
+                                    + cfg.NETWORK.DEBLURNETARCH + '_Stack_' + '_'.join(cfg.DATASET.TRAIN_DATASET_LIST)) # changed to use timestr
+        else:
+            output_dir = os.path.join(cfg.DIR.OUT_PATH,'train', timestr + '_' + cfg.CONST.PREFIX + '_' 
+                                    + cfg.NETWORK.DEBLURNETARCH + '_' + '_'.join(cfg.DATASET.TRAIN_DATASET_LIST)) # changed to use timestr
+
         ckpt_dir     = os.path.join(output_dir, 'checkpoints')
         if not os.path.exists(ckpt_dir):
             os.makedirs(ckpt_dir)

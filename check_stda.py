@@ -107,13 +107,17 @@ def examine_stda_module():
 
     device = 'cuda:0'
     weight = './exp_log/train/F_2024-05-31T115702_ESTDAN_v2_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-1200.pth.tar'
+    # weight = './exp_log/train/F_2024-05-31T115702_ESTDAN_v2_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-1200.pth.tar'
     checkpoint = torch.load(weight, map_location='cpu')
-    base_dir = './debug_results/F_2024-05-31T115702_ESTDAN_v2_BSD_3ms24ms_GOPRO_stda'
+    base_dir = './exp_log/test/2024-06-10T104202_F_STDAN'
     
-    first_scale_encoder_second = torch.load(base_dir + '/encoder_2nd.pt').to(device)
-    flow_forward = torch.load(base_dir + '/flow_forwards.pt').to(device)
-    flow_backward = torch.load(base_dir + '/flow_backwards.pt').to(device)
+    first_scale_encoder_second = torch.load(base_dir + '/Mi11LiteVID_20240523_162610_00093_encoder2nd.pt').to(device)
+    flow_forward = torch.load(base_dir + '/Mi11LiteVID_20240523_162610_00093_flow_forwards.pt').to(device)
+    flow_backward = torch.load(base_dir + '/Mi11LiteVID_20240523_162610_00093_flow_backwards.pt').to(device)
     
+    print(first_scale_encoder_second.shape)
+    print(flow_forward.shape)
+
     mma = DeformableAttnBlock(n_heads=4,d_model=128,n_levels=3,n_points=12).to(device)
     msa = DeformableAttnBlock_FUSION(n_heads=4,d_model=128,n_levels=3,n_points=12).to(device)
 
@@ -123,16 +127,15 @@ def examine_stda_module():
     frame,srcframe = mma(first_scale_encoder_second,first_scale_encoder_second,flow_forward,flow_backward)
     encoder_2nd_out = msa(frame,srcframe,flow_forward,flow_backward)
 
-    print(first_scale_encoder_second.shape)
-    print(flow_forward.shape)
+
     print(frame.shape)
     print(encoder_2nd_out.shape)
 
     b, t, c, h, w = first_scale_encoder_second.shape
 
     save_multi_tensor(first_scale_encoder_second[0], base_dir + '/encoder_2nd', [-1, 1], nrow=8)
-    save_multi_tensor(flow_forward.reshape(b,-1,h,w), base_dir + '/flow_forwards', [-20, 20], nrow=2)
-    save_multi_tensor(flow_backward.reshape(b,-1,h,w), base_dir + '/flow_backwards', [-20, 20], nrow=2)
+    save_multi_tensor(flow_forward.reshape(b,-1,h,w), base_dir + '/flow_forwards', [-20, 20], nrow=2, cmap_name='bwr')
+    save_multi_tensor(flow_backward.reshape(b,-1,h,w), base_dir + '/flow_backwards', [-20, 20], nrow=2, cmap_name='bwr')
     save_multi_tensor(frame[0], base_dir + '/encoder_2nd_mid', [-1, 1], nrow=8) 
     save_multi_tensor(encoder_2nd_out[0], base_dir + '/encoder_2nd_out', [-1, 1], nrow=8)
 

@@ -175,3 +175,6 @@ config/config_debug.py
 config/config_test.py
 config/config_lab.py
 config/my_*
+
+# VScode
+code-workspace
