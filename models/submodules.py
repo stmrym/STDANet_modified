@@ -80,14 +80,14 @@ class DeformableAttnBlock(nn.Module):
         valid_ratio_w = valid_W.float() / W
         valid_ratio = torch.stack([valid_ratio_w, valid_ratio_h], -1)
         return valid_ratio
-    def preprocess(self,srcs):
+    def preprocess(self,srcs, n_lvls):
         bs,t,c,h,w = srcs.shape
         masks = [torch.zeros((bs,h,w)).bool().to(srcs.device) for _ in range(t)]
         valid_ratios = torch.stack([self.get_valid_ratio(m) for m in masks], 1)
         src_flatten = []
         mask_flatten = []
         spatial_shapes = []
-        for lv1 in range(t):
+        for lv1 in range(n_lvls):
             spatial_shape = (h, w)
             spatial_shapes.append(spatial_shape)
         spatial_shapes = torch.as_tensor(spatial_shapes, dtype=torch.long, device=srcs.device)
@@ -102,7 +102,8 @@ class DeformableAttnBlock(nn.Module):
         qureys = self.act(self.emb_qk(torch.cat([warp_fea01,frame[:,1],warp_fea21,flow_forward.reshape(b,-1,h,w),flow_backward.reshape(b,-1,h,w)],1))).reshape(b,t,c,h,w)
         value = self.act(self.emb_v(frame.reshape(b,t*c,h,w)).reshape(b,t,c,h,w))
         
-        spatial_shapes,valid_ratios = self.preprocess(value)
+        # add self.n_nevels argument
+        spatial_shapes,valid_ratios = self.preprocess(value, self.n_levels)
         level_start_index = torch.cat((spatial_shapes.new_zeros((1, )), spatial_shapes.prod(1).cumsum(0)[:-1]))
         reference_points = self.get_reference_points(spatial_shapes,valid_ratios,device=value.device)
         
@@ -122,7 +123,7 @@ class DeformableAttnBlock_FUSION(nn.Module):
         super().__init__()
         self.n_levels = n_levels
         
-        self.defor_attn = MSDeformAttn_Fusion(d_model=d_model,n_levels=3,n_heads=n_heads,n_points=n_points)
+        self.defor_attn = MSDeformAttn_Fusion(d_model=d_model,n_levels=self.n_levels,n_heads=n_heads,n_points=n_points)
         self.feed_forward = nn.Conv2d(d_model, d_model, kernel_size=3, padding=1)
         self.emb_qk = nn.Conv2d(3*d_model+4, 3*d_model, kernel_size=3, padding=1)
         self.emb_v = nn.Conv2d(3*d_model, 3*d_model, kernel_size=3, padding=1)
@@ -161,14 +162,14 @@ class DeformableAttnBlock_FUSION(nn.Module):
         valid_ratio_w = valid_W.float() / W
         valid_ratio = torch.stack([valid_ratio_w, valid_ratio_h], -1)
         return valid_ratio
-    def preprocess(self,srcs):
+    def preprocess(self,srcs, n_lvls):
         bs,t,c,h,w = srcs.shape
         masks = [torch.zeros((bs,h,w)).bool().to(srcs.device) for _ in range(t)]
         valid_ratios = torch.stack([self.get_valid_ratio(m) for m in masks], 1)
         src_flatten = []
         mask_flatten = []
         spatial_shapes = []
-        for lv1 in range(t):
+        for lv1 in range(n_lvls):
             spatial_shape = (h, w)
             spatial_shapes.append(spatial_shape)
         spatial_shapes = torch.as_tensor(spatial_shapes, dtype=torch.long, device=srcs.device)
@@ -184,8 +185,8 @@ class DeformableAttnBlock_FUSION(nn.Module):
         
         value = self.act(self.emb_v(frame.reshape(b,t*c,h,w)).reshape(b,t,c,h,w))
         
-        
-        spatial_shapes,valid_ratios = self.preprocess(value)
+        # add self.n_nevels argument
+        spatial_shapes,valid_ratios = self.preprocess(value, self.n_levels)
         level_start_index = torch.cat((spatial_shapes.new_zeros((1, )), spatial_shapes.prod(1).cumsum(0)[:-1]))
         reference_points = self.get_reference_points(spatial_shapes[0].reshape(1,2),valid_ratios,device=value.device)
         
