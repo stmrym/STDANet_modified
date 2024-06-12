@@ -213,12 +213,12 @@ def evaluation(cfg,
                         cv2.imwrite(os.path.join(save_dir + '_mid', seq, img_name + '.png'), mid_image_bgr)
 
 
-                    save_feat_grid((output_dict['first_scale_inblock']['final'])[batch,1], save_dir + f'{seq}_{img_name}_0_in_feat', nrow=4)
-                    save_feat_grid((output_dict['first_scale_encoder_first']['final'])[batch,1], save_dir + f'{seq}_{img_name}_1_en_feat', nrow=8)
-                    save_feat_grid((output_dict['first_scale_encoder_second']['final'])[batch,1], save_dir + f'{seq}_{img_name}_2_en_feat', nrow=8)
-                    save_feat_grid((output_dict['first_scale_encoder_second_out']['final'])[batch], save_dir + f'{seq}_{img_name}_3_en_out_feat', nrow=8)
-                    save_feat_grid((output_dict['first_scale_decoder_second']['final'])[batch], save_dir + f'{seq}_{img_name}_4_de_feat', nrow=8)
-                    save_feat_grid((output_dict['first_scale_decoder_first']['final'])[batch], save_dir + f'{seq}_{img_name}_5_de_feat', nrow=4)
+                    # save_feat_grid((output_dict['first_scale_inblock']['final'])[batch,1], save_dir + f'{seq}_{img_name}_0_in_feat', nrow=4)
+                    # save_feat_grid((output_dict['first_scale_encoder_first']['final'])[batch,1], save_dir + f'{seq}_{img_name}_1_en_feat', nrow=8)
+                    # save_feat_grid((output_dict['first_scale_encoder_second']['final'])[batch,1], save_dir + f'{seq}_{img_name}_2_en_feat', nrow=8)
+                    # save_feat_grid((output_dict['first_scale_encoder_second_out']['final'])[batch], save_dir + f'{seq}_{img_name}_3_en_out_feat', nrow=8)
+                    # save_feat_grid((output_dict['first_scale_decoder_second']['final'])[batch], save_dir + f'{seq}_{img_name}_4_de_feat', nrow=8)
+                    # save_feat_grid((output_dict['first_scale_decoder_first']['final'])[batch], save_dir + f'{seq}_{img_name}_5_de_feat', nrow=4)
 
                     # save_feat_grid((output_dict['sobel_edge']['final'])[batch,1], save_dir + f'{seq}_{img_name}_6_sobel_edge', nrow=1)
                     # save_feat_grid((output_dict['motion_orthogonal_edge']['final'])[batch], save_dir + f'{seq}_{img_name}_7_motion_orthogonal_edge', nrow=1)
@@ -230,9 +230,9 @@ def evaluation(cfg,
                         # saving out flow
 
                         # torch.save(input_seq, save_dir + f'{seq}_{img_name}_input.pt')    
-                        torch.save(output_dict['first_scale_encoder_second']['final'], save_dir + f'{seq}_{img_name}_encoder2nd.pt')                 
-                        torch.save(output_dict['flow_forwards']['final'], save_dir + f'{seq}_{img_name}_flow_forwards.pt')
-                        torch.save(output_dict['flow_backwards']['final'], save_dir + f'{seq}_{img_name}_flow_backwards.pt')
+                        # torch.save(output_dict['first_scale_encoder_second']['final'], save_dir + f'{seq}_{img_name}_encoder2nd.pt')                 
+                        # torch.save(output_dict['flow_forwards']['final'], save_dir + f'{seq}_{img_name}_flow_forwards.pt')
+                        # torch.save(output_dict['flow_backwards']['final'], save_dir + f'{seq}_{img_name}_flow_backwards.pt')
                         
                         out_flow_forward = (output_dict['flow_forwards']['final'])[batch,1,:,:,:].permute(1,2,0).cpu().detach().numpy()  
                         util.save_hsv_flow(save_dir=save_dir, seq=seq, img_name=img_name, out_flow=out_flow_forward)

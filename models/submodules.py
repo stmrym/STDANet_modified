@@ -102,6 +102,10 @@ class DeformableAttnBlock(nn.Module):
         qureys = self.act(self.emb_qk(torch.cat([warp_fea01,frame[:,1],warp_fea21,flow_forward.reshape(b,-1,h,w),flow_backward.reshape(b,-1,h,w)],1))).reshape(b,t,c,h,w)
         value = self.act(self.emb_v(frame.reshape(b,t*c,h,w)).reshape(b,t,c,h,w))
         
+        # base_dir = './exp_log/test/2024-06-10T105227_F_STDAN_Stack'
+        # save_multi_tensor(value[0], base_dir + '/mma_value2', normalize_range=[-1, 1], nrow=8, cmap=None)
+        # save_multi_tensor(frame[0], base_dir + '/mma_value1', normalize_range=[-1, 1], nrow=8, cmap=None)
+
         # add self.n_nevels argument
         spatial_shapes,valid_ratios = self.preprocess(value, self.n_levels)
         level_start_index = torch.cat((spatial_shapes.new_zeros((1, )), spatial_shapes.prod(1).cumsum(0)[:-1]))
@@ -112,12 +116,12 @@ class DeformableAttnBlock(nn.Module):
         output = self.feed_forward(output)
         output = output.reshape(b,t,c,h,w) + frame
 
-
-
         
         tseq_encoder_0 = torch.cat([output.reshape(b*t,c,h,w),srcframe.reshape(b*t,c,h,w)],1)
         output = output.reshape(b*t,c,h,w) + self.feedforward(tseq_encoder_0)
         return output.reshape(b,t,c,h,w),srcframe
+
+
 class DeformableAttnBlock_FUSION(nn.Module):
     def __init__(self,n_heads=4,n_levels=3,n_points=4,d_model=32):
         super().__init__()
