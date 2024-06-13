@@ -1,7 +1,8 @@
 import torch.nn as nn
 import torch
 import models.model.blocks as blocks
-from models.submodules import DeformableAttnBlock, DeformableAttnBlock_FUSION
+# from models.submodules import DeformableAttnBlock, DeformableAttnBlock_FUSION
+from models.STDAmodules import DeformableAttnBlock, DeformableAttnBlock_FUSION
 # from positional_encodings import PositionalEncodingPermute3D
 from torch.nn.init import xavier_uniform_, constant_
 
@@ -110,9 +111,16 @@ class STDAN_debug(nn.Module):
         flow_forward,flow_backward = self.compute_flow(first_scale_encoder_second)
 
 
-        frame,srcframe = self.MMA(first_scale_encoder_second,first_scale_encoder_second,flow_forward,flow_backward)
-        
-        first_scale_encoder_second_out = self.MSA(frame,srcframe,flow_forward,flow_backward)
+        # value: (B, T, d, H, W)
+        # sampling_offsets: (B, 2, T, MLK, H, W)
+        # attention_weights: (B, T, MLK, H, W)
+        # frame,srcframe,value,sampling_offsets, attention_weights = self.MMA(first_scale_encoder_second,first_scale_encoder_second,flow_forward,flow_backward)
+        frame,srcframe, _, _, _ = self.MMA(first_scale_encoder_second,first_scale_encoder_second,flow_forward,flow_backward)
+
+        # value: (B, T, d, H, W)
+        # sampling_offsets: (B, 2, MLK, H, W)
+        # attention_weights: (B, MLK, H, W)
+        first_scale_encoder_second_out, value, sampling_offsets, attention_weights = self.MSA(frame,srcframe,flow_forward,flow_backward)
         
         first_scale_decoder_second = self.decoder_second(first_scale_encoder_second_out)
         first_scale_decoder_first = self.decoder_first(first_scale_decoder_second + first_scale_encoder_first.view(b,n,64,h//2,w//2)[:,1])
@@ -122,4 +130,5 @@ class STDAN_debug(nn.Module):
         return {'out':first_scale_outBlock, 'flow_forwards':flow_forward, 'flow_backwards':flow_backward, 
                 'first_scale_inblock': first_scale_inblock.view(b,n,-1,h,w), 'first_scale_encoder_first':first_scale_encoder_first.view(b,n,-1,h//2,w//2),
                 'first_scale_encoder_second':first_scale_encoder_second, 'first_scale_encoder_second_out':first_scale_encoder_second_out,
-                'first_scale_decoder_second':first_scale_decoder_second, 'first_scale_decoder_first':first_scale_decoder_first}
+                'first_scale_decoder_second':first_scale_decoder_second, 'first_scale_decoder_first':first_scale_decoder_first,
+                'value':value, 'sampling_offsets':sampling_offsets, 'attention_weights':attention_weights}

@@ -15,8 +15,6 @@ from utils import log
 from utils.util import ssim_calculate
 import pandas as pd
 from tqdm import tqdm
-import matplotlib.pyplot as plt
-from models.submodules import warp
 
 def make_eval_df(cfg, epoch_average_list: list, save_name: str) -> pd.DataFrame:
     col_name = ['seq', 'mid_SSIM', 'out_SSIM', 'mid_SSIM_sd', 'out_SSIM_sd'] if cfg.NETWORK.USE_STACK else ['seq', 'out_SSIM', 'out_SSIM_sd']

@@ -5,7 +5,6 @@ from utils import log, util
 import torch.backends.cudnn
 import torch.utils.data
 
-import cProfile
 
 import utils.data_loaders
 import utils.data_transforms

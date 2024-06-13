@@ -196,24 +196,6 @@ class MSDeformAttn_Fusion(nn.Module):
         else:
             raise ValueError(
                 'Last dim of reference_points must be 2 or 4, but get {} instead.'.format(reference_points.shape[-1]))
-    
-        # # visalization
-        # # (B, THW, M, d/M) -> (B, T, d, H, W)
-        # value_out = value.flatten(2).reshape(bs, t, h*w, -1).permute(0,1,3,2).reshape(bs,t,-1,h,w)
-        # # (B, HW, M, L, K) -> (B, HW, MLK) -> (B, MLK, HW) -> (B, MLK, H, W)
-        # attention_weights_out = attention_weights.flatten(2,4).transpose(1,2).reshape(bs,-1,h,w)
-        # # (B, HW, M, L, K, 2) -> (B, HW, MLK, 2) -> (B, 2, MLK, HW) -> (B, 2, MLK, H, W)
-        # sampling_offsets_out = sampling_offsets.flatten(2,4).permute(0,3,2,1).reshape(bs,2,-1,h,w)
-        # base_dir = './exp_log/test/2024-06-10T105227_F_STDAN_Stack'
-        
-        # # base_dir = './exp_log/test/2024-06-11T091207_Mi11Lite_ESTDANv2/feat'
-        # if not os.path.isdir(base_dir):
-        #     os.makedirs(base_dir, exist_ok=True)
-        # save_multi_tensor(value_out[0], base_dir + '/msa_value', normalize_range=[-1, 1], nrow=8, cmap=None)
-        # save_multi_tensor(attention_weights_out[0], base_dir + '/msa_attention_weights', normalize_range=[0, 1], nrow=12, cmap='jet')
-        # save_multi_tensor(sampling_offsets_out[0,0], base_dir + '/msa_sampling_offsets_x', normalize_range=[-40, 40], nrow=12, cmap='bwr')
-        # # save_multi_tensor(sampling_offsets[0,1], base_dir + '/sampling_offsets', normalize_range=[-40, 40], nrow=12, cmap='bwr')
-        # exit()
 
         output = MSDeformAttnFunction.apply(
             value, input_spatial_shapes, input_level_start_index, sampling_locations, attention_weights, self.im2col_step)
@@ -285,6 +267,7 @@ class MSDeformAttn(nn.Module):
         # offset = offset.reshape()
         N,THW,heads,n_levels,points,_ = offset.shape
         # N,T,HW,heads,n_levels,points,2
+
         offset = offset.reshape(N,n_levels,-1,heads,n_levels,points,2)
         # [4, 1, 4096, 8, 3, 12, 2]
         offset_chunk0,offset_chunk1,offset_chunk2 = torch.chunk(offset, n_levels, dim=1)
@@ -310,12 +293,11 @@ class MSDeformAttn(nn.Module):
 
         flow_zeros = torch.zeros_like(flow_forward01)
         # 4,4096,3,2
-        
         offset_chunk0 = offset_chunk0 + torch.stack([flow_zeros,flow_forward01,flow_forward02],dim=2)[:,None,:,None,:,None,:]
         offset_chunk1 = offset_chunk1 + torch.stack([flow_backward10,flow_zeros,flow_forward12],dim=2)[:,None,:,None,:,None,:]
         offset_chunk2 = offset_chunk2 + torch.stack([flow_backward20,flow_backward21,flow_zeros],dim=2)[:,None,:,None,:,None,:]
         offset = torch.cat([offset_chunk0,offset_chunk1,offset_chunk2],dim=1).reshape( N,THW,heads,n_levels,points,2)        
-        
+
         return offset
     def _reset_offset(self):
         constant_(self.sampling_offsets.weight.data, 0.)
@@ -338,21 +320,20 @@ class MSDeformAttn(nn.Module):
 
         :return output                     (N, Length_{query}, C)
         """
-
         
         # assert (input_spatial_shapes[:, 0] * input_spatial_shapes[:, 1]).sum() == Len_in
         bs,t,c,h,w = query.shape
         value = self.value_proj(input_flatten.view(bs*t,c,h,w)).view(bs,t,c,h,w)
         sampling_offsets = self.sampling_offsets(query.view(bs*t,c,h,w)).reshape(bs,t,-1,h,w)
-
-        
         attention_weights = self.attention_weights(query.view(bs*t,c,h,w)).view(bs,t,-1,h,w)
         
         # query = query.flatten(3).transpose(2, 3).contiguous().view(bs,-1,c)
         query = query.flatten(3).transpose(2, 3).contiguous().view(bs,-1,c)
         value = value.flatten(3).transpose(2, 3).contiguous().view(bs,-1,c)
+
         sampling_offsets = sampling_offsets.flatten(3).transpose(2, 3).contiguous().view(bs,-1,self.n_heads * self.n_levels * self.n_points * 2)
         attention_weights = attention_weights.flatten(3).transpose(2, 3).contiguous().view(bs,-1,self.n_heads*self.n_levels * self.n_points)
+        
         N, Len_q, _ = query.shape
         N, Len_in, _ = value.shape
         if input_padding_mask is not None:
@@ -362,7 +343,7 @@ class MSDeformAttn(nn.Module):
         sampling_offsets = self.flow_guid_offset(flow_forward,flow_backward,sampling_offsets)
         attention_weights = attention_weights.view(N, Len_q, self.n_heads, self.n_levels * self.n_points)
         attention_weights = F.softmax(attention_weights, -1).view(N, Len_q, self.n_heads, self.n_levels, self.n_points)
-        
+
         # N, Len_q, n_heads, n_levels, n_points, 2
         if reference_points.shape[-1] == 2:
             offset_normalizer = torch.stack([input_spatial_shapes[..., 1], input_spatial_shapes[..., 0]], -1)
@@ -378,27 +359,13 @@ class MSDeformAttn(nn.Module):
             raise ValueError(
                 'Last dim of reference_points must be 2 or 4, but get {} instead.'.format(reference_points.shape[-1]))
         
-        # # visalization
-        # # (B, THW, M, d/M) -> (B, T, d, H, W)
-        # value_out = value.flatten(2).reshape(bs, t, h*w, -1).permute(0,1,3,2).reshape(bs,t,-1,h,w)    
-        # # (B, THW, M, L, K) -> (B, T, H*W, M*L*K) -> (B, T, M*L*K, H*W) -> (B, T, MLK, H, W)
-        # attention_weights_out = attention_weights.reshape(bs, t, h*w, self.n_heads, t, self.n_points).flatten(3,5).transpose(2,3).reshape(bs,t,-1,h,w)
-        # # (B, THW, M, L, K, 2) -> (B, T, H*W, M, L, K, 2) -> (B, 2, T, M, L, K, H*W) -> (B, 2, T, MLK, H, W)
-        # sampling_offsets_out = sampling_offsets.reshape(bs, t, h*w, self.n_heads, t, self.n_points, 2).permute(0,6,1,3,4,5,2).flatten(3,5).reshape(bs, 2, t, -1, h, w)
-        # print(attention_weights_out.shape)
-        # print(sampling_offsets_out.shape)
-        # # base_dir = './exp_log/test/2024-06-10T104202_F_STDAN'
-        # base_dir = './exp_log/test/2024-06-10T105227_F_STDAN_Stack'
-        # save_multi_tensor(value_out[0], base_dir + '/mma_value3', normalize_range=[-1, 1], nrow=8, cmap=None)
-        # save_multi_tensor(attention_weights_out[0], base_dir + '/mma_attention_weights', normalize_range=[0, 1], nrow=12, cmap='jet')
-        # save_multi_tensor(sampling_offsets_out[0,0], base_dir + '/mma_sampling_offsets_x', normalize_range=[-40, 40], nrow=12, cmap='bwr')
-        # # save_multi_tensor(sampling_offsets[0,1], base_dir + '/sampling_offsets_y_mma', normalize_range=[-40, 40], nrow=12, cmap='bwr')
-
 
         output = MSDeformAttnFunction.apply(
             value, input_spatial_shapes, input_level_start_index, sampling_locations, attention_weights, self.im2col_step)
+
         output = output.view(bs,t,h*w,c).transpose(2, 3).contiguous().view(bs*t,c,h,w)
         output = self.output_proj(output)
+
         return output
 
 
