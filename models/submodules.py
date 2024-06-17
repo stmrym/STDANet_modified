@@ -98,7 +98,6 @@ class DeformableAttnBlock(nn.Module):
         warp_fea01 = warp(frame[:,0],flow_backward[:,0])
         warp_fea21 = warp(frame[:,2],flow_forward[:,1])
 
-        torch.save(warp_fea01, 'tensor_original.pt')
         qureys = self.act(self.emb_qk(torch.cat([warp_fea01,frame[:,1],warp_fea21,flow_forward.reshape(b,-1,h,w),flow_backward.reshape(b,-1,h,w)],1))).reshape(b,t,c,h,w)
         value = self.act(self.emb_v(frame.reshape(b,t*c,h,w)).reshape(b,t,c,h,w))
 

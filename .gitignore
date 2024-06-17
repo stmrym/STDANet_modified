@@ -164,6 +164,7 @@ docker-compose.yml
 debug_results
 debug.py
 summary
+*.pt
 
 #JSON file
 datasets/*.json
