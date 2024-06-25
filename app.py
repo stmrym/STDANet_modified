@@ -6,8 +6,8 @@ import numpy as np
 from time import time
 from datetime import datetime
 from PIL import Image
-import importlib
 import tempfile
+from models.Stack import Stack
 # os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 import torch
 import torchvision
@@ -28,7 +28,12 @@ edge_dict = {   'Motion Edge':
                 {   'dirname':'OrthoEdge',
                     'output_type':'abs_weight',
                     'function_name':'orthogonal_edge_extraction'
-                }
+                },
+                
+                'Sobel Edge':
+                {   'dirname':'SobelEdge',
+                    'output_type':'edge',
+                    'function_name':'orthogonal_edge_extraction'}
 }
 
 def init_page() -> None:
@@ -64,7 +69,7 @@ def select_network() -> None:
     # Select models
     selected_network = st.sidebar.radio(
                             label = 'Choose network. (Must be consistent with training settings)', 
-                            options = tuple([os.path.splitext(f)[0].split('/')[-1] for f in sorted(glob.glob('models/*_Stack.py'))]),
+                            options = tuple([os.path.splitext(f)[0].split('/')[-1] for f in sorted(glob.glob('models/model/*STDAN*.py'))]),
                             disabled = ss.disabled
                             )
     
@@ -170,8 +175,30 @@ def convert_input_tesnor_list(input_list: List[np.ndarray]) -> List[torch.Tensor
 
 def load_model(network:str, weight:str):
     # Load model from 'network' and 'weight'
-    module = importlib.import_module('models.' + network)
-    deblurnet = module.__dict__[network]()
+    # deblurnet = Stack(
+    #     network_arch = network, 
+    #     use_stack = cfg.NETWORK.USE_STACK, 
+    #     n_sequence = cfg.NETWORK.INPUT_LENGTH, 
+    #     in_channels = cfg.NETWORK.INPUT_CHANNEL,
+    #     n_feat = cfg.NETWORK.NUM_FEAT,
+    #     out_channels = cfg.NETWORK.OUTPUT_CHANNEL,
+    #     n_resblock = cfg.NETWORK.NUM_RESBLOCK,
+    #     kernel_size = cfg.NETWORK.KERNEL_SIZE,
+    #     sobel_out_channels = cfg.NETWORK.SOBEL_OUT_CHANNEL,
+    #     device = device
+    # )
+    deblurnet = Stack(
+        network_arch = network, 
+        use_stack = True, 
+        n_sequence = 5, 
+        in_channels = 3,
+        n_feat = 32,
+        out_channels = 3,
+        n_resblock = 3,
+        kernel_size = 5,
+        sobel_out_channels = 2,
+        device = 'cuda:0'
+    )
 
     checkpoint = torch.load(os.path.join('weights', weight), map_location='cpu')    
     deblurnet.load_state_dict({k.replace('module.',''):v for k,v in checkpoint['deblurnet_state_dict'].items()})
@@ -236,11 +263,11 @@ def video_inference(weight:str, network:str, upload_file) -> None:
             output_dict = deblurnet(input_tensor)
 
             # Transform tensor to numpy
-            output_image = output_dict['out'].cpu().detach()*255
+            output_image = output_dict['out']['final'].cpu().detach()*255
             output_image = output_image[0].permute(1,2,0).numpy().copy()
             output_image = np.clip(output_image, 0, 255).astype(np.uint8)
             
-            output_flow = ((output_dict['flow_forwards'])[-1])[0][1].permute(1,2,0).cpu().detach().numpy()   
+            output_flow = (output_dict['flow_forwards']['final'])[0][1].permute(1,2,0).cpu().detach().numpy()   
             flow_map = visualize_flow(output_flow, None)
             flow_map = cv2.resize(flow_map, (w, h), interpolation = cv2.INTER_NEAREST)
             # Show output and flow
@@ -257,13 +284,20 @@ def video_inference(weight:str, network:str, upload_file) -> None:
             
             # Saving each edge image
             if ss.selected_add_image_type != 'No save':
+                # util.save_edge(
+                #     savename = os.path.join('demo_output', output_dir_name, edge_dict[ss.selected_add_image_type]['dirname'], output_frame_name),
+                #     out_image = output_dict['out']['final'],
+                #     flow_tensor = output_dict['flow_forwards']['final'][:,1,:,:,:],
+                #     key = edge_dict[ss.selected_add_image_type]['output_type'],
+                #     edge_extraction_func = eval(edge_dict[ss.selected_add_image_type]['function_name']))
+    
                 util.save_edge(
                     savename = os.path.join('demo_output', output_dir_name, edge_dict[ss.selected_add_image_type]['dirname'], output_frame_name),
-                    out_image = output_dict['out'],
-                    flow_tensor = output_dict['flow_forwards'][-1][:,1,:,:,:],
+                    out_image = input_tensor[:,1],
+                    flow_tensor = output_dict['flow_forwards']['final'][:,1,:,:,:],
                     key = edge_dict[ss.selected_add_image_type]['output_type'],
                     edge_extraction_func = eval(edge_dict[ss.selected_add_image_type]['function_name']))
-    
+
             output_video.write(cv2.cvtColor(output_image, cv2.COLOR_RGB2BGR))
             flow_video.write(cv2.cvtColor(flow_map, cv2.COLOR_RGB2BGR))  
 

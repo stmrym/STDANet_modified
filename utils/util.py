@@ -168,8 +168,8 @@ def save_edge(savename:str, out_image:torch.tensor, flow_tensor:torch.tensor, ke
         # output = (output - torch.min(output))/(torch.max(output) - torch.min(output))
 
     # Edge enhancing
-    # if key in ['edge', 'weighted']:
-    #     output *= 5
+    if key in ['edge', 'weighted']:
+        output *= 3
     
     # print(f'{torch.max(output)} {torch.min(output)}')
 
