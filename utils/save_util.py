@@ -1,9 +1,10 @@
+import numpy as np
 import torch
 import torchvision
 from typing import List
 from matplotlib import cm
 
-def gray2cmap(image_tensor: torch.tensor, cmap_name: str = 'bwr') -> torch.tensor:
+def gray2cmap_tensor(image_tensor: torch.tensor, cmap_name: str = 'bwr') -> torch.tensor:
     colormap = cm.get_cmap(cmap_name, 256)
     # (N, H, W)
     image_array = image_tensor.to('cpu').detach().numpy().copy()
@@ -13,6 +14,11 @@ def gray2cmap(image_tensor: torch.tensor, cmap_name: str = 'bwr') -> torch.tenso
     converted_tensor = torch.from_numpy(converted_array).clone().permute(0,3,1,2)
     return converted_tensor
 
+def gray2cmap_numpy(image_np: np.ndarray, cmap_name: str = 'bwr') -> np.ndarray:
+    colormap = cm.get_cmap(cmap_name, 256)
+    # (H, W) -> (H, W, 3)
+    converted_array = colormap(image_np)[:,:,0:3]
+    return converted_array
 
 def save_feat_grid(feat: torch.Tensor, save_name: str, normalize_range: List[int] = [-1, 1], nrow: int = 1, cmap: str = None) -> None:
     # feat: (N, H, W)
@@ -29,7 +35,7 @@ def save_feat_grid(feat: torch.Tensor, save_name: str, normalize_range: List[int
 
     # Convert grayscale to colormap
     if cmap is not None:
-        feat = gray2cmap(feat, cmap)
+        feat = gray2cmap_tensor(feat, cmap)
         feat = torch.clamp(feat, min=0, max=1)
     else:
         feat = feat.unsqueeze(dim=1)
