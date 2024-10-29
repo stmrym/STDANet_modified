@@ -1,16 +1,29 @@
-from models.STDAN_RAFT_Stack import STDAN_RAFT_Stack
+from models.Stack import Stack
 from torchinfo import summary
 from mmcv.cnn.utils import flops_counter
 from config.config_debug import cfg
 
 def main():
     B = 1
-    T = 5
+    T = 3
     C = 3
     H = 256
     W = 256
 
-    model = STDAN_RAFT_Stack(cfg=cfg)
+
+    model = Stack(  
+                network_arch = 'ESTDAN_v2', 
+                use_stack = False, 
+                n_sequence = 3, 
+                in_channels = 3,
+                n_feat = 32,
+                out_channels = 3,
+                n_resblock = 3,
+                kernel_size = 5,
+                sobel_out_channels = 2,
+                device = 'cuda:0'
+                )
+
     summary(
         model,
         input_size=(B,T,C,H,W),
