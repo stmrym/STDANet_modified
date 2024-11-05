@@ -5,17 +5,16 @@ import torch.nn.functional as F
 
 class Stack(nn.Module):
 
-    def __init__(self, **kwargs):
+    def __init__(self, n_sequence, arch, device, use_stack, **kwargs):
         super(Stack, self).__init__()
 
-        self.in_channels = kwargs['in_channels']
-        self.n_sequence = kwargs['n_sequence']
-        self.device = kwargs['device']
-        self._network_arch = kwargs['network_arch']
-        self._use_stack = kwargs['use_stack']
+        self.n_sequence = n_sequence
+        self.device = device
+        self.arch = arch
+        self.use_stack = use_stack
 
         self._module = importlib.import_module('models.model.' + self._network_arch)
-        self.recons_net = self._module.__dict__[self._network_arch](**kwargs)
+        self.recons_net = self._module.__dict__[self._network_arch](device=device, **kwargs)
 
     def down_size(self,frame):
         _,_,h,w = frame.shape
@@ -24,7 +23,7 @@ class Stack(nn.Module):
     
     def forward(self, x):
 
-        if self._use_stack:
+        if self.use_stack:
             assert self.n_sequence == 5, 'Please set DATA.INPUT_LENGTH to 5.'
 
             frame_list = [x[:, i, :, :, :] for i in range(self.n_sequence)]

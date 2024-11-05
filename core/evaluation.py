@@ -59,7 +59,7 @@ def save_feat_grid(feat: torch.Tensor, save_name: str, nrow: int = 1) -> None:
     # torchvision.utils.save_image(feat, f'{save_name}')
 
 
-def evaluation(cfg, 
+def evaluation(opt, 
         eval_dataset_name: str,
         save_dir: str,
         eval_loader: utils.data_loaders.VideoDeblurDataLoader_No_Slipt, 
@@ -74,8 +74,8 @@ def evaluation(cfg,
     # Set up data loader
     eval_data_loader = torch.utils.data.DataLoader(
         dataset=eval_loader.get_dataset(transforms = eval_transforms),
-        batch_size=cfg.CONST.EVAL_BATCH_SIZE,
-        num_workers=cfg.CONST.NUM_WORKER, pin_memory=True, shuffle=False)
+        batch_size=opt.eval_batch_size,
+        num_workers=opt.num_worker, pin_memory=True, shuffle=False)
 
     inference_time = utils.network_utils.AverageMeter()
     process_time   = utils.network_utils.AverageMeter()
@@ -85,7 +85,7 @@ def evaluation(cfg,
 
 
     losses_dict_list = []
-    for loss_config_dict in cfg.LOSS_DICT_LIST:
+    for loss_config_dict in opt.loss.values():
         losses_dict = loss_config_dict.copy()
         losses_dict['avg_meter'] = utils.network_utils.AverageMeter()
         losses_dict_list.append(losses_dict)
@@ -99,7 +99,7 @@ def evaluation(cfg,
         assert total_case_num != 0, f'[{eval_dataset_name}] empty!'
 
     tqdm_eval = tqdm(eval_data_loader)
-    tqdm_eval.set_description(f'[EVAL] [Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}]')
+    tqdm_eval.set_description(f'[EVAL] [Epoch {epoch_idx}/{opt.train.n_epochs}]')
 
     epoch_average_list = []
 
@@ -139,11 +139,11 @@ def evaluation(cfg,
             torch.cuda.synchronize()
             process_start_time = time()
             
-            total_loss, total_losses, losses_dict_list = calc_update_losses(output_dict=output_dict, gt_seq=gt_seq, losses_dict_list=losses_dict_list, total_losses=total_losses, batch_size=cfg.CONST.EVAL_BATCH_SIZE)
+            total_loss, total_losses, losses_dict_list = calc_update_losses(output_dict=output_dict, gt_seq=gt_seq, losses_dict_list=losses_dict_list, total_losses=total_losses, batch_size=opt.eval_batch_size)
 
-            if cfg.EVAL.CALC_METRICS:
-                img_PSNRs_out.update(util.calc_psnr(output_dict['out']['final'].detach(),gt_tensor.detach()), cfg.CONST.EVAL_BATCH_SIZE)
-                img_LPIPSs_out.update(loss_fn_alex(output_dict['out']['final'], gt_tensor).mean().detach().cpu(), cfg.CONST.EVAL_BATCH_SIZE)
+            if opt.eval.calc_metrics:
+                img_PSNRs_out.update(util.calc_psnr(output_dict['out']['final'].detach(),gt_tensor.detach()), opt.eval_batch_size)
+                img_LPIPSs_out.update(loss_fn_alex(output_dict['out']['final'], gt_tensor).mean().detach().cpu(), opt.eval_batch_size)
             
 
             output_ndarrays = output_dict['out']['final'].detach().cpu().permute(0,2,3,1).numpy()*255
@@ -151,7 +151,7 @@ def evaluation(cfg,
 
             for batch in range(0, output_ndarrays.shape[0]):
                 
-                if cfg.EVAL.CALC_METRICS:
+                if opt.eval.calc_metrics:
                     if seq_idx == 0 and batch == 0:
                         # Initialize seq_frame_value_list
                         seq_frame_value_list = []
@@ -168,14 +168,14 @@ def evaluation(cfg,
                 output_image_bgr = cv2.cvtColor(np.clip(output_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
                 gt_image_bgr = cv2.cvtColor(np.clip(gt_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
                 
-                if cfg.EVAL.CALC_METRICS:
+                if opt.eval.calc_metrics:
                     img_ssim_out = ssim_calculate(output_image_bgr, gt_image_bgr)
                     seq_frame_value_list.append([seq, int(img_name), img_ssim_out])
 
-                if cfg.NETWORK.PHASE == 'test':
-                    cfg.EVAL.VISUALIZE_FREQ = 1
+                if opt.phase == 'test':
+                    opt.eval.visualize_freq = 1
 
-                if (epoch_idx % cfg.EVAL.VISUALIZE_FREQ == 0):
+                if (epoch_idx % opt.eval.visualize_freq == 0):
 
                     # saving output image
                     if not os.path.isdir(os.path.join(save_dir + '_output', seq)):
@@ -196,7 +196,7 @@ def evaluation(cfg,
                     
                     # exit()
 
-                    if cfg.EVAL.SAVE_FLOW:
+                    if opt.eval.save_flow:
                         # saving out flow
 
                         # torch.save(input_seq, save_dir + f'{seq}_{img_name}_input.pt')    
@@ -217,12 +217,12 @@ def evaluation(cfg,
             
             torch.cuda.synchronize()
             process_time.update((time() - process_start_time))
-            if cfg.EVAL.CALC_METRICS:
+            if opt.eval.calc_metrics:
                 tqdm_eval.set_postfix_str(f'Inference Time {inference_time} Process Time {process_time} PSNR_out {img_PSNRs_out}')
             else:
                 tqdm_eval.set_postfix_str(f'Inference Time {inference_time} Process Time {process_time}')
     
-    if cfg.EVAL.CALC_METRICS:
+    if opt.eval.calc_metrics:
         # Make dataFrame of last sequence    
         csv_savedir = save_dir +  '_csv'            
         epoch_average_list = make_seq_df(seq_frame_value_list, epoch_average_list, csv_savedir, str(epoch_idx) + '_' + seq + '.csv')
@@ -230,7 +230,7 @@ def evaluation(cfg,
         eval_df = make_eval_df(epoch_average_list, save_dir + '_average.csv')
     
     # Add testing results to TensorBoard
-    if cfg.NETWORK.PHASE in ['train', 'resume']:
+    if opt.phase in ['train', 'resume']:
         for losses_dict in losses_dict_list:
             tb_writer.add_scalar(f'Loss_VALID_{eval_dataset_name}/{losses_dict["name"]}', losses_dict["avg_meter"].avg, epoch_idx)
 
@@ -244,18 +244,18 @@ def evaluation(cfg,
             Best_Img_PSNR = img_PSNRs_out.avg
             Best_Epoch = epoch_idx
 
-    elif cfg.NETWORK.PHASE in ['test'] and tb_writer is not None:
-        if cfg.EVAL.CALC_METRICS:
+    elif opt.phase in ['test'] and tb_writer is not None:
+        if opt.eval.calc_metrics:
             tb_writer.add_scalar(f'PSNR/VALID_{eval_dataset_name}', img_PSNRs_out.avg, epoch_idx)
             tb_writer.add_scalar(f'SSIM/VALID_{eval_dataset_name}', eval_df.at['Avg.', 'out_SSIM'], epoch_idx)
             tb_writer.add_scalar(f'LPIPS/VALID_{eval_dataset_name}', img_LPIPSs_out.avg, epoch_idx)
 
-    if cfg.EVAL.CALC_METRICS:
-        log.info(f'[EVAL][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{eval_dataset_name}] PSNR(out:{img_PSNRs_out.avg}), PSNR_best:{Best_Img_PSNR} at epoch {Best_Epoch}')
-        log.info(f'[EVAL][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{eval_dataset_name}] SSIM(out:{eval_df.at["Avg.","out_SSIM"]}), Infer. time:{inference_time}, Process time:{process_time}')
+    if opt.eval.calc_metrics:
+        log.info(f'[EVAL][Epoch {epoch_idx}/{opt.train.n_epochs}][{eval_dataset_name}] PSNR(out:{img_PSNRs_out.avg}), PSNR_best:{Best_Img_PSNR} at epoch {Best_Epoch}')
+        log.info(f'[EVAL][Epoch {epoch_idx}/{opt.train.n_epochs}][{eval_dataset_name}] SSIM(out:{eval_df.at["Avg.","out_SSIM"]}), Infer. time:{inference_time}, Process time:{process_time}')
 
     else:
-        log.info(f'[EVAL][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}][{eval_dataset_name}] Infer. time:{inference_time}, Process time:{process_time}')       
+        log.info(f'[EVAL][Epoch {epoch_idx}/{opt.train.n_epochs}][{eval_dataset_name}] Infer. time:{inference_time}, Process time:{process_time}')       
 
 
     return Best_Img_PSNR, Best_Epoch

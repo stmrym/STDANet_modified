@@ -1,0 +1,120 @@
+seed: 0
+device: 0
+num_worker: 8
+weights: ~
+train_batch_size: 8
+eval_batch_size: 1
+prefix: ~
+phase: train
+exp_path: ./exp_log
+
+dataset:
+  train:
+    dataset:
+      - BSD_3ms24ms
+      - GOPRO
+    blur_path:
+      - ../dataset/BSD_3ms24ms/%s/%s/Blur/RGB/%s.png
+      - ../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png
+    sharp_path:
+      - ../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png # %s, %s, %s: phase, seq_name, image_name template
+      - ../dataset/GOPRO_Large/%s/%s/sharp/%s.png
+    json_path:
+      - datasets/BSD_3ms24ms_train.json
+      - datasets/GOPRO_train.json
+    
+  val:
+    dataset:
+      - BSD_3ms24ms
+      - GOPRO
+    blur_path:
+      - ../dataset/BSD_3ms24ms/%s/%s/Blur/RGB/%s.png     # %s, %s, %s: phase, seq_name, image_name
+      - ../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png
+    sharp_path:
+      - ../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png    # %s, %s, %s: phase, seq_name, image_name
+      - ../dataset/GOPRO_Large/%s/%s/sharp/%s.png
+    json_path:
+      - ../STDAN_modified/datasets/BSD_3ms24ms_test.json   
+      - ../STDAN_modified/datasets/GOPRO_test.json
+  
+  test:
+    dataset:
+      - Mi11Lite
+    blur_path:
+      - ../dataset/Mi11Lite/%s/%s/%s.png
+    sharp_path:
+      - ../dataset/Mi11Lite/%s/%s/%s.png
+    json_path:
+      - datasets/mi11lite.json
+
+network:
+  arch: STDAN
+  use_stack: false
+  # use_otho_edge: true
+  input_length: 3
+
+  in_channels: 3
+  out_channels: 3
+  n_resblock: 3
+  n_feat: 32
+  kernel_size: 5
+  sobel_out_channels: 2  # for ESTDAN
+
+raft:
+  config_file: ../STDAN_modified/mmflow/configs/raft/raft_8x2_100k_mixed_368x768.py
+  checkpoint: ../STDAN_modified/mmflow/checkpoints/raft_8x2_100k_mixed_368x768.pth
+
+train_transform:
+  ColorJitter: [0.2, 0.15, 0.3, 0.1] # brightness, contrast, saturation, hue
+  Normalize:
+    mean: [0.0, 0.0, 0.0]
+    std: [255.0, 255.0, 255.0]
+  RandomCrop: [256, 256]  # Crop image size: height, width
+  RandomVerticalFlip:
+  RandomHorizontalFlip:
+  RandomGaussianNoise: [0, 0.0001]  # mu, std_var
+
+eval_transform:
+  Normalize:
+    mean: [0.0, 0.0, 0.0]
+    std: [255.0, 255.0, 255.0]
+
+loss:
+  L1loss:
+    name: L1loss
+    func: l1Loss
+    weight: 1
+  WarpMSELoss:
+    name: WarpMSELoss
+    func: warp_loss
+    weight: 0.05
+  FFTLoss:
+    name: FFTLoss
+    func: FFTLoss
+    weight: 0.05 
+
+train:
+  use_percept_loss: false
+  motion_requires_grad: true
+  sobel_requires_grad: true
+  n_epochs: 1201
+  save_freq: 50
+  optimization:
+    leaning_rate: 1e-4
+    lr_milestones: 
+      - 400
+      - 600
+      - 800
+      - 1000
+    lr_decay: 0.5
+    momentum: 0.9
+    beta: 0.999
+    bias_decay: 0.0
+    weight_decay: 0.0
+  
+eval:
+  valid_freq: 50
+  visualize_freq: 50
+  save_flow: true
+  use_tensorboard: true
+  calc_metrics: true

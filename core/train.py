@@ -18,7 +18,7 @@ from core.evaluation import evaluation
 from tqdm import tqdm
 
 
-def train(cfg, init_epoch, 
+def train(opt, init_epoch, 
         train_transforms, val_transforms,
         deblurnet, deblurnet_solver, deblurnet_lr_scheduler,
         ckpt_dir, visualize_dir, 
@@ -30,15 +30,16 @@ def train(cfg, init_epoch,
 
     # Set up data loader
     dataset_list = []
+    dataset_opt = opt.dataset.train
     for train_dataset_name, train_image_blur_path, train_image_clear_path, train_json_file_path\
-        in zip(cfg.DATASET.TRAIN_DATASET_LIST, cfg.DIR.TRAIN_IMAGE_BLUR_PATH_LIST, cfg.DIR.TRAIN_IMAGE_CLEAR_PATH_LIST, cfg.DIR.TRAIN_JSON_FILE_PATH_LIST):
+        in zip(dataset_opt.dataset, dataset_opt.blur_path, dataset_opt.clear_path, dataset_opt.json_path):
             
             # Load each dataset and append to list
             dataset_loader = utils.data_loaders.VideoDeblurDataLoader_No_Slipt(
                 image_blur_path = train_image_blur_path, 
                 image_clear_path = train_image_clear_path,
                 json_file_path = train_json_file_path,
-                input_length = cfg.NETWORK.INPUT_LENGTH)
+                input_length = opt.network.input_length)
             
             dataset = dataset_loader.get_dataset(transforms = train_transforms)
             dataset_list.append(dataset)
@@ -56,27 +57,27 @@ def train(cfg, init_epoch,
     # Creating dataloader
     train_data_loader = torch.utils.data.DataLoader(
         dataset=all_dataset,
-        batch_size=cfg.CONST.TRAIN_BATCH_SIZE,
-        num_workers=cfg.CONST.NUM_WORKER, pin_memory=True, shuffle=True)
+        batch_size=opt.train_batch_size,
+        num_workers=opt.num_worker, pin_memory=True, shuffle=True)
 
     # Start epoch
-    for epoch_idx in range(init_epoch, cfg.TRAIN.NUM_EPOCHES):
+    for epoch_idx in range(init_epoch, opt.train.n_epochs):
 
         # Batch average meterics
         losses_dict_list = []
-        for loss_config_dict in cfg.LOSS_DICT_LIST:
+        for loss_config_dict in opt.loss.values():
             losses_dict = loss_config_dict.copy()
             losses_dict['avg_meter'] = utils.network_utils.AverageMeter()
             losses_dict_list.append(losses_dict)
 
         total_losses = utils.network_utils.AverageMeter()
 
-        if cfg.NETWORK.USE_STACK:
+        if opt.network.use_stack:
             img_PSNRs_mid = utils.network_utils.AverageMeter()
         img_PSNRs_out    = utils.network_utils.AverageMeter()
 
         tqdm_train = tqdm(train_data_loader)
-        tqdm_train.set_description(f'[TRAIN] [Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}]')
+        tqdm_train.set_description(f'[TRAIN] [Epoch {epoch_idx}/{opt.train.n_epochs}]')
 
         for seq_idx, (name, seq_blur, seq_clear) in enumerate(tqdm_train):
             # Get data from data loader
@@ -105,11 +106,11 @@ def train(cfg, init_epoch,
             total_loss, total_losses, losses_dict_list = calc_update_losses(output_dict=output_dict, gt_seq=gt_seq, losses_dict_list=losses_dict_list, total_losses=total_losses, batch_size=cfg.CONST.TRAIN_BATCH_SIZE)
 
             img_PSNR_out = util.calc_psnr(output_dict['out']['final'].detach(),gt_tensor.detach())
-            img_PSNRs_out.update(img_PSNR_out, cfg.CONST.TRAIN_BATCH_SIZE)
+            img_PSNRs_out.update(img_PSNR_out, opt.train_batch_size)
 
-            if cfg.NETWORK.USE_STACK:
+            if opt.network.use_stack:
                 img_PSNR_mid = util.calc_psnr(output_dict['out']['recons_2'].detach(),gt_tensor.detach())
-                img_PSNRs_mid.update(img_PSNR_mid, cfg.CONST.TRAIN_BATCH_SIZE)
+                img_PSNRs_mid.update(img_PSNR_mid, opt.train_batch_size)
             deblurnet_solver.zero_grad()
             total_loss.backward()
             deblurnet_solver.step()
@@ -117,7 +118,7 @@ def train(cfg, init_epoch,
             n_itr = n_itr + 1
 
             # Tick / tock
-            if cfg.NETWORK.USE_STACK:
+            if opt.network.use_stack:
                 tqdm_train.set_postfix_str(f'PSNR_mid {img_PSNRs_mid} PSNR_out {img_PSNRs_out}')        
             else:
                 tqdm_train.set_postfix_str(f'PSNR_out {img_PSNRs_out}')
@@ -131,12 +132,12 @@ def train(cfg, init_epoch,
         tb_writer.add_scalar('lr/lr', deblurnet_lr_scheduler.get_last_lr()[0], epoch_idx)
         deblurnet_lr_scheduler.step()
 
-        if cfg.NETWORK.USE_STACK:
-            log.info(f'[TRAIN][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}] PSNR_mid: {img_PSNRs_mid.avg}, PSNR_out: {img_PSNRs_out.avg}')
+        if opt.network.use_stack:
+            log.info(f'[TRAIN][Epoch {epoch_idx}/{opt.train.n_epochs}] PSNR_mid: {img_PSNRs_mid.avg}, PSNR_out: {img_PSNRs_out.avg}')
         else:
-            log.info(f'[TRAIN][Epoch {epoch_idx}/{cfg.TRAIN.NUM_EPOCHES}] PSNR_out: {img_PSNRs_out.avg}')
+            log.info(f'[TRAIN][Epoch {epoch_idx}/{opt.train.n_epochs}] PSNR_out: {img_PSNRs_out.avg}')
 
-        if epoch_idx % cfg.TRAIN.SAVE_FREQ == 0:
+        if epoch_idx % opt.train.seve_freq == 0:
             utils.network_utils.save_checkpoints(os.path.join(ckpt_dir, 'ckpt-epoch-%04d.pth.tar' % (epoch_idx)), \
                                                     epoch_idx, deblurnet,deblurnet_solver, \
                                                     Best_Img_PSNR, Best_Epoch)
@@ -145,16 +146,17 @@ def train(cfg, init_epoch,
                                                     epoch_idx, deblurnet, deblurnet_solver,\
                                                     Best_Img_PSNR, Best_Epoch)
         
-        if epoch_idx % cfg.EVAL.VALID_FREQ == 0:
+        if epoch_idx % opt.eval.valid_freq == 0:
             
             # Validation for each dataset list
+            dataset_opt = opt.dataset.val
             for val_dataset_name, val_image_blur_path, val_image_clear_path, val_json_file_path\
-                in zip(cfg.DATASET.VAL_DATAET_LIST, cfg.DIR.VAL_IMAGE_BLUR_PATH_LIST, cfg.DIR.VAL_IMAGE_CLEAR_PATH_LIST, cfg.DIR.VAL_JSON_FILE_PATH_LIST):
+                in zip(dataset_opt.dataset, dataset_opt.blur_path, dataset_opt.clear_path, dataset_opt.json_path):
                 val_loader = utils.data_loaders.VideoDeblurDataLoader_No_Slipt(
                     image_blur_path = val_image_blur_path, 
                     image_clear_path = val_image_clear_path,
                     json_file_path = val_json_file_path,
-                    input_length = cfg.NETWORK.INPUT_LENGTH)
+                    input_length = opt.network.input_length)
 
                 save_dir = os.path.join(visualize_dir, 'epoch-' + str(epoch_idx).zfill(4))
 
@@ -165,7 +167,7 @@ def train(cfg, init_epoch,
 
                 # Validation
                 Best_Img_PSNR, Best_Epoch = evaluation(
-                    cfg = cfg,
+                    opt = opt,
                     eval_dataset_name = val_dataset_name,
                     save_dir = save_dir,
                     eval_loader = val_loader, 

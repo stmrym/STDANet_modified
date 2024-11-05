@@ -17,7 +17,7 @@ def make_model(args):
 class ESTDAN_v3(nn.Module):
 
     def __init__(self, in_channels=3, out_channels=3, sobel_out_channels=2, n_resblock=3, n_feat=32,
-                 kernel_size=5, device='cuda', **kwargs):
+                 kernel_size=5, device='cuda'):
         super(ESTDAN_v3, self).__init__()
         self.n_feat = n_feat
         InBlock = []
@@ -75,19 +75,6 @@ class ESTDAN_v3(nn.Module):
         self.outBlock = nn.Sequential(*OutBlock)
 
         self.edge_extractor = nn.Sequential(extractor.Edge_extractor_light(inplanes=1, planes=sobel_out_channels, kernel_size=3, stride=1, device=device))
-
-        # self.inBlock_channel_conv = nn.Sequential(
-        #                 nn.Conv2d(n_feat + sobel_out_channels, n_feat, kernel_size=1, stride=1, padding='same', dilation=1),
-        #                 nn.GELU()
-        # )
-        # self.encoder_first_channel_conv = nn.Sequential(
-        #                 nn.Conv2d(n_feat*2 + sobel_out_channels, n_feat*2, kernel_size=1, stride=1, padding='same', dilation=1),
-        #                 nn.GELU()
-        # )
-        # self.encoder_second_channel_conv = nn.Sequential(
-        #                 nn.Conv2d(n_feat*4 + sobel_out_channels, n_feat*4, kernel_size=1, stride=1, padding='same', dilation=1),
-        #                 nn.GELU()
-        # )
 
         self.orthogonal_second_upsampler = nn.Sequential(
                         nn.Conv2d(in_channels=2, out_channels=8, kernel_size=3, stride=1, padding='same', dilation=1),
@@ -158,22 +145,14 @@ class ESTDAN_v3(nn.Module):
         inblock = self.inBlock_t(x.view(b*n,c,h,w))
         # concat (B*N,32,H,W) & (B*N,2,H,W) -> (B*N,34,H,W)
         inblock = torch.cat([inblock, sobel_feat], dim=1)
-        # (B*N,34,H,W) -> (B*N,32,H,W)
-        # inblock = self.inBlock_channel_conv(inblock.view(b*n, -1, h, w))  
         
         # Encoder 1st downsampling H, W -> H/2, W/2
         encoder_1st = self.encoder_first(inblock)
         # concat (B*N,64,H/2,W/2) & (B*N,2,H/2,W/2) -> (B*N,66,H/2,W/2)
         encoder_1st = torch.cat([encoder_1st, sobel_2x_downsample], dim=1)
-        # (B,N,66,H/2,W/2) -> (B*N,64,H/2,W/2)
-        # encoder_1st = self.encoder_first_channel_conv(encoder_1st.view(b*n, -1, h//2, w//2))
         
         # Encoder 2nd downsampling H/2, W/2 -> H/4, W/4
         encoder_2nd = self.encoder_second(encoder_1st)
-        # concat (B*N,128,H/4,W/4) & (B*N,2,H/4,W/4) -> (B*N,130,H/4,W/4)
-        # encoder_2nd = torch.cat([encoder_2nd, sobel_4x_downsample], dim=1)
-        # (B,N,130,H/4,W/4) -> (B,N,128,H/4,W/4)
-        # encoder_2nd = self.encoder_second_channel_conv(encoder_2nd.view(b*n, -1, h//4, w//4))
         
         # Estimate flow
         flow_forward,flow_backward = self.compute_flow(encoder_2nd.view(b,n,-1,h//4,w//4))
