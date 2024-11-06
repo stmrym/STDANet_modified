@@ -311,15 +311,6 @@ def orthogonal_edge_loss(output_dict:dict, gt_seq:torch.tensor):
     return loss
 
 
-def calc_update_losses(output_dict:dict, gt_seq:torch.tensor, losses_dict_list:list, total_losses, batch_size:int):
 
-    total_loss = 0
-    for losses_dict in losses_dict_list:
-        loss = eval(losses_dict['func'])(output_dict, gt_seq) * losses_dict['weight']   # Calculate loss
-        losses_dict['avg_meter'].update(loss.item(), batch_size)    # Update loss
-        total_loss += loss
-
-    total_losses.update(total_loss.item(), batch_size) # Update total losses
-    return total_loss, total_losses, losses_dict_list
 
 

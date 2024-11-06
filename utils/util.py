@@ -7,7 +7,7 @@ import os
 import glob
 import math
 from tqdm import tqdm
-from skimage.metrics import structural_similarity as compare_ssim
+
 from mmflow.datasets import visualize_flow
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.pyplot as plt
@@ -93,6 +93,8 @@ def calc_psnr(img1, img2, rgb_range=1., shave=4):
     return 20 * torch.log10(PIXEL_MAX / torch.sqrt(mse)).mean()
 
 
+
+
 def calc_grad_sobel(img, device='cuda'):
     if not isinstance(img, torch.Tensor):
         raise Exception("Now just support torch.Tensor. See the Type(img)={}".format(type(img)))
@@ -122,10 +124,7 @@ def calc_meanFilter(img, kernel_size=11, n_channel=1, device='cuda'):
         new_img[:, i:i + 1, :, :] = F.conv2d(img[:, i:i + 1, :, :], mean_filter_X, bias=None,
                                              stride=1, padding=kernel_size // 2)
     return new_img
-def ssim_calculate(x, y, val_range=255.0):
-    ssim = compare_ssim(y, x, channel_axis=2, gaussian_weights=True, sigma=1.5, use_sample_covariance=False,
-                        data_range=val_range)
-    return ssim
+
 
 
 def flow_vector(flow, spacing, margin, minlength):

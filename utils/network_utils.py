@@ -84,12 +84,12 @@ def init_weights_kaiming(m):
         torch.nn.init.constant_(m.bias, 0)
 
 
-def save_checkpoints(file_path, epoch_idx, deblurnet, deblurnet_solver,Best_Img_PSNR, Best_Epoch):
+def save_checkpoints(file_path, epoch_idx, deblurnet, deblurnet_solver):
     # print('[INFO] %s Saving checkpoint to %s ...' % (dt.now(), file_path))
     checkpoint = {
         'epoch_idx': epoch_idx,
-        'Best_Img_PSNR': Best_Img_PSNR,
-        'Best_Epoch': Best_Epoch,
+        # 'Best_Img_PSNR': Best_Img_PSNR,
+        # 'Best_Epoch': Best_Epoch,
         'deblurnet_state_dict': deblurnet.state_dict(),
         'deblurnet_solver_state_dict': deblurnet_solver.state_dict(),
     }

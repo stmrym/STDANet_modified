@@ -6,256 +6,230 @@ import utils.data_transforms
 import utils.network_utils
 from losses.multi_loss import *
 from utils import util
-import lpips
-import shutil
+from tensorboardX import SummaryWriter
+from core.train import Trainer
 import cv2
 import numpy as np
 from time import time
 from utils import log
-from utils.util import ssim_calculate
+import utils.metrics
 import pandas as pd
 from tqdm import tqdm
 
-def make_eval_df(epoch_average_list: list, save_name: str) -> pd.DataFrame:
-    col_name = ['seq', 'out_SSIM', 'out_SSIM_sd']
-    eval_df = pd.DataFrame(epoch_average_list, columns=col_name)
-    for col in col_name[1:]:
-        eval_df.at['Avg.', col] = eval_df[col].mean()
 
-    if os.path.isfile(save_name): # Add mode
-        eval_df.to_csv(save_name, mode='a', index=False, header=False)
-    else:   # Create csv file
-        eval_df.to_csv(save_name, mode='x', index=False)
-    
-    return eval_df
+class Evaluation(Trainer):
+    def __init__(self, opt, output_dir):
+        self.opt = opt
+        self.output_dir = output_dir
+        self.device = 'cuda' if torch.cuda.device_count() > 0 else 'cpu'
+        self.eval_transforms = self._build_transform(opt.eval_transform)
+        self.dataloader_dict = self._build_dataloader_dict(opt.dataset.val, 'valid', self.eval_transforms, opt.eval_batch_size)
 
-def add_epoch_average_list(epoch_average_list: list, seq_df: pd.DataFrame) -> list:
-    epoch_average_list.append([seq_df['seq'][0], seq_df['out_SSIM'].mean(), np.sqrt(seq_df['out_SSIM'].var())])
-    return epoch_average_list
+        if opt.eval.use_tensorboard and opt.phase in ['train', 'resume']:
+            self.tb_writer = SummaryWriter(self.output_dir)
+        else:
+            self.tb_writer = None
 
-def make_seq_df(seq_frame_value_list: list, epoch_average_list: list, save_dir: str, save_name: str) -> list:
-    col_name = ['seq', 'frame', 'out_SSIM']
-    seq_df = pd.DataFrame(seq_frame_value_list, columns=col_name)
-    if not os.path.isdir(os.path.join(save_dir)):
-        os.makedirs(save_dir, exist_ok=True)
-    seq_df.to_csv(os.path.join(save_dir, save_name), index=False)
-    epoch_average_list = add_epoch_average_list(epoch_average_list, seq_df)
-    return epoch_average_list
+    def _build_dataloader_dict(self, dataset_opt, phase, transforms, batch_size):
+        # Setup datasets
+        dataloader_dict = {}
+        for name, dataset_dict in dataset_opt.items():
+            dataset_loader = utils.data_loaders.VideoDeblurDataLoader_No_Slipt(input_length=self.opt.network.n_sequence, **dataset_dict)
+            dataset = dataset_loader.get_dataset(transforms=transforms)
+            log.info(f'[EVAL] Total {phase} case: {len(dataset)}')       
+            eval_dataloader = torch.utils.data.DataLoader(
+                dataset=dataset,
+                batch_size=batch_size,
+                num_workers=self.opt.num_worker, pin_memory=True, shuffle=False)
+            dataloader_dict[name] = eval_dataloader
+        return dataloader_dict
 
-def save_feat_grid(feat: torch.Tensor, save_name: str, nrow: int = 1) -> None:
-    # feat: (N, H, W)
-    # sums = feat.sum(dim=(-2,-1))
-    # sorted_feat = feat[torch.argsort(sums)]
-    feat = feat.unsqueeze(dim=1)
-    
-    # Normalize to [0, 1]
-    # sorted_feat = (sorted_feat - sorted_feat.min())/(sorted_feat.max() - sorted_feat.min())
-    
-    # Scaling [-1, 1] -> [0, 1]
-    feat = 0.5*(feat + 1)
+    def _set_metrics(self, metric_opt):
+        metric_dict = {}
+        for name, args in metric_opt.items():
+            metric = getattr(utils.metrics, name)
+            metric_dict[name] = (metric(**args) if args is not None else metric())
+        return metric_dict
 
-    feat_img = torchvision.utils.make_grid(torch.clamp(feat, min=0, max=1), nrow=nrow, padding=2, normalize=False)
-    torchvision.utils.save_image(feat_img, f'{save_name}.png')
-    # torchvision.utils.save_image(feat, f'{save_name}')
-
-
-def evaluation(opt, 
-        eval_dataset_name: str,
-        save_dir: str,
-        eval_loader: utils.data_loaders.VideoDeblurDataLoader_No_Slipt, 
-        eval_transforms: utils.data_transforms.Compose, 
-        deblurnet: torch.nn.DataParallel,
-        epoch_idx: int = 0, 
-        init_epoch: int = 0,
-        Best_Img_PSNR: int = 0, 
-        Best_Epoch: int = 0,
-        tb_writer = None):
-    
-    # Set up data loader
-    eval_data_loader = torch.utils.data.DataLoader(
-        dataset=eval_loader.get_dataset(transforms = eval_transforms),
-        batch_size=opt.eval_batch_size,
-        num_workers=opt.num_worker, pin_memory=True, shuffle=False)
-
-    inference_time = utils.network_utils.AverageMeter()
-    process_time   = utils.network_utils.AverageMeter()
-    img_PSNRs_out = utils.network_utils.AverageMeter()
-    img_LPIPSs_out = utils.network_utils.AverageMeter()
-    loss_fn_alex = lpips.LPIPS(net='alex').cuda()
+    def _init_evaluation(self):
+        self.metric_dict = self._set_metrics(self.opt.eval.metrics)
+        self.inference_time = utils.network_utils.AverageMeter()
+        self.process_time   = utils.network_utils.AverageMeter()
+        # Batch average meterics
+        self.losses_dict = self.opt.loss.copy()
+        for loss_dict in self.losses_dict.values():
+            loss_dict.avg_meter = utils.network_utils.AverageMeter()
+        self.total_losses = utils.network_utils.AverageMeter()
 
 
-    losses_dict_list = []
-    for loss_config_dict in opt.loss.values():
-        losses_dict = loss_config_dict.copy()
-        losses_dict['avg_meter'] = utils.network_utils.AverageMeter()
-        losses_dict_list.append(losses_dict)
+    def _make_eval_df(self, epoch_average_list: list, save_name: str) -> pd.DataFrame:
+        col_name = ['seq', 'out_SSIM', 'out_SSIM_sd']
+        eval_df = pd.DataFrame(epoch_average_list, columns=col_name)
+        for col in col_name[1:]:
+            eval_df.at['Avg.', col] = eval_df[col].mean()
 
-    total_losses = utils.network_utils.AverageMeter()    
-
-    deblurnet.eval()
-
-    if epoch_idx == init_epoch:
-        total_case_num = int(len(eval_data_loader))
-        assert total_case_num != 0, f'[{eval_dataset_name}] empty!'
-
-    tqdm_eval = tqdm(eval_data_loader)
-    tqdm_eval.set_description(f'[EVAL] [Epoch {epoch_idx}/{opt.train.n_epochs}]')
-
-    epoch_average_list = []
-
-    for seq_idx, (name, seq_blur, seq_clear) in enumerate(tqdm_eval):
+        if os.path.isfile(save_name): # Add mode
+            eval_df.to_csv(save_name, mode='a', index=False, header=False)
+        else:   # Create csv file
+            eval_df.to_csv(save_name, mode='x', index=False)
         
-        # name: GT frame name (center frame name)
-        seq_blur = [utils.network_utils.var_or_cuda(img).unsqueeze(1) for img in seq_blur]
-        seq_clear = [utils.network_utils.var_or_cuda(img).unsqueeze(1) for img in seq_clear]
+        return eval_df
 
-        with torch.no_grad():
-            input_seq = []
-            gt_seq = []
-            input_seq += seq_blur
-            input_seq = torch.cat(input_seq,1)
-            gt_seq = torch.cat(seq_clear,1)
+    def _add_epoch_average_list(self, epoch_average_list: list, seq_df: pd.DataFrame) -> list:
+        epoch_average_list.append([seq_df['seq'][0], seq_df['out_SSIM'].mean(), np.sqrt(seq_df['out_SSIM'].var())])
+        return epoch_average_list
 
-            if len(seq_clear) == 3:
-                gt_tensor = gt_seq[:,1,:,:,:]
-            elif len(seq_clear) == 5:
-                gt_tensor = gt_seq[:,2,:,:,:]
+    def _make_seq_df(self, seq_frame_value_list: list, epoch_average_list: list, save_dir: str, save_name: str) -> list:
+        col_name = ['seq', 'frame', 'out_SSIM']
+        seq_df = pd.DataFrame(seq_frame_value_list, columns=col_name)
+        if not os.path.isdir(os.path.join(save_dir)):
+            os.makedirs(save_dir, exist_ok=True)
+        seq_df.to_csv(os.path.join(save_dir, save_name), index=False)
+        epoch_average_list = self._add_epoch_average_list(epoch_average_list, seq_df)
+        return epoch_average_list
+
+    def _save_feat_grid(self, feat: torch.Tensor, save_name: str, nrow: int = 1) -> None:
+        # feat: (N, H, W)
+        # sums = feat.sum(dim=(-2,-1))
+        # sorted_feat = feat[torch.argsort(sums)]
+        feat = feat.unsqueeze(dim=1)
+        
+        # Normalize to [0, 1]
+        # sorted_feat = (sorted_feat - sorted_feat.min())/(sorted_feat.max() - sorted_feat.min())
+        
+        # Scaling [-1, 1] -> [0, 1]
+        feat = 0.5*(feat + 1)
+
+        feat_img = torchvision.utils.make_grid(torch.clamp(feat, min=0, max=1), nrow=nrow, padding=2, normalize=False)
+        torchvision.utils.save_image(feat_img, f'{save_name}.png')
+        # torchvision.utils.save_image(feat, f'{save_name}')
+
+
+    def evaluation(self, save_dir, deblurnet, epoch_idx, dataset_name, dataloader):
+        # Set up data loader
+        self._init_evaluation()
+        deblurnet.eval()
+
+        tqdm_eval = tqdm(dataloader)
+        tqdm_eval.set_description(f'[EVAL] [Epoch {epoch_idx}/{self.opt.train.n_epochs}]')
+
+        for seq_idx, (name, seq_blur, seq_clear) in enumerate(tqdm_eval):
             
-            torch.cuda.synchronize()
-            inference_start_time = time()
+            # name: GT frame name (center frame name)
+            seq_blur = [utils.network_utils.var_or_cuda(img).unsqueeze(1) for img in seq_blur]
+            seq_clear = [utils.network_utils.var_or_cuda(img).unsqueeze(1) for img in seq_clear]
 
-            # Inference
-
-            # {'out':           {'recons_1', 'recons_2', 'recons_3', 'final'},
-            #  'flow_forwards': {'recons_1', 'recons_2', 'recons_3', 'final'},
-            #  'flow_backwards':{'recons_1', 'recons_2', 'recons_3', 'final'},
-            #  ...}
-            output_dict = deblurnet(input_seq)
-
-            torch.cuda.synchronize()
-            inference_time.update((time() - inference_start_time))
-            
-            # calculate test loss
-            torch.cuda.synchronize()
-            process_start_time = time()
-            
-            total_loss, total_losses, losses_dict_list = calc_update_losses(output_dict=output_dict, gt_seq=gt_seq, losses_dict_list=losses_dict_list, total_losses=total_losses, batch_size=opt.eval_batch_size)
-
-            if opt.eval.calc_metrics:
-                img_PSNRs_out.update(util.calc_psnr(output_dict['out']['final'].detach(),gt_tensor.detach()), opt.eval_batch_size)
-                img_LPIPSs_out.update(loss_fn_alex(output_dict['out']['final'], gt_tensor).mean().detach().cpu(), opt.eval_batch_size)
-            
-
-            output_ndarrays = output_dict['out']['final'].detach().cpu().permute(0,2,3,1).numpy()*255
-            gt_ndarrays = gt_tensor.detach().cpu().permute(0,2,3,1).numpy()*255        
-
-            for batch in range(0, output_ndarrays.shape[0]):
+            with torch.no_grad():
+                input_seq = []
+                gt_seq = []
+                input_seq += seq_blur
+                input_seq = torch.cat(input_seq,1)
+                gt_seq = torch.cat(seq_clear,1)
+                gt_tensor = gt_seq[:,gt_seq.shape[1]//2,:,:,:]
                 
-                if opt.eval.calc_metrics:
-                    if seq_idx == 0 and batch == 0:
-                        # Initialize seq_frame_value_list
-                        seq_frame_value_list = []
-                    elif seq != name[batch].split('.')[0]:
-                            # End of sequence, and make dataFrame
-                            csv_savedir = save_dir +  '_csv'
-                            epoch_average_list = make_seq_df(seq_frame_value_list, epoch_average_list, csv_savedir, str(epoch_idx) + '_' + seq + '.csv')
-                            # Initialize for next sequence
-                            seq_frame_value_list = []
-                seq, img_name = name[batch].split('.')  # name = ['000.00000002']
-                        
-                output_ndarr = output_ndarrays[batch,:,:,:]
-                gt_ndarr = gt_ndarrays[batch,:,:,:]    
-                output_image_bgr = cv2.cvtColor(np.clip(output_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
-                gt_image_bgr = cv2.cvtColor(np.clip(gt_ndarr, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
+                torch.cuda.synchronize()
+                inference_start_time = time()
+
+                # Inference
+                # {'out':           {'recons_1', 'recons_2', 'recons_3', 'final'},
+                #  'flow_forwards': {'recons_1', 'recons_2', 'recons_3', 'final'},
+                #  'flow_backwards':{'recons_1', 'recons_2', 'recons_3', 'final'},
+                #  ...}
+                output_dict = deblurnet(input_seq)
+
+                torch.cuda.synchronize()
+                self.inference_time.update((time() - inference_start_time))
                 
-                if opt.eval.calc_metrics:
-                    img_ssim_out = ssim_calculate(output_image_bgr, gt_image_bgr)
-                    seq_frame_value_list.append([seq, int(img_name), img_ssim_out])
+                # calculate test loss
+                torch.cuda.synchronize()
+                process_start_time = time()
+                
+                _ = self._calc_update_losses(output_dict, gt_seq, self.opt.eval_batch_size)
 
-                if opt.phase == 'test':
-                    opt.eval.visualize_freq = 1
+                # if self.opt.eval.calc_metrics:
+                #     self.img_PSNRs_out.update(util.calc_psnr(output_dict['out']['final'].detach(),gt_tensor.detach()), self.opt.eval_batch_size)
+                #     self.img_LPIPSs_out.update(self.loss_fn_alex(output_dict['out']['final'], gt_tensor).mean().detach().cpu(), self.opt.eval_batch_size)
+                
+                output_ndarrays = output_dict['out']['final'].detach().cpu().permute(0,2,3,1).numpy()*255
+                gt_ndarrays = gt_tensor.detach().cpu().permute(0,2,3,1).numpy()*255        
 
-                if (epoch_idx % opt.eval.visualize_freq == 0):
+                for batch in range(0, output_ndarrays.shape[0]):
+                    
+                    seq, img_name = name[batch].split('.')  # name = ['000.00000002']
+                            
+                    output_image = output_ndarrays[batch,:,:,:]
+                    gt_image = gt_ndarrays[batch,:,:,:]    
 
-                    # saving output image
-                    if not os.path.isdir(os.path.join(save_dir + '_output', seq)):
+                    for metric in self.metric_dict.values():
+                        metric.update(metric.calculate(img1=output_image, img2=gt_image), self.opt.eval_batch_size)
+
+
+                    if (epoch_idx % self.opt.eval.visualize_freq == 0):
+                        # saving output image
+                        output_image_bgr = cv2.cvtColor(np.clip(output_image, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
+                        gt_image_bgr = cv2.cvtColor(np.clip(gt_image, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
                         os.makedirs(os.path.join(save_dir + '_output', seq), exist_ok=True)
-                    
-                    cv2.imwrite(os.path.join(save_dir + '_output', seq, img_name + '.png'), output_image_bgr)
+                        cv2.imwrite(os.path.join(save_dir + '_output', seq, img_name + '.png'), output_image_bgr)
 
-                    # save_feat_grid((output_dict['first_scale_inblock']['final'])[batch,1], save_dir + f'{seq}_{img_name}_0_in_feat', nrow=4)
-                    # save_feat_grid((output_dict['first_scale_encoder_first']['final'])[batch,1], save_dir + f'{seq}_{img_name}_1_en_feat', nrow=8)
-                    # save_feat_grid((output_dict['first_scale_encoder_second']['final'])[batch,1], save_dir + f'{seq}_{img_name}_2_en_feat', nrow=8)
-                    # save_feat_grid((output_dict['first_scale_encoder_second_out']['final'])[batch], save_dir + f'{seq}_{img_name}_3_en_out_feat', nrow=8)
-                    # save_feat_grid((output_dict['first_scale_decoder_second']['final'])[batch], save_dir + f'{seq}_{img_name}_4_de_feat', nrow=8)
-                    # save_feat_grid((output_dict['first_scale_decoder_first']['final'])[batch], save_dir + f'{seq}_{img_name}_5_de_feat', nrow=4)
+                        # save_feat_grid((output_dict['first_scale_inblock']['final'])[batch,1], save_dir + f'{seq}_{img_name}_0_in_feat', nrow=4)
+                        # save_feat_grid((output_dict['first_scale_encoder_first']['final'])[batch,1], save_dir + f'{seq}_{img_name}_1_en_feat', nrow=8)
+                        # save_feat_grid((output_dict['first_scale_encoder_second']['final'])[batch,1], save_dir + f'{seq}_{img_name}_2_en_feat', nrow=8)
+                        # save_feat_grid((output_dict['first_scale_encoder_second_out']['final'])[batch], save_dir + f'{seq}_{img_name}_3_en_out_feat', nrow=8)
+                        # save_feat_grid((output_dict['first_scale_decoder_second']['final'])[batch], save_dir + f'{seq}_{img_name}_4_de_feat', nrow=8)
+                        # save_feat_grid((output_dict['first_scale_decoder_first']['final'])[batch], save_dir + f'{seq}_{img_name}_5_de_feat', nrow=4)
 
-                    # save_feat_grid((output_dict['sobel_edge']['final'])[batch,1], save_dir + f'{seq}_{img_name}_6_sobel_edge', nrow=1)
-                    # save_feat_grid((output_dict['motion_orthogonal_edge']['final'])[batch], save_dir + f'{seq}_{img_name}_7_motion_orthogonal_edge', nrow=1)
-                    # save_feat_grid((torch.abs(output_dict['motion_orthogonal_edge']['final']))[batch], save_dir + f'{seq}_{img_name}_8_abs_motion_orthogonal_edge', nrow=1)
-                    
-                    # exit()
-
-                    if opt.eval.save_flow:
-                        # saving out flow
-
-                        # torch.save(input_seq, save_dir + f'{seq}_{img_name}_input.pt')    
-                        # torch.save(output_dict['first_scale_encoder_second']['final'], save_dir + f'{seq}_{img_name}_encoder2nd.pt')                 
-                        # torch.save(output_dict['flow_forwards']['final'], save_dir + f'{seq}_{img_name}_flow_forwards.pt')
-                        # torch.save(output_dict['flow_backwards']['final'], save_dir + f'{seq}_{img_name}_flow_backwards.pt')
+                        # save_feat_grid((output_dict['sobel_edge']['final'])[batch,1], save_dir + f'{seq}_{img_name}_6_sobel_edge', nrow=1)
+                        # save_feat_grid((output_dict['motion_orthogonal_edge']['final'])[batch], save_dir + f'{seq}_{img_name}_7_motion_orthogonal_edge', nrow=1)
+                        # save_feat_grid((torch.abs(output_dict['motion_orthogonal_edge']['final']))[batch], save_dir + f'{seq}_{img_name}_8_abs_motion_orthogonal_edge', nrow=1)
                         
-                        out_flow_forward = (output_dict['flow_forwards']['final'])[batch,1,:,:,:].permute(1,2,0).cpu().detach().numpy()  
-                        util.save_hsv_flow(save_dir=save_dir, seq=seq, img_name=img_name, out_flow=out_flow_forward)
+                        # exit()
+
+                        # if self.opt.eval.save_flow:
+                        #     # saving out flow
+
+                        #     # torch.save(input_seq, save_dir + f'{seq}_{img_name}_input.pt')    
+                        #     # torch.save(output_dict['first_scale_encoder_second']['final'], save_dir + f'{seq}_{img_name}_encoder2nd.pt')                 
+                        #     # torch.save(output_dict['flow_forwards']['final'], save_dir + f'{seq}_{img_name}_flow_forwards.pt')
+                        #     # torch.save(output_dict['flow_backwards']['final'], save_dir + f'{seq}_{img_name}_flow_backwards.pt')
+                            
+                        #     out_flow_forward = (output_dict['flow_forwards']['final'])[batch,1,:,:,:].permute(1,2,0).cpu().detach().numpy()  
+                        #     util.save_hsv_flow(save_dir=save_dir, seq=seq, img_name=img_name, out_flow=out_flow_forward)
 
 
-                    if 'ortho_weight' in output_dict.keys():
-                        ortho_weight = output_dict['ortho_weight']['final'][batch,0,:,:]
-                        ortho_weight_ndarr = ortho_weight.detach().cpu().numpy()*255
-                        if not os.path.isdir(os.path.join(save_dir + '_orthoEdge', seq)):
-                            os.makedirs(os.path.join(save_dir + '_orthoEdge', seq), exist_ok=True)
-                        cv2.imwrite(os.path.join(save_dir + '_orthoEdge', seq, img_name + '.png'), np.clip(ortho_weight_ndarr, 0, 255).astype(np.uint8))
+                        # if 'ortho_weight' in output_dict.keys():
+                        #     ortho_weight = output_dict['ortho_weight']['final'][batch,0,:,:]
+                        #     ortho_weight_ndarr = ortho_weight.detach().cpu().numpy()*255
+                        #     if not os.path.isdir(os.path.join(save_dir + '_orthoEdge', seq)):
+                        #         os.makedirs(os.path.join(save_dir + '_orthoEdge', seq), exist_ok=True)
+                        #     cv2.imwrite(os.path.join(save_dir + '_orthoEdge', seq, img_name + '.png'), np.clip(ortho_weight_ndarr, 0, 255).astype(np.uint8))
+                
+                torch.cuda.synchronize()
+                self.process_time.update((time() - process_start_time))
+                tqdm_eval.set_postfix_str(f'Inference Time {self.inference_time.avg} Process Time {self.process_time.avg}')
+
+        
+        # if opt.eval.calc_metrics:
+        #     # Make dataFrame of last sequence    
+        #     csv_savedir = save_dir +  '_csv'            
+        #     epoch_average_list = make_seq_df(seq_frame_value_list, epoch_average_list, csv_savedir, str(epoch_idx) + '_' + seq + '.csv')
+        #     # Make average dataFrame at the epoch
+        #     eval_df = make_eval_df(epoch_average_list, save_dir + '_average.csv')
+        
+        # Add testing results to TensorBoard
+        if self.opt.phase in ['train', 'resume']:
+            for loss_name, losses_dict in self.losses_dict.items():
+                self.tb_writer.add_scalar(f'Loss_VALID_{dataset_name}/{loss_name}', losses_dict.avg_meter.avg, epoch_idx)
+            self.tb_writer.add_scalar(f'Loss_VALID_{dataset_name}/TotalLoss', self.total_losses.avg, epoch_idx)
+
+            for metric_name, metric in self.metric_dict.items():
+                self.tb_writer.add_scalar(f'{metric_name}/VALID_{dataset_name}', metric.avg, epoch_idx)
             
-            torch.cuda.synchronize()
-            process_time.update((time() - process_start_time))
-            if opt.eval.calc_metrics:
-                tqdm_eval.set_postfix_str(f'Inference Time {inference_time} Process Time {process_time} PSNR_out {img_PSNRs_out}')
-            else:
-                tqdm_eval.set_postfix_str(f'Inference Time {inference_time} Process Time {process_time}')
-    
-    if opt.eval.calc_metrics:
-        # Make dataFrame of last sequence    
-        csv_savedir = save_dir +  '_csv'            
-        epoch_average_list = make_seq_df(seq_frame_value_list, epoch_average_list, csv_savedir, str(epoch_idx) + '_' + seq + '.csv')
-        # Make average dataFrame at the epoch
-        eval_df = make_eval_df(epoch_average_list, save_dir + '_average.csv')
-    
-    # Add testing results to TensorBoard
-    if opt.phase in ['train', 'resume']:
-        for losses_dict in losses_dict_list:
-            tb_writer.add_scalar(f'Loss_VALID_{eval_dataset_name}/{losses_dict["name"]}', losses_dict["avg_meter"].avg, epoch_idx)
-
-        tb_writer.add_scalar(f'Loss_VALID_{eval_dataset_name}/TotalLoss', total_losses.avg, epoch_idx)
-        tb_writer.add_scalar(f'PSNR/VALID_{eval_dataset_name}', img_PSNRs_out.avg, epoch_idx)
-        tb_writer.add_scalar(f'SSIM/VALID_{eval_dataset_name}', eval_df.at['Avg.', 'out_SSIM'], epoch_idx)
-        tb_writer.add_scalar(f'LPIPS/VALID_{eval_dataset_name}', img_LPIPSs_out.avg, epoch_idx)
-
-        if img_PSNRs_out.avg  >= Best_Img_PSNR:
-
-            Best_Img_PSNR = img_PSNRs_out.avg
-            Best_Epoch = epoch_idx
-
-    elif opt.phase in ['test'] and tb_writer is not None:
-        if opt.eval.calc_metrics:
-            tb_writer.add_scalar(f'PSNR/VALID_{eval_dataset_name}', img_PSNRs_out.avg, epoch_idx)
-            tb_writer.add_scalar(f'SSIM/VALID_{eval_dataset_name}', eval_df.at['Avg.', 'out_SSIM'], epoch_idx)
-            tb_writer.add_scalar(f'LPIPS/VALID_{eval_dataset_name}', img_LPIPSs_out.avg, epoch_idx)
-
-    if opt.eval.calc_metrics:
-        log.info(f'[EVAL][Epoch {epoch_idx}/{opt.train.n_epochs}][{eval_dataset_name}] PSNR(out:{img_PSNRs_out.avg}), PSNR_best:{Best_Img_PSNR} at epoch {Best_Epoch}')
-        log.info(f'[EVAL][Epoch {epoch_idx}/{opt.train.n_epochs}][{eval_dataset_name}] SSIM(out:{eval_df.at["Avg.","out_SSIM"]}), Infer. time:{inference_time}, Process time:{process_time}')
-
-    else:
-        log.info(f'[EVAL][Epoch {epoch_idx}/{opt.train.n_epochs}][{eval_dataset_name}] Infer. time:{inference_time}, Process time:{process_time}')       
+            log_str = ' '.join([f'{key}: {value.avg:.3f}' for key, value in self.metric_dict.items()])
+            log.info(f'[EVAL][Epoch {epoch_idx}/{self.opt.train.n_epochs}][{dataset_name}] ' + log_str)
+            log.info(f'[EVAL][Epoch {epoch_idx}/{self.opt.train.n_epochs}][{dataset_name}] Infer. time:{self.inference_time.avg:.3f}, Process time:{self.process_time.avg:.3f}')
 
 
-    return Best_Img_PSNR, Best_Epoch
+    def eval_all_dataset(self, save_dir, deblurnet, epoch_idx):
+        for dataset_name, dataloader in self.dataloader_dict.items():
+            print(f'[EVAL] dataset {dataset_name}')
+            self.evaluation(deblurnet, save_dir, epoch_idx, dataset_name, dataloader)

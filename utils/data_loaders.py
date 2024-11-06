@@ -141,7 +141,7 @@ class VideoDeblurDataLoader_No_Slipt:
     def __init__(self, image_blur_path, image_clear_path, json_file_path, input_length):
         self.img_blur_path_template = image_blur_path
         self.img_clear_path_template = image_clear_path
-        self.imput_length = input_length
+        self.input_length = input_length
 
         # Load all files of the dataset
         with io.open(json_file_path, encoding='utf-8') as file:
@@ -155,7 +155,7 @@ class VideoDeblurDataLoader_No_Slipt:
             phase = file['phase']
             samples = file['sample']
             sam_len = len(samples)
-            seq_len = self.imput_length
+            seq_len = self.input_length
             seq_num = int(sam_len/seq_len)
             for n in range(sam_len-seq_len+1):
                 sequence = self.get_files_of_taxonomy(phase, name, samples[n:n+ seq_len])
@@ -185,7 +185,7 @@ class VideoDeblurDataLoader_No_Slipt:
 
         if not seq_blur_paths == [] and not seq_clear_paths == []:
             sequence.append({
-                'name': name+"."+samples[self.imput_length//2],
+                'name': name+"."+samples[self.input_length//2],
                 'phase': phase,
                 'length': n_samples,
                 'seq_blur': seq_blur_paths,

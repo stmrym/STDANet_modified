@@ -1,69 +1,57 @@
 #!/usr/bin/python
 
-from numpy.lib.utils import info
 from utils import log
-
 import matplotlib
+matplotlib.use('Agg')
 import os
 os.environ["NUMEXPR_MAX_THREADS"] = "8"
 """ from visualizer import get_local
 get_local.activate() """
 import numpy as np
-import re
 import random
+from pathlib import Path
 import importlib
 import argparse
 import shutil
 import yaml
 from box import Box
-matplotlib.use('Agg')
 from datetime import datetime as dt
 # import warnings
 # warnings.filterwarnings("ignore") 
 
 def main():
 
+    # Loading opt from .yml file
     parser = argparse.ArgumentParser(description='STDAN modified')
-    parser.add_argument('config', help='Please set [PATH_TO_CONFIG].py name (e.g., "config/config_1")')
-
-    # Loading [CONFIG].py
+    parser.add_argument('config', help='Please set .yml file')
     args = parser.parse_args()
-
     with open(args.config, mode='r') as f:
         opt = yaml.safe_load(f)
     opt = Box(**opt)
 
     if opt.phase == 'resume':
-        output_dir = os.path.join(opt.exp_path, 'train', (opt.weights).split('/')[-3])
-        print_log  = os.path.join(output_dir, 'print.log')
+        # output_dir = Path(opt.exp_path) / 'train' / (opt.weights).split('/')[-3]
+        output_dir = opt.exp_path.split('checkpoint')[0]
 
     elif opt.phase == 'test':
         timestr = dt.now().isoformat(timespec='seconds').replace(':', '')
-        output_dir = os.path.join(opt.exp_path,'test', timestr + '_' + opt.prefix)
-        print_log    = os.path.join(output_dir, 'print.log')
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)        
+        output_dir = Path(opt.exp_path) / 'test' / Path(timestr + '_' + opt.prefix)
+        os.makedirs(output_dir, exist_ok=True)        
 
     elif opt.phase == 'train':
-        timestr = dt.now().isoformat(timespec='seconds').replace(':', '')
-        if opt.network.use_stack:
-            output_dir = os.path.join(opt.exp_path,'train', timestr + '_' + opt.prefix + '_' 
-                                    + opt.network.arch + '_Stack_' + '_'.join(opt.dataset.train.dataset)) # changed to use timestr
-        else:
-            output_dir = os.path.join(opt.exp_path,'train', timestr + '_' + opt.prefix + '_' 
-                                    + opt.network.arch + '_' + '_'.join(opt.dataset.train.dataset)) # changed to use timestr
+        timestr = dt.now().isoformat(timespec='seconds').replace(':', '')        
+        network_name = opt.network.arch + '_Stack' if opt.network.use_stack else opt.network.arch
+        output_dir = Path(opt.exp_path) / 'train' / Path(timestr + '_' + network_name + '_' + '_'.join(opt.dataset.train.keys())) # changed to use timestr    
+        ckpt_dir = output_dir / 'checkpoints'
 
-        ckpt_dir = os.path.join(output_dir, 'checkpoints')
-        if not os.path.exists(ckpt_dir):
-            os.makedirs(ckpt_dir)
-
-        print_log = os.path.join(output_dir, 'print.log')
-        shutil.copy(args.config, os.path.join(output_dir, timestr + '_config.yaml'))
+        os.makedirs(ckpt_dir, exist_ok=True)
+        shutil.copy(args.config, output_dir / 'config.yaml')
         
     else:
         print('Invalid NETWORK.PHASE!')
         exit()
 
+    print_log = output_dir / 'print.log'
     log.setFileHandler(print_log,mode='a')
 
     # Set GPU to use
@@ -85,9 +73,8 @@ def main():
     log.info(f' Output_dir: {output_dir}')
 
     # Setup Network & Start train/test process
-    bulid_net(opt = opt, output_dir = output_dir)
+    bulid_net(opt=opt, output_dir=output_dir)
 
 
 if __name__ == '__main__':
-
     main()

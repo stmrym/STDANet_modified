@@ -1,183 +1,228 @@
 import os
-import glob
-from turtle import backward
+import torch.backends
 from utils import log, util
 import torch.backends.cudnn
 import torch.utils.data
-
-
+from tensorboardX import SummaryWriter
+from pathlib import Path
+from models.Stack import Stack
 import utils.data_loaders
 import utils.data_transforms
 import utils.network_utils
-
 from losses.multi_loss import *
 
-from core.evaluation import evaluation
 # from models.VGG19 import VGG19
 # from utils.network_utils import flow2rgb
 from tqdm import tqdm
 
+class Trainer:
+    def __init__(self, opt, output_dir):
+        # Initial settings
+        self.opt = opt
+        self.output_dir = output_dir
+        self.device = 'cuda' if torch.cuda.device_count() > 0 else 'cpu'
+        self.deblurnet = Stack(device = self.device, **opt.network)
 
-def train(opt, init_epoch, 
-        train_transforms, val_transforms,
-        deblurnet, deblurnet_solver, deblurnet_lr_scheduler,
-        ckpt_dir, visualize_dir, 
-        tb_writer, Best_Img_PSNR, Best_Epoch):
+        # Set tranform
+        self.train_transforms = self._build_transform(opt.train_transform)
 
-    n_itr = 0
-    # Training loop
-    torch.manual_seed(0)
+        log.info(f'{dt.now()} Parameters in {opt.network.arch}: {utils.network_utils.count_parameters(self.deblurnet)}.')
+        log.info(f'Loss: {opt.loss.keys()} ')
 
-    # Set up data loader
-    dataset_list = []
-    dataset_opt = opt.dataset.train
-    for train_dataset_name, train_image_blur_path, train_image_clear_path, train_json_file_path\
-        in zip(dataset_opt.dataset, dataset_opt.blur_path, dataset_opt.clear_path, dataset_opt.json_path):
-            
-            # Load each dataset and append to list
-            dataset_loader = utils.data_loaders.VideoDeblurDataLoader_No_Slipt(
-                image_blur_path = train_image_blur_path, 
-                image_clear_path = train_image_clear_path,
-                json_file_path = train_json_file_path,
-                input_length = opt.network.input_length)
-            
-            dataset = dataset_loader.get_dataset(transforms = train_transforms)
+        # Initialize optimizer
+        self.deblurnet_solver = self._init_optimizer()
+
+        self.init_epoch = 0
+        self.Best_Epoch = -1
+        self.Best_Img_PSNR = 0
+
+        if opt.weights is not None:
+            self._load_weights()
+
+        self.deblurnet_lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(self.deblurnet_solver,
+                                                                milestones=opt.train.optimization.lr_milestones,
+                                                                gamma=opt.train.optimization.lr_decay,last_epoch=(self.init_epoch))
+
+        self.train_data_loader = self._build_dataloader(opt.dataset.train, 'train', self.train_transforms, opt.train_batch_size)
+
+        self.train_writer = SummaryWriter(output_dir)
+        self.ckpt_dir = self.output_dir / 'checkpoints'
+        self.visualize_dir = self.output_dir / 'visualization'
+
+
+    def _build_transform(self, transform_opt):
+        transform_l = []
+        for name, args in transform_opt.items():
+            transform = getattr(utils.data_transforms, name)
+            transform_l.append(transform(**args) if args is not None else transform())
+        transform_l.append(utils.data_transforms.ToTensor())
+        return utils.data_transforms.Compose(transform_l)   
+
+    def _init_optimizer(self):
+        base_params = []
+        motion_branch_params = []
+        attention_params = []
+
+        for name,param in self.deblurnet.named_parameters():
+            if param.requires_grad:
+                if 'reference_points' in name or 'sampling_offsets' in name:
+                    attention_params.append(param)
+                # elif "spynet" in name or "flow_pwc" in name or "flow_net" in name:
+                elif 'motion_branch' in name or 'motion_out' in name:
+                    # Fix weigths for motion estimator
+                    if not self.opt.train.motion_requires_grad:
+                        log.info(f'Motion requires grad ... False')
+                        param.requires_grad = False
+                    motion_branch_params.append(param)
+                else:
+                    base_params.append(param)
+        
+        lr_opt = self.opt.train.optimization
+        lr = lr_opt.learning_rate
+        optim_param = [
+                {'params':base_params, 'initial_lr':lr, 'lr':lr},
+                {'params':motion_branch_params, 'initial_lr':lr, 'lr':lr},
+                {'params':attention_params, 'initial_lr':lr*0.01, 'lr':lr*0.01},
+            ]
+        deblurnet_solver = torch.optim.Adam(optim_param,lr = lr,
+                                            betas=(lr_opt.momentum, lr_opt.beta))
+        return deblurnet_solver
+
+    def _load_weights(self):
+        log.info(f'{dt.now()} Recovering from {self.opt.weights} ...')
+        
+        checkpoint = torch.load(self.opt.weights, map_location='cpu')
+        self.deblurnet.load_state_dict({k.replace('module.',''):v for k,v in checkpoint['deblurnet_state_dict'].items()})
+        self.deblurnet_solver.load_state_dict(checkpoint['deblurnet_solver_state_dict'])
+
+        for state in self.deblurnet_solver.state.values():
+                for k, v in state.items():
+                    if torch.is_tensor(v):
+                        state[k] = v.to(self.device)
+        # deblurnet_lr_scheduler.load_state_dict(checkpoint['deblurnet_lr_scheduler'])
+        self.init_epoch = checkpoint['epoch_idx'] + 1
+        self.Best_Img_PSNR = checkpoint['Best_Img_PSNR']
+        self.Best_Epoch = checkpoint['Best_Epoch']
+
+    def _build_dataloader(self, dataset_opt, phase, transforms, batch_size):
+        # Setup datasets
+        dataset_list = []
+        for name, dataset_dict in dataset_opt.items():
+            dataset_loader = utils.data_loaders.VideoDeblurDataLoader_No_Slipt(input_length=self.opt.network.n_sequence, **dataset_dict)
+            dataset = dataset_loader.get_dataset(transforms=transforms)
             dataset_list.append(dataset)
+            log.info(f'[{phase.upper()}] Dataset [{name}] loaded. {phase} case: {len(dataset)}')
 
-            case_num = int(len(dataset))
-            log.info(f'[TRAIN] Dataset [{train_dataset_name}] loaded. Train case: {case_num}')
+        # Concat all dataset
+        all_dataset = torch.utils.data.ConcatDataset(dataset_list)
+        log.info(f'[{phase.upper()}] Total {phase} case: {len(all_dataset)}')
 
-    # Concat all dataset
-    all_dataset = torch.utils.data.ConcatDataset(dataset_list)
+        # Creating dataloader
+        data_loader = torch.utils.data.DataLoader(
+            dataset=all_dataset,
+            batch_size=batch_size,
+            num_workers=self.opt.num_worker, pin_memory=True, shuffle=True)
+        return data_loader
 
-    total_case_num = int(len(all_dataset))
-    log.info(f'[TARIN] Total train case: {total_case_num}')
-    assert total_case_num != 0, f'[TRAIN] Total train case empty!'
-
-    # Creating dataloader
-    train_data_loader = torch.utils.data.DataLoader(
-        dataset=all_dataset,
-        batch_size=opt.train_batch_size,
-        num_workers=opt.num_worker, pin_memory=True, shuffle=True)
-
-    # Start epoch
-    for epoch_idx in range(init_epoch, opt.train.n_epochs):
-
+    def _init_epoch(self):
         # Batch average meterics
-        losses_dict_list = []
-        for loss_config_dict in opt.loss.values():
-            losses_dict = loss_config_dict.copy()
-            losses_dict['avg_meter'] = utils.network_utils.AverageMeter()
-            losses_dict_list.append(losses_dict)
+        self.losses_dict = self.opt.loss.copy()
+        for loss_dict in self.losses_dict.values():
+            loss_dict.avg_meter = utils.network_utils.AverageMeter()
+        self.total_losses = utils.network_utils.AverageMeter()
 
-        total_losses = utils.network_utils.AverageMeter()
+    def _before_epoch(self, epoch_idx):
+        # Reset AverageMeter
+        for loss_dict in self.losses_dict.values():
+            loss_dict.avg_meter.reset()
+        self.total_losses.reset()
 
-        if opt.network.use_stack:
-            img_PSNRs_mid = utils.network_utils.AverageMeter()
-        img_PSNRs_out    = utils.network_utils.AverageMeter()
+        # Set tqdm
+        tqdm_train = tqdm(self.train_data_loader)
+        tqdm_train.set_description(f'[TRAIN] [Epoch {epoch_idx}/{self.opt.train.n_epochs}]')
+        return tqdm_train
 
-        tqdm_train = tqdm(train_data_loader)
-        tqdm_train.set_description(f'[TRAIN] [Epoch {epoch_idx}/{opt.train.n_epochs}]')
-
-        for seq_idx, (name, seq_blur, seq_clear) in enumerate(tqdm_train):
-            # Get data from data loader
-            seq_blur  = [utils.network_utils.var_or_cuda(img).unsqueeze(1) for img in seq_blur]
-            seq_clear = [utils.network_utils.var_or_cuda(img).unsqueeze(1) for img in seq_clear]
-            
-            # switch models to training mode
-            deblurnet.train()
-
-            # Train the model
-            input_seq = torch.cat(seq_blur,1)
-            gt_seq = torch.cat(seq_clear,1)
-            
-            if len(seq_clear) == 3:
-                gt_tensor = gt_seq[:,1,:,:,:]
-            elif len(seq_clear) == 5:
-                gt_tensor = gt_seq[:,2,:,:,:]
-
-            # {'out':           {'recons_1', 'recons_2', 'recons_3', 'final'},
-            #  'flow_forwards': {'recons_1', 'recons_2', 'recons_3', 'final'},
-            #  'flow_backwards':{'recons_1', 'recons_2', 'recons_3', 'final'},
-            #  ...}
-            output_dict = deblurnet(input_seq) 
-            
-            # Calculate & update loss
-            total_loss, total_losses, losses_dict_list = calc_update_losses(output_dict=output_dict, gt_seq=gt_seq, losses_dict_list=losses_dict_list, total_losses=total_losses, batch_size=cfg.CONST.TRAIN_BATCH_SIZE)
-
-            img_PSNR_out = util.calc_psnr(output_dict['out']['final'].detach(),gt_tensor.detach())
-            img_PSNRs_out.update(img_PSNR_out, opt.train_batch_size)
-
-            if opt.network.use_stack:
-                img_PSNR_mid = util.calc_psnr(output_dict['out']['recons_2'].detach(),gt_tensor.detach())
-                img_PSNRs_mid.update(img_PSNR_mid, opt.train_batch_size)
-            deblurnet_solver.zero_grad()
-            total_loss.backward()
-            deblurnet_solver.step()
-            
-            n_itr = n_itr + 1
-
-            # Tick / tock
-            if opt.network.use_stack:
-                tqdm_train.set_postfix_str(f'PSNR_mid {img_PSNRs_mid} PSNR_out {img_PSNRs_out}')        
-            else:
-                tqdm_train.set_postfix_str(f'PSNR_out {img_PSNRs_out}')
-            
+    def _after_epoch(self, epoch_idx):
         # Append epoch loss to TensorBoard
-        for losses_dict in losses_dict_list:
-            tb_writer.add_scalar(f'Loss_TRAIN/{losses_dict["name"]}', losses_dict["avg_meter"].avg, epoch_idx)
+        for name, losses_dict in self.losses_dict.items():
+            self.train_writer.add_scalar(f'Loss_TRAIN/{name}', losses_dict.avg_meter.avg, epoch_idx)
         
-        tb_writer.add_scalar('Loss_TRAIN/TotalLoss', total_losses.avg, epoch_idx)
-        tb_writer.add_scalar('PSNR/TRAIN', img_PSNRs_out.avg, epoch_idx)
-        tb_writer.add_scalar('lr/lr', deblurnet_lr_scheduler.get_last_lr()[0], epoch_idx)
-        deblurnet_lr_scheduler.step()
+        self.train_writer.add_scalar('Loss_TRAIN/TotalLoss', self.total_losses.avg, epoch_idx)
+        self.train_writer.add_scalar('lr/lr', self.deblurnet_lr_scheduler.get_last_lr()[0], epoch_idx)
+        self.deblurnet_lr_scheduler.step()
 
-        if opt.network.use_stack:
-            log.info(f'[TRAIN][Epoch {epoch_idx}/{opt.train.n_epochs}] PSNR_mid: {img_PSNRs_mid.avg}, PSNR_out: {img_PSNRs_out.avg}')
-        else:
-            log.info(f'[TRAIN][Epoch {epoch_idx}/{opt.train.n_epochs}] PSNR_out: {img_PSNRs_out.avg}')
+        # log.info(f'[TRAIN][Epoch {epoch_idx}/{self.opt.train.n_epochs}] total_losses_avg: {self.total_losses.avg}')
 
-        if epoch_idx % opt.train.seve_freq == 0:
-            utils.network_utils.save_checkpoints(os.path.join(ckpt_dir, 'ckpt-epoch-%04d.pth.tar' % (epoch_idx)), \
-                                                    epoch_idx, deblurnet,deblurnet_solver, \
-                                                    Best_Img_PSNR, Best_Epoch)
-                    
-        utils.network_utils.save_checkpoints(os.path.join(ckpt_dir, 'latest-ckpt.pth.tar'), \
-                                                    epoch_idx, deblurnet, deblurnet_solver,\
-                                                    Best_Img_PSNR, Best_Epoch)
+    def _calc_update_losses(self, output_dict, gt_seq, batch_size):
+        total_loss = 0
+        for loss_dict in self.losses_dict.values():
+            loss = eval(loss_dict.func)(output_dict, gt_seq) * loss_dict.weight   # Calculate loss
+            loss_dict.avg_meter.update(loss.item(), batch_size)    # Update loss
+            total_loss += loss
+
+        self.total_losses.update(total_loss.item(), batch_size) # Update total losses
+        return total_loss
+
+    def train(self):
         
-        if epoch_idx % opt.eval.valid_freq == 0:
+        from core.evaluation import Evaluation
+        self.evaluation = Evaluation(self.opt, self.output_dir)
+
+        self.deblurnet = torch.nn.DataParallel(self.deblurnet).to(self.device)
+        torch.backends.cudnn.benchmark = self.opt.use_cudnn_benchmark
+        
+        self._init_epoch()
+        n_itr = 0
+        # Start epoch
+        for epoch_idx in range(self.init_epoch, self.opt.train.n_epochs):
+
+            tqdm_train = self._before_epoch(epoch_idx)
+
+            for seq_idx, (name, seq_blur, seq_clear) in enumerate(tqdm_train):
+                # Get data from data loader
+                seq_blur  = [utils.network_utils.var_or_cuda(img).unsqueeze(1) for img in seq_blur]
+                seq_clear = [utils.network_utils.var_or_cuda(img).unsqueeze(1) for img in seq_clear]
+                
+                # switch models to training mode
+                self.deblurnet.train()
+
+                # Train the model
+                input_seq = torch.cat(seq_blur,1)
+                gt_seq = torch.cat(seq_clear,1)
+                
+                # gt_tensor = gt_seq[:,gt_seq.shape[1]//2,:,:,:]
+
+                # {'out':           {'recons_1', 'recons_2', 'recons_3', 'final'},
+                #  'flow_forwards': {'recons_1', 'recons_2', 'recons_3', 'final'},
+                #  'flow_backwards':{'recons_1', 'recons_2', 'recons_3', 'final'},
+                #  ...}
+                output_dict = self.deblurnet(input_seq) 
+                
+                # Calculate & update loss
+                total_loss = self._calc_update_losses(output_dict, gt_seq, self.opt.train_batch_size)
+
+                self.deblurnet_solver.zero_grad()
+                total_loss.backward()
+                self.deblurnet_solver.step()
+                
+                n_itr += 1
+                # Tick / tock
+                tqdm_train.set_postfix_str(f'total_loss {total_loss:.3f}, total_losses_avg {self.total_losses.avg:.3f}')
+                
+            self._after_epoch(epoch_idx)
+
+            if epoch_idx % self.opt.train.save_freq == 0:
+                utils.network_utils.save_checkpoints(self.ckpt_dir / Path('ckpt-epoch-%04d.pth.tar' % (epoch_idx)), \
+                                                        epoch_idx, self.deblurnet, self.deblurnet_solver)
+                        
+            utils.network_utils.save_checkpoints(os.path.join(self.ckpt_dir, 'latest-ckpt.pth.tar'), \
+                                                        epoch_idx, self.deblurnet, self.deblurnet_solver)
             
-            # Validation for each dataset list
-            dataset_opt = opt.dataset.val
-            for val_dataset_name, val_image_blur_path, val_image_clear_path, val_json_file_path\
-                in zip(dataset_opt.dataset, dataset_opt.blur_path, dataset_opt.clear_path, dataset_opt.json_path):
-                val_loader = utils.data_loaders.VideoDeblurDataLoader_No_Slipt(
-                    image_blur_path = val_image_blur_path, 
-                    image_clear_path = val_image_clear_path,
-                    json_file_path = val_json_file_path,
-                    input_length = opt.network.input_length)
-
-                save_dir = os.path.join(visualize_dir, 'epoch-' + str(epoch_idx).zfill(4))
-
-                # kwargs = {'cfg':cfg, 'eval_dataset_name':val_dataset_name, 'save_dir':save_dir, 'eval_loader':val_loader, 'eval_transforms':val_transforms,
-                #           'deblurnet':deblurnet, 'epoch_idx':epoch_idx, 'init_epoch':init_epoch, 'Best_Epoch':Best_Epoch, 'tb_writer':tb_writer}
-                
-                # Best_Img_PSNR, Best_Epoch = evaluation(**kwargs)
-
-                # Validation
-                Best_Img_PSNR, Best_Epoch = evaluation(
-                    opt = opt,
-                    eval_dataset_name = val_dataset_name,
-                    save_dir = save_dir,
-                    eval_loader = val_loader, 
-                    eval_transforms = val_transforms,
-                    deblurnet = deblurnet,
-                    epoch_idx = epoch_idx, init_epoch = init_epoch,
-                    Best_Img_PSNR = Best_Img_PSNR,
-                    Best_Epoch = Best_Epoch,
-                    tb_writer = tb_writer)
-    
-                
-    # Close SummaryWriter for TensorBoard
-    tb_writer.close()
+            if epoch_idx % self.opt.eval.valid_freq == 0:
+                # Validation for each dataset list
+                save_dir = os.path.join(self.visualize_dir, 'epoch-' + str(epoch_idx).zfill(4))
+                self.evaluation.eval_all_dataset(self.deblurnet, save_dir, epoch_idx)
+        
+                    
+        # Close SummaryWriter for TensorBoard
+        self.train_writer.close()

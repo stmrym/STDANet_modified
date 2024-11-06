@@ -13,8 +13,8 @@ class Stack(nn.Module):
         self.arch = arch
         self.use_stack = use_stack
 
-        self._module = importlib.import_module('models.model.' + self._network_arch)
-        self.recons_net = self._module.__dict__[self._network_arch](device=device, **kwargs)
+        self._module = importlib.import_module('models.model.' + self.arch)
+        self.recons_net = self._module.__dict__[self.arch](device=device, **kwargs)
 
     def down_size(self,frame):
         _,_,h,w = frame.shape
