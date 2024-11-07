@@ -146,7 +146,7 @@ train:
   motion_requires_grad: true
   sobel_requires_grad: true
   n_epochs: 1201
-  save_freq: 20 # 50
+  save_freq: 50 # 50
   optimization:
     learning_rate: 1.0e-4
     lr_milestones: 
@@ -161,8 +161,8 @@ train:
     weight_decay: 0.0
   
 eval:
-  valid_freq: 20  # 50
-  visualize_freq: 20 # 50
+  valid_freq: 50  # 50
+  visualize_freq: 50 # 50
   save_input_img: true
   save_output_img: true
   save_flow: true
