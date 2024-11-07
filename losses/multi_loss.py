@@ -22,11 +22,11 @@ def warp_loss(output_dict:dict, gt_seq:torch.tensor):
     frames_list = down_simple_gt
     
     n, t, c, h, w = frames_list.size()
-    # forwards = output_dict['flow_forwards']
+    flow_forwards = [output_dict['flow_forwards']]
     # ['recons_1', 'recons_2', 'recons_3', 'final']
-    flow_forwards = [output_dict['flow_forwards'][key] for key in output_dict['flow_forwards'].keys()]
-    # flow_backwards = output_dict['flow_backwards']
-    flow_backwards = [output_dict['flow_backwards'][key] for key in output_dict['flow_backwards'].keys()]
+    # flow_forwards = [output_dict['flow_forwards'][key] for key in output_dict['flow_forwards'].keys()]
+    flow_backwards = [output_dict['flow_backwards']]
+    # flow_backwards = [output_dict['flow_backwards'][key] for key in output_dict['flow_backwards'].keys()]
 
     forward_loss = 0
     backward_loss = 0
@@ -54,7 +54,7 @@ def l1Loss(output_dict:dict, gt_seq:torch.tensor):
     
     b,t,c,h,w = gt_seq.shape
     # output_imgs = torch.cat([output_dict['recons_1'], output_dict['recons_2'], output_dict['recons_3'], output_dict['out']],dim=1)
-    output_imgs = torch.cat([output_dict['out'][key] for key in output_dict['out'].keys()], dim=1)
+    output_imgs = output_dict['out']
     if t == 3:
         t_gt_seq = torch.cat([gt_seq[:,1,:,:,:]],dim=1)
     elif t == 5:
@@ -94,7 +94,8 @@ def FFTLoss(output_dict:dict, gt_seq:torch.tensor):
 
     b,t,c,h,w = gt_seq.shape
     # output_imgs = torch.cat([output_dict['recons_1'], output_dict['recons_2'], output_dict['recons_3'], output_dict['out']],dim=1)
-    output_imgs = torch.cat([output_dict['out'][key] for key in output_dict['out'].keys()], dim=1)
+    # output_imgs = torch.cat([output_dict['out'][key] for key in output_dict['out'].keys()], dim=1)
+    output_imgs = output_dict['out']
 
     if t == 3:
         t_gt_seq = torch.cat([gt_seq[:,1,:,:,:]],dim=1)
@@ -105,7 +106,6 @@ def FFTLoss(output_dict:dict, gt_seq:torch.tensor):
     output_fft = torch.stack([output_fft.real, output_fft.imag], dim=-1)
     t_gt_fft = torch.fft.fft2(t_gt_seq, dim=(-2, -1))
     t_gt_fft = torch.stack([t_gt_fft.real, t_gt_fft.imag], dim=-1)
-
     l1_loss = nn.L1Loss()
     l1 = l1_loss(output_fft, t_gt_fft)
     return l1

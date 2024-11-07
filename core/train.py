@@ -21,7 +21,7 @@ class Trainer:
         self.opt = opt
         self.output_dir = output_dir
         self.device = 'cuda' if torch.cuda.device_count() > 0 else 'cpu'
-        self.deblurnet = Stack(device = self.device, **opt.network)
+        self.deblurnet = Stack(device=self.device, **opt.network)
 
         # Set tranform
         self.train_transforms = self._build_transform(opt.train_transform)
@@ -33,8 +33,6 @@ class Trainer:
         self.deblurnet_solver = self._init_optimizer()
 
         self.init_epoch = 0
-        self.Best_Epoch = -1
-        self.Best_Img_PSNR = 0
 
         if opt.weights is not None:
             self._load_weights()
@@ -52,10 +50,13 @@ class Trainer:
 
     def _build_transform(self, transform_opt):
         transform_l = []
+        name_l = []
         for name, args in transform_opt.items():
             transform = getattr(utils.data_transforms, name)
             transform_l.append(transform(**args) if args is not None else transform())
+            name_l.append(name)
         transform_l.append(utils.data_transforms.ToTensor())
+        log.info(f'Transform... {name_l}')
         return utils.data_transforms.Compose(transform_l)   
 
     def _init_optimizer(self):
@@ -101,8 +102,6 @@ class Trainer:
                         state[k] = v.to(self.device)
         # deblurnet_lr_scheduler.load_state_dict(checkpoint['deblurnet_lr_scheduler'])
         self.init_epoch = checkpoint['epoch_idx'] + 1
-        self.Best_Img_PSNR = checkpoint['Best_Img_PSNR']
-        self.Best_Epoch = checkpoint['Best_Epoch']
 
     def _build_dataloader(self, dataset_opt, phase, transforms, batch_size):
         # Setup datasets
@@ -121,10 +120,15 @@ class Trainer:
         data_loader = torch.utils.data.DataLoader(
             dataset=all_dataset,
             batch_size=batch_size,
-            num_workers=self.opt.num_worker, pin_memory=True, shuffle=True)
+            num_workers=os.cpu_count()//torch.cuda.device_count(), pin_memory=True, shuffle=True)
         return data_loader
 
     def _init_epoch(self):
+        from core.evaluation import Evaluation
+        self.evaluation = Evaluation(self.opt, self.output_dir)
+        self.deblurnet = torch.nn.DataParallel(self.deblurnet).to(self.device)
+        torch.backends.cudnn.benchmark = self.opt.use_cudnn_benchmark
+
         # Batch average meterics
         self.losses_dict = self.opt.loss.copy()
         for loss_dict in self.losses_dict.values():
@@ -164,47 +168,39 @@ class Trainer:
         return total_loss
 
     def train(self):
-        
-        from core.evaluation import Evaluation
-        self.evaluation = Evaluation(self.opt, self.output_dir)
-
-        self.deblurnet = torch.nn.DataParallel(self.deblurnet).to(self.device)
-        torch.backends.cudnn.benchmark = self.opt.use_cudnn_benchmark
-        
+                
         self._init_epoch()
         n_itr = 0
         # Start epoch
         for epoch_idx in range(self.init_epoch, self.opt.train.n_epochs):
 
             tqdm_train = self._before_epoch(epoch_idx)
+            # switch models to training mode
+            self.deblurnet.train()
 
             for seq_idx, (name, seq_blur, seq_clear) in enumerate(tqdm_train):
                 # Get data from data loader
                 seq_blur  = [utils.network_utils.var_or_cuda(img).unsqueeze(1) for img in seq_blur]
                 seq_clear = [utils.network_utils.var_or_cuda(img).unsqueeze(1) for img in seq_clear]
-                
-                # switch models to training mode
-                self.deblurnet.train()
-
-                # Train the model
                 input_seq = torch.cat(seq_blur,1)
                 gt_seq = torch.cat(seq_clear,1)
                 
-                # gt_tensor = gt_seq[:,gt_seq.shape[1]//2,:,:,:]
 
+                self.deblurnet_solver.zero_grad()
+                # self.deblurnet_solver.zero_grad(set_to_none=True)
+
+                output_dict = self.deblurnet(input_seq) 
                 # {'out':           {'recons_1', 'recons_2', 'recons_3', 'final'},
                 #  'flow_forwards': {'recons_1', 'recons_2', 'recons_3', 'final'},
                 #  'flow_backwards':{'recons_1', 'recons_2', 'recons_3', 'final'},
                 #  ...}
-                output_dict = self.deblurnet(input_seq) 
                 
                 # Calculate & update loss
                 total_loss = self._calc_update_losses(output_dict, gt_seq, self.opt.train_batch_size)
 
-                self.deblurnet_solver.zero_grad()
                 total_loss.backward()
                 self.deblurnet_solver.step()
-                
+
                 n_itr += 1
                 # Tick / tock
                 tqdm_train.set_postfix_str(f'total_loss {total_loss:.3f}, total_losses_avg {self.total_losses.avg:.3f}')
@@ -220,7 +216,7 @@ class Trainer:
             
             if epoch_idx % self.opt.eval.valid_freq == 0:
                 # Validation for each dataset list
-                save_dir = os.path.join(self.visualize_dir, 'epoch-' + str(epoch_idx).zfill(4))
+                save_dir = self.visualize_dir / Path('epoch-' + str(epoch_idx).zfill(4))
                 self.evaluation.eval_all_dataset(self.deblurnet, save_dir, epoch_idx)
         
                     

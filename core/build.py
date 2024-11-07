@@ -12,6 +12,7 @@ import utils.packing
 # from models.STDAN_RAFT_Stack import STDAN_RAFT_Stack
 from datetime import datetime as dt
 from core.train import Trainer
+from core.test import Tester
 from losses.multi_loss import *
 from utils import log
 
@@ -42,6 +43,12 @@ def  bulid_net(opt, output_dir):
     # Test phase
     elif opt.phase in ['test']:
     # Set up tranform
+
+        evaluation = Tester(opt, output_dir)
+        epoch_idx = 0
+
+
+
         eval_transforms = build_transform(opt.eval_transform)
 
         # Set up networks

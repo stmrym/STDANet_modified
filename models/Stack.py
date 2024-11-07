@@ -53,9 +53,10 @@ class Stack(nn.Module):
             assert self.n_sequence == 3, 'Please set DATA.INPUT_LENGTH to 3.'
 
             final = self.recons_net(x)
-            output_dict = {}
-            for key in final.keys():
-                output_dict[key] = {}
-                output_dict[key]['final'] = final[key]            
+            # output_dict = {}
+            # for key in final.keys():
+            #     output_dict[key] = {}
+            #     output_dict[key]['final'] = final[key]            
         
-        return output_dict
+        # return output_dict
+        return final

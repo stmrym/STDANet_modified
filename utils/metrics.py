@@ -73,7 +73,6 @@ class LPIPS(AverageMeter):
         return loss
 
     def _convert_to_tensor(self, img, val_range):
-        print(type(img))
         if not isinstance(img, torch.Tensor):
             if isinstance(img, np.ndarray):
                 img = torch.from_numpy(img.astype(np.float32) / val_range).to(self.device)

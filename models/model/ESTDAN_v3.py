@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import models.model.edge_extractor as extractor
 import models.model.blocks as blocks
 from models.submodules import DeformableAttnBlock, DeformableAttnBlock_FUSION
+from models.mmedit import ResidualBlocksWithInputConv
 # from positional_encodings import PositionalEncodingPermute3D
 from torch.nn.init import xavier_uniform_, constant_
 def make_model(args):
@@ -16,10 +17,26 @@ def make_model(args):
 
 class ESTDAN_v3(nn.Module):
 
-    def __init__(self, in_channels=3, out_channels=3, sobel_out_channels=2, n_resblock=3, n_feat=32,
-                 kernel_size=5, device='cuda'):
+    def __init__(self, in_channels=3, out_channels=3, sobel_out_channels=2, n_resblock=3, n_feat=32, kernel_size=5, 
+                use_cleaning=False, is_sequential_cleaning=False, is_fix_cleaning=False, dynamic_refine_thres=255, n_cleaning_blocks=20, mid_channels=64,
+                device='cuda'):
         super(ESTDAN_v3, self).__init__()
         self.n_feat = n_feat
+        self.use_cleaning = use_cleaning
+        
+        if self.use_cleaning:
+            self.dynamic_refine_thres = dynamic_refine_thres / 255.
+            self.is_sequential_cleaning = is_sequential_cleaning
+
+            # image cleaning module
+            self.image_cleaning = nn.Sequential(
+                ResidualBlocksWithInputConv(3, mid_channels, n_cleaning_blocks),
+                nn.Conv2d(mid_channels, 3, 3, 1, 1, bias=True),
+            )
+            if is_fix_cleaning:  # keep the weights of the cleaning module fixed
+                self.image_cleaning.requires_grad_(False)
+            print('Use cleaning module')
+
         InBlock = []
         InBlock.extend([nn.Sequential(
             nn.Conv2d(in_channels, n_feat, kernel_size=3, stride=1,
@@ -110,7 +127,6 @@ class ESTDAN_v3(nn.Module):
         frames_2 = frames[:, 1:, :, :, :].reshape(-1, c, h, w)
 
         flows_forward = self.estimate_flow(frames_1, frames_2).view(n, t-1, 2, h, w)
-
         flows_backward = self.estimate_flow(frames_2,frames_1).view(n, t-1, 2, h, w)
 
         return flows_forward,flows_backward
@@ -137,6 +153,29 @@ class ESTDAN_v3(nn.Module):
     
     def forward(self, x):
         b, n, c, h, w = x.size()
+
+        # Pre-Cleaning Module
+        if self.use_cleaning:
+            for clean_iter in range(0, 3):  # at most 3 cleaning, determined empirically
+                if self.is_sequential_cleaning:
+                    residues = []
+                    for i in range(0, n):
+                        residue_i = self.image_cleaning(x[:, i, :, :, :])
+                        x[:, i, :, :, :] += residue_i
+                        residues.append(residue_i)
+                    residues = torch.stack(residues, dim=1)
+                else:  # time -> batch, then apply cleaning at once
+                    x = x.view(-1, c, h, w)
+                    residues = self.image_cleaning(x)
+                    x = (x + residues).view(b, n, c, h, w)
+                
+                # determine whether to continue cleaning
+                # print(clean_iter, torch.mean(torch.abs(residues)))
+                if torch.mean(torch.abs(residues)) < self.dynamic_refine_thres:
+                    break
+
+
+
         # input (B*N, C, H, W) -> (B*N, 2, H, W)
         sobel_feat = self.edge_extractor(x.view(b*n, c, h, w))
         sobel_2x_downsample = F.interpolate(sobel_feat, size=(h//2, w//2),mode='bilinear', align_corners=True)
@@ -188,7 +227,12 @@ class ESTDAN_v3(nn.Module):
         outBlock = self.outBlock(decoder_1st + inblock.view(b,n,-1,h,w)[:,1])
 
         # sobel_4x_downsample = torch.sqrt((sobel_4x_downsample[:,0]**2 + sobel_4x_downsample[:,1]**2))
-        return {'out':outBlock, 'flow_forwards':flow_forward, 'flow_backwards':flow_backward, 'ortho_weight':orthogonal_center_weights}
+        return {'pre_input':x, 
+                'out':outBlock,
+                'flow_forwards':flow_forward,
+                'flow_backwards':flow_backward
+                # 'ortho_weight':orthogonal_center_weights
+                }
         # return {'out':outBlock, 'flow_forwards':flow_forward, 'flow_backwards':flow_backward, 
         #     'first_scale_inblock': inblock.view(b,n,-1,h,w), 'first_scale_encoder_first':encoder_1st.view(b,n,-1,h//2,w//2),
         #     'first_scale_encoder_second':mma_in, 'first_scale_encoder_second_out':mma_out,

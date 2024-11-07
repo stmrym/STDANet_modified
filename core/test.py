@@ -1,91 +1,34 @@
 #!/usr/bin/python
 
-
-import os
-import torch.backends.cudnn
-import torch.utils.data
-
+from pathlib import Path
 from models.Stack import Stack
-import utils.data_loaders
-import utils.data_transforms
 import utils.network_utils
-import utils.packing
-import glob
-import importlib
-# from models.STDAN_Stack import STDAN_Stack
-# from models.STDAN_RAFT_Stack import STDAN_RAFT_Stack
-from datetime import datetime as dt
-from tensorboardX import SummaryWriter
-from core.evaluation import evaluation
-import logging
+from core.train import Trainer
 from losses.multi_loss import *
 from utils import log
 
-def get_weights(path, multi_file = True):
-    if multi_file:
-        weights = sorted(glob.glob(os.path.join(path, 'ckpt-epoch-*.pth.tar')))
-    else:
-        weights = [path]
-    return weights
+class Tester(Trainer):
+    def __init__(self, opt, output_dir):
+        # Initial settings
+        self.opt = opt
+        self.output_dir = output_dir
+        self.device = 'cuda' if torch.cuda.device_count() > 0 else 'cpu'
+        self.deblurnet = Stack(device = self.device, **opt.network)
+        self._load_test_weights()
 
-def test(cfg,output_dir):
-    # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
-    torch.backends.cudnn.benchmark  = True
+        log.info(f'{dt.now()} Parameters in {opt.network.arch}: {utils.network_utils.count_parameters(self.deblurnet)}.')
+        log.info(f'Loss: {opt.loss.keys()} ')
 
-    # Set up data augmentation
-    test_transforms = utils.data_transforms.Compose([
-    utils.data_transforms.Normalize(mean=cfg.DATA.MEAN, std=cfg.DATA.STD),
-    utils.data_transforms.ToTensor(),
-    ])
+    def _load_test_weights(self):
+        log.info(f'{dt.now()} Recovering from {self.opt.weights} ...')
+        checkpoint = torch.load(self.opt.weights, map_location='cpu')
+        self.deblurnet.load_state_dict({k.replace('module.',''):v for k,v in checkpoint['deblurnet_state_dict'].items()})
+        self.init_epoch = checkpoint['epoch_idx'] + 1        
     
-    # Set up networks
-    device = 'cuda' if torch.cuda.device_count() > 0 else 'cpu'
-    # deblurnet = module.__dict__[cfg.NETWORK.DEBLURNETARCH](cfg = cfg)
-    deblurnet = Stack(  
-                    network_arch=cfg.NETWORK.DEBLURNETARCH, 
-                    use_stack=cfg.NETWORK.USE_STACK, 
-                    n_sequence=cfg.DATA.INPUT_LENGTH, 
-                    device = device)
-    
-    if torch.cuda.is_available():
-        deblurnet = torch.nn.DataParallel(deblurnet).cuda()
-    
-    log.info(f'{dt.now()} Parameters in {cfg.NETWORK.DEBLURNETARCH}: {utils.network_utils.count_parameters(deblurnet)}.')
-    log.info(f'Loss: {cfg.LOSS_DICT_LIST} ')
-
-    # Load pretrained model if exists
-    weights = get_weights(cfg.CONST.WEIGHTS, multi_file = False)
-    test_writer = SummaryWriter(output_dir) if cfg.EVAL.USE_TENSORBOARD else None
-
-    for weight in weights:
-
-        epoch = weight.split('ckpt-epoch-')[-1].split('.pth')[0]
-        log.info(f'{dt.now()} Recovering from {weight} ...')     
-        checkpoint = torch.load(os.path.join(weight),map_location='cpu')
-        if isinstance(deblurnet, torch.nn.DataParallel):
-            deblurnet.module.load_state_dict({k.replace('module.',''):v for k,v in checkpoint['deblurnet_state_dict'].items()})    
-        else:
-            deblurnet.load_state_dict({k.replace('module.',''):v for k,v in checkpoint['deblurnet_state_dict'].items()})
+    def test(self):
+        from core.evaluation import Evaluation
+        self.evaluation = Evaluation(self.opt, self.output_dir)
+        self.deblurnet = torch.nn.DataParallel(self.deblurnet).to(self.device)
         
-        # Test for each dataset list
-        for test_dataset_name, test_image_blur_path, test_image_clear_path, test_json_file_path\
-            in zip(cfg.DATASET.TEST_DATASET_LIST, cfg.DIR.TEST_IMAGE_BLUR_PATH_LIST, cfg.DIR.TEST_IMAGE_CLEAR_PATH_LIST, cfg.DIR.TEST_JSON_FILE_PATH_LIST):
-            test_loader = utils.data_loaders.VideoDeblurDataLoader_No_Slipt(
-                image_blur_path = test_image_blur_path, 
-                image_clear_path = test_image_clear_path,
-                json_file_path = test_json_file_path,
-                input_length = cfg.DATA.INPUT_LENGTH)
-            
-            if len(weights) != 1:
-                save_dir = os.path.join(output_dir, test_dataset_name, epoch)
-            else:
-                save_dir = os.path.join(output_dir, test_dataset_name)
-
-            _, _ = evaluation(cfg = cfg, 
-                eval_dataset_name = test_dataset_name,
-                save_dir = save_dir,
-                eval_loader = test_loader,
-                eval_transforms = test_transforms,
-                deblurnet = deblurnet,
-                epoch_idx = int(epoch),
-                tb_writer = test_writer)        
+        save_dir = self.output_dir / 'visualization' / Path('epoch-' + str(self.init_epoch).zfill(4))
+        self.evaluation.eval_all_dataset(self.deblurnet, save_dir, self.init_epoch)

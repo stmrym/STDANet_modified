@@ -10,12 +10,13 @@ get_local.activate() """
 import numpy as np
 import random
 from pathlib import Path
-import importlib
 import argparse
 import shutil
 import yaml
 from box import Box
 from datetime import datetime as dt
+from core.train import Trainer
+from core.test import Tester
 # import warnings
 # warnings.filterwarnings("ignore") 
 
@@ -31,7 +32,7 @@ def main():
 
     if opt.phase == 'resume':
         # output_dir = Path(opt.exp_path) / 'train' / (opt.weights).split('/')[-3]
-        output_dir = opt.exp_path.split('checkpoint')[0]
+        output_dir = Path(opt.weights.split('checkpoints')[0])
 
     elif opt.phase == 'test':
         timestr = dt.now().isoformat(timespec='seconds').replace(':', '')
@@ -41,11 +42,12 @@ def main():
     elif opt.phase == 'train':
         timestr = dt.now().isoformat(timespec='seconds').replace(':', '')        
         network_name = opt.network.arch + '_Stack' if opt.network.use_stack else opt.network.arch
-        output_dir = Path(opt.exp_path) / 'train' / Path(timestr + '_' + network_name + '_' + '_'.join(opt.dataset.train.keys())) # changed to use timestr    
+        exp_name = timestr + '_' + network_name + '_' + '_'.join(opt.dataset.train.keys())
+        output_dir = Path(opt.exp_path) / 'train' / exp_name # changed to use timestr    
         ckpt_dir = output_dir / 'checkpoints'
 
         os.makedirs(ckpt_dir, exist_ok=True)
-        shutil.copy(args.config, output_dir / 'config.yaml')
+        shutil.copy(args.config, output_dir / f'{exp_name}.yaml')
         
     else:
         print('Invalid NETWORK.PHASE!')
@@ -71,9 +73,16 @@ def main():
     
     log.info('CUDA DEVICES NUMBER: '+ str(torch.cuda.device_count()))
     log.info(f' Output_dir: {output_dir}')
-
-    # Setup Network & Start train/test process
-    bulid_net(opt=opt, output_dir=output_dir)
+    
+    # Setup Train
+    if opt.phase in ['train', 'resume']:
+        trainer = Trainer(opt, output_dir)
+        trainer.train()  
+    
+    # Setup Test
+    elif opt.phase in ['test']:
+        tester = Tester(opt, output_dir)
+        tester.test()
 
 
 if __name__ == '__main__':
