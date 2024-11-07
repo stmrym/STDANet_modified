@@ -58,6 +58,8 @@ network:
   is_sequential_cleaning: false
   is_fix_cleaning: false
   dynamic_refine_thres: 255
+  n_cleaning_blocks: 5 # 20
+  mid_channels: 32 # 64
 
 raft:
   config_file: ../STDAN_modified/mmflow/configs/raft/raft_8x2_100k_mixed_368x768.py
