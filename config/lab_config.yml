@@ -1,5 +1,6 @@
 seed: 0
-device: 0
+device: '0'
+num_workers: 8
 use_cudnn_benchmark: true
 weights: ~
 train_batch_size: 8
@@ -75,8 +76,8 @@ train_transform:
     crop_size: [256, 256]  # Crop image size: height, width
   RandomVerticalFlip:
   RandomHorizontalFlip:
-  # RandomGaussianNoise:
-  #   gaussian_para: [0, 1.0e-4]  # mu, std_var
+  RandomGaussianNoise:
+    gaussian_para: [0, 1.0e-4]  # mu, std_var
   
   # for blur only transform 
   UnsharpMasking:

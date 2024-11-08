@@ -242,7 +242,7 @@ class Evaluation(Trainer):
                 
                 torch.cuda.synchronize()
                 self.process_time.update((time() - process_start_time))
-                tqdm_eval.set_postfix_str(f'Inference Time {self.inference_time.avg} Process Time {self.process_time.avg}')
+                tqdm_eval.set_postfix_str(f'Inference Time {self.inference_time.avg:.3f} Process Time {self.process_time.avg:.3f}')
 
         
         # Add testing results to TensorBoard

@@ -11,6 +11,9 @@ import utils.data_transforms
 import utils.network_utils
 from losses.multi_loss import *
 
+from torch.profiler import profile, record_function, ProfilerActivity
+
+
 # from models.VGG19 import VGG19
 # from utils.network_utils import flow2rgb
 from tqdm import tqdm
@@ -117,16 +120,18 @@ class Trainer:
         log.info(f'[{phase.upper()}] Total {phase} case: {len(all_dataset)}')
 
         # Creating dataloader
+        num_workers = self.opt.pop('num_workers', os.cpu_count()//torch.cuda.device_count())
         data_loader = torch.utils.data.DataLoader(
             dataset=all_dataset,
             batch_size=batch_size,
-            num_workers=os.cpu_count()//torch.cuda.device_count(), pin_memory=True, shuffle=True)
+            num_workers=num_workers, pin_memory=True, shuffle=True)
         return data_loader
 
     def _init_epoch(self):
         from core.evaluation import Evaluation
         self.evaluation = Evaluation(self.opt, self.output_dir)
-        self.deblurnet = torch.nn.DataParallel(self.deblurnet).to(self.device)
+        # self.deblurnet = torch.nn.DataParallel(self.deblurnet).to(self.device)
+        self.deblurnet = self.deblurnet.to(self.device)
         torch.backends.cudnn.benchmark = self.opt.use_cudnn_benchmark
 
         # Batch average meterics
@@ -173,7 +178,7 @@ class Trainer:
         n_itr = 0
         # Start epoch
         for epoch_idx in range(self.init_epoch, self.opt.train.n_epochs):
-
+            # with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True, with_stack=True) as prof:
             tqdm_train = self._before_epoch(epoch_idx)
             # switch models to training mode
             self.deblurnet.train()
@@ -197,7 +202,7 @@ class Trainer:
                 
                 # Calculate & update loss
                 total_loss = self._calc_update_losses(output_dict, gt_seq, self.opt.train_batch_size)
-
+                
                 total_loss.backward()
                 self.deblurnet_solver.step()
 
@@ -206,7 +211,6 @@ class Trainer:
                 tqdm_train.set_postfix_str(f'total_loss {total_loss:.3f}, total_losses_avg {self.total_losses.avg:.3f}')
                 
             self._after_epoch(epoch_idx)
-
             if epoch_idx % self.opt.train.save_freq == 0:
                 utils.network_utils.save_checkpoints(self.ckpt_dir / Path('ckpt-epoch-%04d.pth.tar' % (epoch_idx)), \
                                                         epoch_idx, self.deblurnet, self.deblurnet_solver)
@@ -219,6 +223,10 @@ class Trainer:
                 save_dir = self.visualize_dir / Path('epoch-' + str(epoch_idx).zfill(4))
                 self.evaluation.eval_all_dataset(self.deblurnet, save_dir, epoch_idx)
         
-                    
+            # if epoch_idx == 2:
+            #     with open('profiling_results.txt', 'w') as f:
+            #         f.write(prof.key_averages(group_by_stack_n=2).table(sort_by="cuda_time_total", row_limit=10))
+            #     prof.export_chrome_trace("./trace.json")
+            #     exit()
         # Close SummaryWriter for TensorBoard
         self.train_writer.close()

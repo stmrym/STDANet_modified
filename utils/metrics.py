@@ -47,9 +47,9 @@ class PSNR(AverageMeter):
 
 
 class SSIM(AverageMeter):
-    def __init__(self, val_range=255.0, channel_axis=2, gaussian_weights=True, sigma=1.5, use_sample_covariance=False):
+    def __init__(self, data_range=255.0, channel_axis=2, gaussian_weights=True, sigma=1.5, use_sample_covariance=False):
         super(SSIM, self).__init__()
-        self.val_range = val_range
+        self.data_range = data_range
         self.channel_axis = channel_axis
         self.gaussian_weights = gaussian_weights
         self.sigma = sigma

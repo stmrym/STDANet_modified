@@ -15,8 +15,6 @@ import shutil
 import yaml
 from box import Box
 from datetime import datetime as dt
-from core.train import Trainer
-from core.test import Tester
 # import warnings
 # warnings.filterwarnings("ignore") 
 
@@ -60,9 +58,9 @@ def main():
     if type(opt.device) == str and not opt.device == 'all':
         os.environ['CUDA_VISIBLE_DEVICES'] = opt.device
     
-    
     import torch
-    from core.build import bulid_net
+    from core.train import Trainer
+    from core.test import Tester
     
     random.seed(opt.seed)
     np.random.seed(opt.seed)
@@ -73,7 +71,7 @@ def main():
     
     log.info('CUDA DEVICES NUMBER: '+ str(torch.cuda.device_count()))
     log.info(f' Output_dir: {output_dir}')
-    
+
     # Setup Train
     if opt.phase in ['train', 'resume']:
         trainer = Trainer(opt, output_dir)
