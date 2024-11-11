@@ -5,7 +5,7 @@ use_cudnn_benchmark: true
 weights: ~
 train_batch_size: 8
 eval_batch_size: 1
-prefix: '_CS_255_'
+prefix: '_debug'
 phase: train  # train, resume, test
 exp_path: ./exp_log
 
@@ -14,27 +14,27 @@ dataset:
     BSD_3ms24ms:
       image_blur_path: ../dataset/BSD_3ms24ms/%s/%s/Blur/RGB/%s.png
       image_clear_path: ../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png # %s, %s, %s: phase, seq_name, image_name template
-      json_file_path: datasets/BSD_3ms24ms_train.json
-      # json_file_path: datasets/BSD_3ms24ms_train_debug.json
+      # json_file_path: datasets/BSD_3ms24ms_train.json
+      json_file_path: datasets/BSD_3ms24ms_train_debug.json
 
     GOPRO:
       image_blur_path: ../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png
       image_clear_path: ../dataset/GOPRO_Large/%s/%s/sharp/%s.png
-      json_file_path: datasets/GOPRO_train.json
-      # json_file_path: datasets/GOPRO_train_debug.json
+      # json_file_path: datasets/GOPRO_train.json
+      json_file_path: datasets/GOPRO_train_debug.json
 
   val:
     BSD_3ms24ms:
       image_blur_path: ../dataset/BSD_3ms24ms/%s/%s/Blur/RGB/%s.png     # %s, %s, %s: phase, seq_name, image_name
       image_clear_path: ../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png    # %s, %s, %s: phase, seq_name, image_name
-      json_file_path: ../STDAN_modified/datasets/BSD_3ms24ms_test.json 
-      # json_file_path: ../STDAN_modified/datasets/BSD_3ms24ms_valid_debug.json   
+      # json_file_path: ../STDAN_modified/datasets/BSD_3ms24ms_test.json 
+      json_file_path: ../STDAN_modified/datasets/BSD_3ms24ms_valid_debug.json   
 
     GOPRO:
       image_blur_path: ../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png
       image_clear_path: ../dataset/GOPRO_Large/%s/%s/sharp/%s.png
-      json_file_path: ../STDAN_modified/datasets/GOPRO_valid.json
-      # json_file_path: ../STDAN_modified/datasets/GOPRO_valid_debug.json
+      # json_file_path: ../STDAN_modified/datasets/GOPRO_valid.json
+      json_file_path: ../STDAN_modified/datasets/GOPRO_valid_debug.json
 
 
   test:
@@ -164,8 +164,8 @@ train:
     weight_decay: 0.0
   
 eval:
-  valid_freq: 50  # 50
-  visualize_freq: 50 # 50
+  valid_freq: 20  # 50
+  visualize_freq: 100 # 50
   save_input_img: true
   save_output_img: true
   save_flow: true

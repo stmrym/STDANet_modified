@@ -243,7 +243,7 @@ class UnsharpMasking:
 
     def __repr__(self):
         repr_str = self.__class__.__name__
-        repr_str += (f'(keys={self.keys}, kernel_size={self.kernel_size}, '
+        repr_str += (f'(kernel_size={self.kernel_size}, '
                      f'sigma={self.sigma}, weight={self.weight}, '
                      f'threshold={self.threshold})')
         return repr_str
@@ -360,7 +360,7 @@ class RandomBlur:
 
     def __repr__(self):
         repr_str = self.__class__.__name__
-        repr_str += (f'(params={self.params}, keys={self.keys})')
+        repr_str += (f'(params={self.params})')
         return repr_str
 
 
@@ -459,7 +459,7 @@ class RandomNoise:
 
     def __repr__(self):
         repr_str = self.__class__.__name__
-        repr_str += (f'(params={self.params}, keys={self.keys})')
+        repr_str += (f'(params={self.params})')
         return repr_str
 
 
@@ -511,7 +511,7 @@ class RandomJPEGCompression:
 
     def __repr__(self):
         repr_str = self.__class__.__name__
-        repr_str += (f'(params={self.params}, keys={self.keys})')
+        repr_str += (f'(params={self.params})')
         return repr_str
 
 
@@ -573,5 +573,5 @@ class RandomVideoCompression:
 
     def __repr__(self):
         repr_str = self.__class__.__name__
-        repr_str += (f'(params={self.params}, keys={self.keys})')
+        repr_str += (f'(params={self.params})')
         return repr_str

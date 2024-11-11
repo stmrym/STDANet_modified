@@ -46,7 +46,7 @@ class Trainer:
 
         self.train_data_loader = self._build_dataloader(opt.dataset.train, 'train', self.train_transforms, opt.train_batch_size)
 
-        self.train_writer = SummaryWriter(output_dir)
+        self.tb_writer = SummaryWriter(output_dir) if opt.eval.use_tensorboard else None
         self.ckpt_dir = self.output_dir / 'checkpoints'
         self.visualize_dir = self.output_dir / 'visualization'
 
@@ -129,7 +129,7 @@ class Trainer:
 
     def _init_epoch(self):
         from core.evaluation import Evaluation
-        self.evaluation = Evaluation(self.opt, self.output_dir)
+        self.evaluation = Evaluation(self.opt, self.output_dir, self.tb_writer)
         # self.deblurnet = torch.nn.DataParallel(self.deblurnet).to(self.device)
         self.deblurnet = self.deblurnet.to(self.device)
         torch.backends.cudnn.benchmark = self.opt.use_cudnn_benchmark
@@ -154,10 +154,10 @@ class Trainer:
     def _after_epoch(self, epoch_idx):
         # Append epoch loss to TensorBoard
         for name, losses_dict in self.losses_dict.items():
-            self.train_writer.add_scalar(f'Loss_TRAIN/{name}', losses_dict.avg_meter.avg, epoch_idx)
+            self.tb_writer.add_scalar(f'Loss_TRAIN/{name}', losses_dict.avg_meter.avg, epoch_idx)
         
-        self.train_writer.add_scalar('Loss_TRAIN/TotalLoss', self.total_losses.avg, epoch_idx)
-        self.train_writer.add_scalar('lr/lr', self.deblurnet_lr_scheduler.get_last_lr()[0], epoch_idx)
+        self.tb_writer.add_scalar('Loss_TRAIN/TotalLoss', self.total_losses.avg, epoch_idx)
+        self.tb_writer.add_scalar('lr/lr', self.deblurnet_lr_scheduler.get_last_lr()[0], epoch_idx)
         self.deblurnet_lr_scheduler.step()
 
         # log.info(f'[TRAIN][Epoch {epoch_idx}/{self.opt.train.n_epochs}] total_losses_avg: {self.total_losses.avg}')
@@ -228,5 +228,8 @@ class Trainer:
             #         f.write(prof.key_averages(group_by_stack_n=2).table(sort_by="cuda_time_total", row_limit=10))
             #     prof.export_chrome_trace("./trace.json")
             #     exit()
+            
         # Close SummaryWriter for TensorBoard
-        self.train_writer.close()
+        if isinstance(self.tb_writer, SummaryWriter):
+            self.tb_writer.close()
+        del self.evaluation

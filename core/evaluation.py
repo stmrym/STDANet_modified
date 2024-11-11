@@ -18,7 +18,7 @@ from tqdm import tqdm
 
 
 class Evaluation(Trainer):
-    def __init__(self, opt, output_dir):
+    def __init__(self, opt, output_dir, tb_writer=None):
         self.opt = opt
         self.output_dir = output_dir
         self.device = 'cuda' if torch.cuda.device_count() > 0 else 'cpu'
@@ -29,10 +29,7 @@ class Evaluation(Trainer):
         elif opt.phase in ['train', 'resume']:
             self.dataloader_dict = self._build_dataloader_dict(opt.dataset.val, 'valid', self.eval_transforms, opt.eval_batch_size)
 
-        if opt.eval.use_tensorboard and opt.phase in ['train', 'resume']:
-            self.tb_writer = SummaryWriter(self.output_dir)
-        else:
-            self.tb_writer = None
+        self.tb_writer = tb_writer
 
         # Build metric_dict
         self.metric_dict = self._set_metrics(opt.eval.metrics)
@@ -86,12 +83,13 @@ class Evaluation(Trainer):
 
 
     def _wright_log(self, dataset_name, epoch_idx):
-        for loss_name, losses_dict in self.losses_dict.items():
-            self.tb_writer.add_scalar(f'Loss_VALID_{dataset_name}/{loss_name}', losses_dict.avg_meter.avg, epoch_idx)
-        self.tb_writer.add_scalar(f'Loss_VALID_{dataset_name}/TotalLoss', self.total_losses.avg, epoch_idx)
+        if isinstance(self.tb_writer, SummaryWriter):
+            for loss_name, losses_dict in self.losses_dict.items():
+                self.tb_writer.add_scalar(f'Loss_VALID_{dataset_name}/{loss_name}', losses_dict.avg_meter.avg, epoch_idx)
+            self.tb_writer.add_scalar(f'Loss_VALID_{dataset_name}/TotalLoss', self.total_losses.avg, epoch_idx)
 
-        for metric_name, metric in self.metric_dict.items():
-            self.tb_writer.add_scalar(f'{metric_name}/VALID_{dataset_name}', metric.avg, epoch_idx)
+            for metric_name, metric in self.metric_dict.items():
+                self.tb_writer.add_scalar(f'{metric_name}/VALID_{dataset_name}', metric.avg, epoch_idx)
         
         log_str = ' '.join([f'{key}: {value.avg:.3f}' for key, value in self.metric_dict.items()])
         log_str += f' Infer. time:{self.inference_time.avg:.3f}'
@@ -252,3 +250,8 @@ class Evaluation(Trainer):
     def eval_all_dataset(self, save_dir, deblurnet, epoch_idx):
         for dataset_name, dataloader in self.dataloader_dict.items():
             self.evaluation(deblurnet, save_dir, epoch_idx, dataset_name, dataloader)
+
+
+    def __del__(self):
+        if isinstance(self.tb_writer, SummaryWriter):
+            self.tb_writer.close()
