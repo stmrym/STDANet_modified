@@ -46,7 +46,14 @@ class Trainer:
 
         self.train_data_loader = self._build_dataloader(opt.dataset.train, 'train', self.train_transforms, opt.train_batch_size)
 
-        self.tb_writer = SummaryWriter(output_dir) if opt.eval.use_tensorboard else None
+        if opt.eval.use_tensorboard and opt.phase in ['train', 'resume']:
+            self.tb_writer = SummaryWriter(output_dir)
+        else:
+            self.tb_writer = None
+
+        from core.evaluation import Evaluation
+        self.evaluation = Evaluation(self.opt, self.output_dir, self.tb_writer)
+        
         self.ckpt_dir = self.output_dir / 'checkpoints'
         self.visualize_dir = self.output_dir / 'visualization'
 
@@ -128,8 +135,6 @@ class Trainer:
         return data_loader
 
     def _init_epoch(self):
-        from core.evaluation import Evaluation
-        self.evaluation = Evaluation(self.opt, self.output_dir, self.tb_writer)
         # self.deblurnet = torch.nn.DataParallel(self.deblurnet).to(self.device)
         self.deblurnet = self.deblurnet.to(self.device)
         torch.backends.cudnn.benchmark = self.opt.use_cudnn_benchmark
@@ -220,8 +225,8 @@ class Trainer:
             
             if epoch_idx % self.opt.eval.valid_freq == 0:
                 # Validation for each dataset list
-                save_dir = self.visualize_dir / Path('epoch-' + str(epoch_idx).zfill(4))
-                self.evaluation.eval_all_dataset(self.deblurnet, save_dir, epoch_idx)
+                visualize_dir = self.visualize_dir / Path('epoch-' + str(epoch_idx).zfill(4))
+                self.evaluation.eval_all_dataset(self.deblurnet, visualize_dir, epoch_idx)
         
             # if epoch_idx == 2:
             #     with open('profiling_results.txt', 'w') as f:

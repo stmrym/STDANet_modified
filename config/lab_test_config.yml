@@ -2,12 +2,12 @@ seed: 0
 device: '0'
 num_workers: 8
 use_cudnn_benchmark: true
-# weights: ./exp_log/train/2024-11-08T091540_ESTDAN_v3_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-0400.pth.tar
-weights: ~
+weights: ./exp_log/train/2024-06-02T124807_F_ESTDAN_v2_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-0400.pth.tar
+# weights: ~
 train_batch_size: 8
 eval_batch_size: 1
-prefix: '_F'
-phase: train  # train, resume, test
+prefix: '_'
+phase: test  # train, resume, test
 exp_path: ./exp_log
 
 dataset:
@@ -30,22 +30,16 @@ dataset:
     #   # json_file_path: datasets/GOPRO_train_debug.json
 
   val:
-    BSD_2ms16ms:
-      image_blur_path: ../dataset/BSD_2ms16ms/%s/blur/%s/%s.png     # %s, %s, %s: phase, seq_name, image_name
-      image_clear_path: ../dataset/BSD_2ms16ms/%s/GT/%s/%s.png    # %s, %s, %s: phase, seq_name, image_name
-      json_file_path: ../STDAN_modified/datasets/BSD_2ms16ms_test.json 
+    BSD_3ms24ms:
+      image_blur_path: ../dataset/BSD_3ms24ms/%s/%s/Blur/RGB/%s.png     # %s, %s, %s: phase, seq_name, image_name
+      image_clear_path: ../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png    # %s, %s, %s: phase, seq_name, image_name
+      json_file_path: ../STDAN_modified/datasets/BSD_3ms24ms_test.json 
       # json_file_path: ../STDAN_modified/datasets/BSD_3ms24ms_valid_debug.json   
 
-    BSD_2ms16ms_comp:
-      image_blur_path: ../dataset/BSD_2ms16ms_comp/%s/blur/%s/%s.png     # %s, %s, %s: phase, seq_name, image_name
-      image_clear_path: ../dataset/BSD_2ms16ms/%s/GT/%s/%s.png    # %s, %s, %s: phase, seq_name, image_name
-      json_file_path: ../STDAN_modified/datasets/BSD_2ms16ms_test.json 
-      # json_file_path: ../STDAN_modified/datasets/BSD_3ms24ms_valid_debug.json   
-
-    # GOPRO:
-      # image_blur_path: ../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png
-      # image_clear_path: ../dataset/GOPRO_Large/%s/%s/sharp/%s.png
-      # json_file_path: ../STDAN_modified/datasets/GOPRO_valid.json
+    GOPRO:
+      image_blur_path: ../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png
+      image_clear_path: ../dataset/GOPRO_Large/%s/%s/sharp/%s.png
+      json_file_path: ../STDAN_modified/datasets/GOPRO_valid.json
       # json_file_path: ../STDAN_modified/datasets/GOPRO_valid_debug.json
 
 
@@ -60,10 +54,10 @@ dataset:
       image_clear_path: ../dataset/BSD_1ms8ms/%s/GT/%s/%s.png
       json_file_path: datasets/BSD_1ms8ms_test.json
     
-    # Mi11Lite:
-    #   image_blur_path: ../dataset/Mi11Lite/%s/%s/%s.png
-    #   image_clear_path: ../dataset/Mi11Lite/%s/%s/%s.png
-    #   json_file_path: datasets/mi11lite.json
+    Mi11Lite:
+      image_blur_path: ../dataset/Mi11Lite/%s/%s/%s.png
+      image_clear_path: ../dataset/Mi11Lite/%s/%s/%s.png
+      json_file_path: datasets/mi11lite.json
 
 network:
   arch: ESTDAN_v3
@@ -196,5 +190,5 @@ eval:
     PSNR:
       crop_border: 0
       max_order: 255.0
-    SSIM:
-    LPIPS:
+    # SSIM:
+    # LPIPS:

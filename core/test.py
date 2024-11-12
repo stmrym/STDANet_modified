@@ -23,12 +23,13 @@ class Tester(Trainer):
         log.info(f'{dt.now()} Recovering from {self.opt.weights} ...')
         checkpoint = torch.load(self.opt.weights, map_location='cpu')
         self.deblurnet.load_state_dict({k.replace('module.',''):v for k,v in checkpoint['deblurnet_state_dict'].items()})
-        self.init_epoch = checkpoint['epoch_idx'] + 1        
+        self.init_epoch = checkpoint['epoch_idx']   
     
     def test(self):
         from core.evaluation import Evaluation
         self.evaluation = Evaluation(self.opt, self.output_dir)
-        self.deblurnet = torch.nn.DataParallel(self.deblurnet).to(self.device)
-        
-        save_dir = self.output_dir / 'visualization' / Path('epoch-' + str(self.init_epoch).zfill(4))
-        self.evaluation.eval_all_dataset(self.deblurnet, save_dir, self.init_epoch)
+        # self.deblurnet = torch.nn.DataParallel(self.deblurnet).to(self.device)
+        self.deblurnet = self.deblurnet.to(self.device)
+
+        visualize_dir = self.output_dir / Path('epoch-' + str(self.init_epoch).zfill(4))
+        self.evaluation.eval_all_dataset(self.deblurnet, visualize_dir, self.init_epoch)

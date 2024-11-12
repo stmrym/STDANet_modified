@@ -144,7 +144,7 @@ class Evaluation(Trainer):
         torchvision.utils.save_image(feat_img, f'{save_name}.png')
         # torchvision.utils.save_image(feat, f'{save_name}')
 
-    def evaluation(self, save_dir, deblurnet, epoch_idx, dataset_name, dataloader):
+    def _evaluation(self, deblurnet, save_dir, epoch_idx, dataset_name, dataloader):
         # Set up data loader
         self._init_evaluation()
         deblurnet.eval()
@@ -247,9 +247,10 @@ class Evaluation(Trainer):
         if self.opt.phase in ['train', 'resume']:
             self._wright_log(dataset_name, epoch_idx)
 
-    def eval_all_dataset(self, save_dir, deblurnet, epoch_idx):
+    def eval_all_dataset(self, deblurnet, visualize_dir, epoch_idx):
         for dataset_name, dataloader in self.dataloader_dict.items():
-            self.evaluation(deblurnet, save_dir, epoch_idx, dataset_name, dataloader)
+            save_dir = Path(str(visualize_dir) + '_' + dataset_name)
+            self._evaluation(deblurnet, save_dir, epoch_idx, dataset_name, dataloader)
 
 
     def __del__(self):
