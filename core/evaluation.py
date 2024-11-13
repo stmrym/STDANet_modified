@@ -254,5 +254,5 @@ class Evaluation(Trainer):
 
 
     def __del__(self):
-        if isinstance(self.tb_writer, SummaryWriter):
+        if hasattr(self, 'tb_writer') and isinstance(self.tb_writer, SummaryWriter):
             self.tb_writer.close()
