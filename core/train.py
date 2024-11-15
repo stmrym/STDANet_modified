@@ -151,6 +151,14 @@ class Trainer:
             loss_dict.avg_meter.reset()
         self.total_losses.reset()
 
+        # Fix weights after specific epochs
+        if epoch_idx == self.opt.train.cleaning_fix_epoch:
+            for name, param in self.deblurnet.named_parameters():
+                if 'image_cleaning' in name:
+                    log.info(f'Fix {name}...')
+                    param.requires_grad = False
+            
+
         # Set tqdm
         tqdm_train = tqdm(self.train_data_loader)
         tqdm_train.set_description(f'[TRAIN] [Epoch {epoch_idx}/{self.opt.train.n_epochs}]')
@@ -204,7 +212,6 @@ class Trainer:
                 #  'flow_forwards': {'recons_1', 'recons_2', 'recons_3', 'final'},
                 #  'flow_backwards':{'recons_1', 'recons_2', 'recons_3', 'final'},
                 #  ...}
-                
                 # Calculate & update loss
                 total_loss = self._calc_update_losses(output_dict, gt_seq, self.opt.train_batch_size)
                 

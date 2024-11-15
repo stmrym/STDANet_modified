@@ -6,27 +6,29 @@ use_cudnn_benchmark: true
 weights: ~
 train_batch_size: 8
 eval_batch_size: 1
-prefix: '_F'
+prefix: '_debug'
 phase: train  # train, resume, test
 exp_path: ./exp_log
 
 dataset:
   train:
-    # BSD_1ms8ms:
-      # image_blur_path: ../dataset/BSD_1ms8ms/%s/blur/%s/%s.png
-      # image_clear_path: ../dataset/BSD_1ms8ms/%s/blur/%s/%s.png
+    BSD_2ms16ms:
+      image_blur_path: ../dataset/BSD_2ms16ms/%s/blur/%s/%s.png
+      image_clear_path: ../dataset/BSD_2ms16ms/%s/GT/%s/%s.png
+      json_file_path: ../STDAN_modified/datasets/BSD_2ms16ms_train.json 
+      # json_file_path: ../STDAN_modified/datasets/BSD_2ms16ms_train_debug.json   
 
 
-    BSD_3ms24ms:
-      image_blur_path: ../dataset/BSD_3ms24ms/%s/%s/Blur/RGB/%s.png
-      image_clear_path: ../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png # %s, %s, %s: phase, seq_name, image_name template
-      json_file_path: datasets/BSD_3ms24ms_train.json
-    #   # json_file_path: datasets/BSD_3ms24ms_train_debug.json
+    # BSD_3ms24ms:
+    #   image_blur_path: ../dataset/BSD_3ms24ms/%s/%s/Blur/RGB/%s.png
+    #   image_clear_path: ../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png # %s, %s, %s: phase, seq_name, image_name template
+    #   json_file_path: datasets/BSD_3ms24ms_train.json
+    # #   # json_file_path: datasets/BSD_3ms24ms_train_debug.json
 
-    GOPRO:
-      image_blur_path: ../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png
-      image_clear_path: ../dataset/GOPRO_Large/%s/%s/sharp/%s.png
-      json_file_path: datasets/GOPRO_train.json
+    # GOPRO:
+    #   image_blur_path: ../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png
+    #   image_clear_path: ../dataset/GOPRO_Large/%s/%s/sharp/%s.png
+    #   json_file_path: datasets/GOPRO_train.json
     #   # json_file_path: datasets/GOPRO_train_debug.json
 
   val:
@@ -34,13 +36,18 @@ dataset:
       image_blur_path: ../dataset/BSD_2ms16ms/%s/blur/%s/%s.png     # %s, %s, %s: phase, seq_name, image_name
       image_clear_path: ../dataset/BSD_2ms16ms/%s/GT/%s/%s.png    # %s, %s, %s: phase, seq_name, image_name
       json_file_path: ../STDAN_modified/datasets/BSD_2ms16ms_test.json 
-      # json_file_path: ../STDAN_modified/datasets/BSD_3ms24ms_valid_debug.json   
+      # json_file_path: ../STDAN_modified/datasets/BSD_2ms16ms_test_debug.json   
 
     BSD_2ms16ms_comp:
       image_blur_path: ../dataset/BSD_2ms16ms_comp/%s/blur/%s/%s.png     # %s, %s, %s: phase, seq_name, image_name
       image_clear_path: ../dataset/BSD_2ms16ms/%s/GT/%s/%s.png    # %s, %s, %s: phase, seq_name, image_name
       json_file_path: ../STDAN_modified/datasets/BSD_2ms16ms_test.json 
-      # json_file_path: ../STDAN_modified/datasets/BSD_3ms24ms_valid_debug.json   
+      # json_file_path: ../STDAN_modified/datasets/BSD_2ms16ms_test_debug.json   
+
+    Mi11Lite:
+      image_blur_path: ../dataset/Mi11Lite/%s/%s/%s.png
+      image_clear_path: ../dataset/Mi11Lite/%s/%s/%s.png
+      json_file_path: datasets/mi11lite.json
 
     # GOPRO:
       # image_blur_path: ../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png
@@ -77,7 +84,7 @@ network:
   n_feat: 32
   kernel_size: 5
   sobel_out_channels: 2  # for ESTDAN
-  use_cleaning: false # for ESTDANv3
+  use_cleaning: true # for ESTDANv3
   is_sequential_cleaning: false
   is_fix_cleaning: false
   dynamic_refine_thres: 255
@@ -102,12 +109,6 @@ train_transform:
     gaussian_para: [0, 1.0e-4]  # mu, std_var
   
   # for blur only transform 
-  UnsharpMasking:
-    kernel_size: 51
-    sigma: 0
-    weight: 0.5
-    threshold: 10
-
   RandomBlur:
     params:
       kernel_size: [7, 9, 11, 13, 15, 17, 19, 21]
@@ -137,16 +138,22 @@ train_transform:
       gaussian_sigma_step: 0.1
       poisson_scale_step: 0.005
 
+  UnsharpMasking:
+    kernel_size: 51
+    sigma: 0
+    weight: 0.5
+    threshold: 10
+
   RandomJPEGCompression:
     params:
-      quality: [30, 95]
+      quality: [60, 95]   # 30, 95
       quality_step: 3
 
   RandomVideoCompression:
     params:
       codec: ['libx264', 'h264', 'mpeg4']
       codec_prob: [1/3, 1/3, 1/3]
-      bitrate: [1.0e+4, 1.0e+5]
+      bitrate: [1.0e+5, 1.0e+6]   # [1.0e+4, 1.0e+5]
 
 
 
@@ -156,8 +163,14 @@ eval_transform:
     std: [255.0, 255.0, 255.0]
 
 loss:
-  L1Loss:
-    func: l1Loss
+  # L1Loss:
+  #   func: l1Loss
+  #   weight: 1
+  CharbonnierLoss:
+    func: CharbonnierLoss
+    weight: 1
+  CleaningCharbonnierLoss:
+    func: CleaningCharbonnierLoss
     weight: 1
   WarpMSELoss:
     func: warp_loss
@@ -165,6 +178,7 @@ loss:
   FFTLoss:
     func: FFTLoss
     weight: 0.05 
+  
 
 train:
   use_percept_loss: false
@@ -172,6 +186,7 @@ train:
   sobel_requires_grad: true
   n_epochs: 1201
   save_freq: 50 # 50
+  cleaning_fix_epoch: 400  # Valid for when using cleaning module
   optimization:
     learning_rate: 1.0e-4
     lr_milestones: 

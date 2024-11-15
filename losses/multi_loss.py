@@ -64,6 +64,38 @@ def l1Loss(output_dict:dict, gt_seq:torch.tensor):
     l1 = l1_loss(output_imgs, t_gt_seq)
     return l1
 
+
+def CharbonnierLoss(output_dict:dict, gt_seq:torch.Tensor):
+    b,t,c,h,w = gt_seq.shape
+    # output_imgs = torch.cat([output_dict['recons_1'], output_dict['recons_2'], output_dict['recons_3'], output_dict['out']],dim=1)
+    output_img = output_dict['out']
+    
+    if t == 3:
+        t_gt_seq = torch.cat([gt_seq[:,1,:,:,:]],dim=1)
+    elif t == 5:
+        t_gt_seq = torch.cat([gt_seq[:,1,:,:,:],gt_seq[:,2,:,:,:],gt_seq[:,3,:,:,:],gt_seq[:,2,:,:,:]],dim=1)
+
+    epsilon = 1e-3
+    
+    loss = torch.mean(torch.sqrt((output_img - t_gt_seq)**2 + epsilon**2))
+    return loss
+
+def CleaningCharbonnierLoss(output_dict:dict, gt_seq:torch.tensor):
+    
+    b,t,c,h,w = gt_seq.shape
+    # output_imgs = torch.cat([output_dict['recons_1'], output_dict['recons_2'], output_dict['recons_3'], output_dict['out']],dim=1)
+    pre_inputs = output_dict['pre_input']
+    pre_input = pre_inputs[:, pre_inputs.shape[1]//2, :, :, :]
+    
+    if t == 3:
+        t_gt_seq = torch.cat([gt_seq[:,1,:,:,:]],dim=1)
+    elif t == 5:
+        t_gt_seq = torch.cat([gt_seq[:,1,:,:,:],gt_seq[:,2,:,:,:],gt_seq[:,3,:,:,:],gt_seq[:,2,:,:,:]],dim=1)
+
+    epsilon = 1e-3
+    loss = torch.mean(torch.sqrt((pre_input - t_gt_seq)**2 + epsilon**2))
+    return loss
+
 def PSNR(output, target, max_val = 1.0,shave = 4):
     output = output.clamp(0.0,1.0)
     mse = torch.pow(target[:,:,shave:-shave,shave:-shave] - output[:,:,shave:-shave,shave:-shave], 2).mean()
