@@ -2,11 +2,11 @@ seed: 0
 device: '0'
 num_workers: 8
 use_cudnn_benchmark: true
-weights: ./exp_log/train/2024-05-21T065149_STDAN_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-0400.pth.tar
+weights: ./exp_log/train/2024-11-13T110637_ESTDAN_v3_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-0600.pth.tar
 # weights: ~
 train_batch_size: 8
 eval_batch_size: 1
-prefix: '_STDAN_'
+prefix: '_ESTDAN_v3_'
 phase: test  # train, resume, test
 exp_path: ./exp_log
 
@@ -44,15 +44,15 @@ dataset:
 
 
   test:
-    BSD_1ms8ms:
-      image_blur_path: ../dataset/BSD_1ms8ms/%s/blur/%s/%s.png
-      image_clear_path: ../dataset/BSD_1ms8ms/%s/GT/%s/%s.png
-      json_file_path: datasets/BSD_1ms8ms_test.json
+    # BSD_1ms8ms:
+    #   image_blur_path: ../dataset/BSD_1ms8ms/%s/blur/%s/%s.png
+    #   image_clear_path: ../dataset/BSD_1ms8ms/%s/GT/%s/%s.png
+    #   json_file_path: datasets/BSD_1ms8ms_test.json
     
-    BSD_1ms8ms_comp:
-      image_blur_path: ../dataset/BSD_1ms8ms_comp/%s/blur/%s/%s.png
-      image_clear_path: ../dataset/BSD_1ms8ms/%s/GT/%s/%s.png
-      json_file_path: datasets/BSD_1ms8ms_test.json
+    # BSD_1ms8ms_comp:
+    #   image_blur_path: ../dataset/BSD_1ms8ms_comp/%s/blur/%s/%s.png
+    #   image_clear_path: ../dataset/BSD_1ms8ms/%s/GT/%s/%s.png
+    #   json_file_path: datasets/BSD_1ms8ms_test.json
     
     Mi11Lite:
       image_blur_path: ../dataset/Mi11Lite/%s/%s/%s.png
@@ -60,7 +60,7 @@ dataset:
       json_file_path: datasets/mi11lite.json
 
 network:
-  arch: STDAN
+  arch: ESTDAN_v3
   use_stack: false
   # use_otho_edge: true
   n_sequence: 3
