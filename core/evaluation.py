@@ -21,6 +21,12 @@ class Evaluation(Trainer):
     def __init__(self, opt, output_dir, tb_writer=None):
         self.opt = opt
         self.output_dir = output_dir
+
+        if hasattr(opt, 'train') and hasattr(opt.train, 'n_epochs'):
+            self.n_epochs = opt.train.n_epochs
+        else:
+            self.n_epochs = 0    
+
         self.device = 'cuda' if torch.cuda.device_count() > 0 else 'cpu'
         self.eval_transforms = self._build_transform(opt.eval_transform)
         if opt.phase == 'test':
@@ -94,7 +100,7 @@ class Evaluation(Trainer):
         log_str = ' '.join([f'{key}: {value.avg:.3f}' for key, value in self.metric_dict.items()])
         log_str += f' Infer. time:{self.inference_time.avg:.3f}'
         log_str += f' Process time:{self.process_time.avg:.3f}'
-        log.info(f'[EVAL][Epoch {epoch_idx}/{self.opt.train.n_epochs}][{dataset_name}] ' + log_str)
+        log.info(f'[EVAL][Epoch {epoch_idx}/{self.n_epochs}][{dataset_name}] ' + log_str)
 
     def _save_rgb_image(self, output_image, save_seq_dir, img_name):
             # saving output image
@@ -150,7 +156,7 @@ class Evaluation(Trainer):
         deblurnet.eval()
 
         tqdm_eval = tqdm(dataloader)
-        tqdm_eval.set_description(f'[EVAL] [Epoch {epoch_idx}/{self.opt.train.n_epochs}]')
+        tqdm_eval.set_description(f'[EVAL] [Epoch {epoch_idx}/{self.n_epochs}]')
 
         for seq_idx, (name, seq_blur, seq_clear) in enumerate(tqdm_eval):
             

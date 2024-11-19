@@ -123,7 +123,7 @@ class NIQE(AverageMeter):
         cov_pris_param = niqe_pris_params['cov_pris_param']
         gaussian_window = niqe_pris_params['gaussian_window']
 
-        img = img.astype(np.float32)
+        img = img1.astype(np.float32)
         if self.input_order != 'HW':
             img = reorder_image(img, input_order=self.input_order)
             if self.convert_to == 'y':
