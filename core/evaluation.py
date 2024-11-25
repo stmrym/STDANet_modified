@@ -250,8 +250,7 @@ class Evaluation(Trainer):
 
         
         # Add testing results to TensorBoard
-        if self.opt.phase in ['train', 'resume']:
-            self._wright_log(dataset_name, epoch_idx)
+        self._wright_log(dataset_name, epoch_idx)
 
     def eval_all_dataset(self, deblurnet, visualize_dir, epoch_idx):
         for dataset_name, dataloader in self.dataloader_dict.items():
