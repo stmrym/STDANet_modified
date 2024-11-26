@@ -40,7 +40,7 @@ def main():
     elif opt.phase == 'train':
         timestr = dt.now().isoformat(timespec='seconds').replace(':', '')        
         network_name = opt.network.arch + '_Stack' if opt.network.use_stack else opt.network.arch
-        exp_name = timestr + '_' + network_name + '_' + '_'.join(opt.dataset.train.keys()) + '_' + opt.prefix
+        exp_name = timestr + '_' + opt.prefix + '_' + network_name + '_' + '_'.join(opt.dataset.train.keys())
         output_dir = Path(opt.exp_path) / 'train' / exp_name # changed to use timestr    
         ckpt_dir = output_dir / 'checkpoints'
 

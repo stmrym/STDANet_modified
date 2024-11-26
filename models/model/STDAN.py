@@ -124,4 +124,7 @@ class STDAN(nn.Module):
         
         first_scale_outBlock = self.outBlock(first_scale_decoder_first+first_scale_inblock.view(b,n,32,h,w)[:,1])
         
-        return {'out':first_scale_outBlock, 'flow_forwards':flow_forward, 'flow_backwards':flow_backward}
+        return {'pre_input' : x,
+                'out' : first_scale_outBlock, 
+                'flow_forwards' : flow_forward, 
+                'flow_backwards' : flow_backward}

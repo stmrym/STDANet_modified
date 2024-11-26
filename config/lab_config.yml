@@ -2,12 +2,12 @@ seed: 0
 device: '0'
 num_workers: 8
 use_cudnn_benchmark: true
-# weights: ./exp_log/train/2024-11-18T132244_ESTDAN_v3_BSD_2ms16ms/checkpoints/latest-ckpt.pth.tar
-weights: ~
+weights: ./exp_log/train/2024-11-26T024206_C_ESTDAN_v3_BSD_3ms24ms_GOPRO/checkpoints/latest-ckpt.pth.tar
+# weights: ~
 train_batch_size: 8
 eval_batch_size: 1
-prefix: '_debug'
-phase: train  # train, resume, test
+prefix: 'C'
+phase: resume  # train, resume, test
 exp_path: ./exp_log
 
 dataset:
@@ -203,7 +203,7 @@ train:
 eval:
   valid_freq: 50  # 50
   visualize_freq: 100 # 50
-  save_input_img: true
+  save_input_img: false
   save_output_img: true
   save_flow: true
   use_tensorboard: true
