@@ -2,10 +2,10 @@ seed: 0
 device: '0'
 num_workers: 8
 use_cudnn_benchmark: true
-test_weights: ./exp_log/train/2024-06-10T115520_F_ESTDAN_v3_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-*.pth.tar
+test_weights: ./exp_log/train/2024-11-18T170527_CT_ESTDAN_v3_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-*.pth.tar
 # weights: ~
-eval_batch_size: 1
-prefix: '_F_ESTDAN_v3_'
+eval_batch_size: 4
+prefix: '_CT_ESTDAN_v3'
 phase: test  # train, resume, test
 exp_path: ./exp_log
 
@@ -38,10 +38,10 @@ network:
   n_feat: 32
   kernel_size: 5
   sobel_out_channels: 2  # for ESTDAN
-  use_cleaning: false # for ESTDANv3
+  use_cleaning: true # for ESTDANv3
   is_sequential_cleaning: false
   is_fix_cleaning: false
-  dynamic_refine_thres: 1.5 # 255 1.5
+  dynamic_refine_thres: 255 # 255 1.5
   n_cleaning_blocks: 5 # 20
   mid_channels: 32 # 64
 
@@ -62,22 +62,22 @@ loss:
   CharbonnierLoss:
     func: CharbonnierLoss
     weight: 1
-  CleaningCharbonnierLoss:
-    func: CleaningCharbonnierLoss
-    weight: 1
-  WarpMSELoss:
-    func: warp_loss
-    weight: 0.05
-  FFTLoss:
-    func: FFTLoss
-    weight: 0.05 
+  # CleaningCharbonnierLoss:
+  #   func: CleaningCharbonnierLoss
+  #   weight: 1
+  # WarpMSELoss:
+  #   func: warp_loss
+  #   weight: 0.05
+  # FFTLoss:
+  #   func: FFTLoss
+  #   weight: 0.05 
 
   
 eval:
   valid_freq: 50  # 50
   visualize_freq: 100 # 50
   save_input_img: false
-  save_output_img: true
+  save_output_img: false
   save_flow: true
   use_tensorboard: true
   metrics:
