@@ -6,43 +6,43 @@ use_cudnn_benchmark: true
 weights: ~
 train_batch_size: 8
 eval_batch_size: 1
-prefix: 'CT'
+prefix: 'CTchanged'
 phase: train  # train, resume, test
 exp_path: ./exp_log
 
 dataset:
   train:
-    # BSD_2ms16ms:
-    #   image_blur_path: ../dataset/BSD_2ms16ms/%s/blur/%s/%s.png
-    #   image_clear_path: ../dataset/BSD_2ms16ms/%s/GT/%s/%s.png
-    #   json_file_path: ../STDAN_modified/datasets/BSD_2ms16ms_train.json 
-      # json_file_path: ../STDAN_modified/datasets/BSD_2ms16ms_train_debug.json   
+    BSD_2ms16ms:
+      image_blur_path: ../dataset/BSD_2ms16ms/%s/blur/%s/%s.png
+      image_clear_path: ../dataset/BSD_2ms16ms/%s/GT/%s/%s.png # %s, %s, %s: phase, seq_name, image_name template
+      json_file_path: datasets/BSD_2ms16ms_train.json
 
-
-    BSD_3ms24ms:
-      image_blur_path: ../dataset/BSD_3ms24ms/%s/%s/Blur/RGB/%s.png
-      image_clear_path: ../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png # %s, %s, %s: phase, seq_name, image_name template
-      json_file_path: datasets/BSD_3ms24ms_train_1000.json
-    # #   # json_file_path: datasets/BSD_3ms24ms_train_debug.json
+    # BSD_3ms24ms:
+      # image_blur_path: ../dataset/BSD_3ms24ms/%s/%s/Blur/RGB/%s.png
+      # image_clear_path: ../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png # %s, %s, %s: phase, seq_name, image_name template
+      # json_file_path: datasets/BSD_3ms24ms_train_1000.json
+      # json_file_path: datasets/BSD_3ms24ms_train.json
+      # json_file_path: datasets/BSD_3ms24ms_train_debug.json
 
     GOPRO:
       image_blur_path: ../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png
       image_clear_path: ../dataset/GOPRO_Large/%s/%s/sharp/%s.png
-      json_file_path: datasets/GOPRO_train_1000.json
-    #   # json_file_path: datasets/GOPRO_train_debug.json
+      # json_file_path: datasets/GOPRO_train_1000.json
+      json_file_path: datasets/GOPRO_train.json
+      # json_file_path: datasets/GOPRO_train_debug.json
 
   val:
-    BSD_2ms16ms:
-      image_blur_path: ../dataset/BSD_2ms16ms/%s/blur/%s/%s.png     # %s, %s, %s: phase, seq_name, image_name
-      image_clear_path: ../dataset/BSD_2ms16ms/%s/GT/%s/%s.png    # %s, %s, %s: phase, seq_name, image_name
-      json_file_path: ../STDAN_modified/datasets/BSD_2ms16ms_test.json 
-      # json_file_path: ../STDAN_modified/datasets/BSD_2ms16ms_test_debug.json   
+    # BSD_2ms16ms:
+    #   image_blur_path: ../dataset/BSD_2ms16ms/%s/blur/%s/%s.png     # %s, %s, %s: phase, seq_name, image_name
+    #   image_clear_path: ../dataset/BSD_2ms16ms/%s/GT/%s/%s.png    # %s, %s, %s: phase, seq_name, image_name
+    #   json_file_path: ../STDAN_modified/datasets/BSD_2ms16ms_test.json 
+    #   # json_file_path: ../STDAN_modified/datasets/BSD_2ms16ms_test_debug.json   
 
-    BSD_2ms16ms_comp:
-      image_blur_path: ../dataset/BSD_2ms16ms_comp_latterUnSharp/%s/blur/%s/%s.png     # %s, %s, %s: phase, seq_name, image_name
-      image_clear_path: ../dataset/BSD_2ms16ms/%s/GT/%s/%s.png    # %s, %s, %s: phase, seq_name, image_name
-      json_file_path: ../STDAN_modified/datasets/BSD_2ms16ms_test.json 
-      # json_file_path: ../STDAN_modified/datasets/BSD_2ms16ms_test_debug.json   
+    # BSD_2ms16ms_comp:
+    #   image_blur_path: ../dataset/BSD_2ms16ms_comp_latterUnSharp/%s/blur/%s/%s.png     # %s, %s, %s: phase, seq_name, image_name
+    #   image_clear_path: ../dataset/BSD_2ms16ms/%s/GT/%s/%s.png    # %s, %s, %s: phase, seq_name, image_name
+    #   json_file_path: ../STDAN_modified/datasets/BSD_2ms16ms_test.json 
+    #   # json_file_path: ../STDAN_modified/datasets/BSD_2ms16ms_test_debug.json   
 
     Mi11Lite:
       image_blur_path: ../dataset/Mi11Lite/%s/%s/%s.png
@@ -109,6 +109,12 @@ train_transform:
     gaussian_para: [0, 1.0e-4]  # mu, std_var
   
   # # # for blur only transform 
+  UnsharpMasking:
+    kernel_size: 51
+    sigma: 0
+    weight: 0.5
+    threshold: 10
+
   RandomBlur:
     params:
       kernel_size: [7, 9, 11, 13, 15, 17, 19, 21]
@@ -137,12 +143,6 @@ train_transform:
       poisson_gray_noise_prob: 0.4
       gaussian_sigma_step: 0.1
       poisson_scale_step: 0.005
-
-  UnsharpMasking:
-    kernel_size: 51
-    sigma: 0
-    weight: 0.5
-    threshold: 10
 
   RandomJPEGCompression:
     params:
@@ -208,10 +208,12 @@ eval:
   save_flow: true
   use_tensorboard: true
   metrics:
-    PSNR:
-      crop_border: 0
-      max_order: 255.0
-    SSIM:
-    LPIPS:
+    # PSNR:
+    #   crop_border: 0
+    #   max_order: 255.0
+    # SSIM:
+    # LPIPS:
     NIQE:
       crop_border: 0
+    # LR:
+      # device: 'cuda:0'
