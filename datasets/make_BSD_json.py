@@ -34,11 +34,11 @@ for seq in sorted(os.listdir(os.path.join(dataset_path, bsd_type, phase))):
         seq_dict['sample'] = sample_path_list
 
         dict_list.append(seq_dict)
-    print(f'{phase=}, {seq=} num={len(sample_path_list)} appended.')
+    print(f'phase={phase}, seq={seq} num={len(sample_path_list)} appended.')
     count += len(sample_path_list)
     if count == 1000:
         break
 
-print(f'Total {count=}')
+print(f'Total count={count}')
 json_file = open(bsd_type + '_' + json_phase + '.json', 'w')
 json.dump(dict_list, json_file, indent=4)
