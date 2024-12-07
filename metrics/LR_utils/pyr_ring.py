@@ -1,8 +1,13 @@
 import numpy as np
-from scipy.signal import correlate2d
-from scipy.ndimage import convolve, gaussian_filter
+from scipy.ndimage import convolve
 from pymlfunc import normxcorr2
 
+
+import sys
+import os
+sys.path.append(os.path.dirname(__file__))
+
+from debug_util import matrix_imshow
 
 def align(image, ref, return_images=False):
 
@@ -19,8 +24,10 @@ def align(image, ref, return_images=False):
     ref_size = ref.shape
     ncc_size = tuple(np.array(ref_size[0:2]) + np.array(template_size) - 1)
     ncc = np.zeros(ncc_size)
+
     for k in range(3):
         ncc += normxcorr2(template[:, :, k], ref[:, :, k])
+
 
     ncc_margin = np.floor(np.array(template_size) / 2).astype(int)
     ncc = ncc[ncc_margin[0]:-ncc_margin[0], ncc_margin[1]:-ncc_margin[1]]

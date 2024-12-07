@@ -1,5 +1,15 @@
+import numpy as np
 import torch
-import torch.nn.functional as F
+
+def mean_norm(v, p):
+    return np.mean(np.abs(v)**p)**(1/p)
+
+
+def my_sd(x, p):
+    avg = np.mean(x)
+    sd = np.mean(np.abs(x - avg)**p) ** (1.0/p)
+    return sd
+
 
 def mean_norm_cuda(v, p):
     return torch.mean(torch.abs(v)**p)**(1/p) 
@@ -31,17 +41,18 @@ def gradient_cuda(image):
     :image: (H, W) の形状を持つグレースケール画像テンソル
     :return: dx, dy (両方とも (H, W) の形状)
     """
-    # X方向の勾配計算
+    # X方向(列方向)の勾配計算
     dx = torch.zeros_like(image)
     dx[..., :, 1:-1] = (image[..., :, 2:] - image[..., :, :-2]) / 2
     dx[..., :, 0] = image[..., :, 1] - image[..., :, 0]
     dx[..., :, -1] = image[..., :, -1] - image[..., :, -2]
 
-    # Y方向の勾配計算
+    # Y方向(行方向)の勾配計算
     dy = torch.zeros_like(image)
     dy[..., 1:-1, :] = (image[..., 2:, :] - image[..., :-2, :]) / 2
     dy[..., 0, :] = image[..., 1, :] - image[..., 0, :]
     dy[..., -1, :] = image[..., -1, :] - image[..., -2, :]
 
-    return dx, dy
+    return dy, dx
+
 

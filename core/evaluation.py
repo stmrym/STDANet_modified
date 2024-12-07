@@ -12,10 +12,9 @@ import cv2
 import numpy as np
 from time import time
 from utils import log
-import utils.metrics
 import pandas as pd
 from tqdm import tqdm
-
+import importlib
 
 class Evaluation(Trainer):
     def __init__(self, opt, output_dir, tb_writer=None):
@@ -64,8 +63,13 @@ class Evaluation(Trainer):
     def _set_metrics(self, metric_opt):
         metric_dict = {}
         for name, args in metric_opt.items():
-            metric = getattr(utils.metrics, name)
-            metric_dict[name] = (metric(**args) if args is not None else metric())
+
+            module = importlib.import_module('metrics.' + name)
+            metric_class = getattr(module, name)
+            metric_dict[name] = (metric_class(**args) if args is not None else metric_class())
+
+            # metric = getattr(utils.metrics, name)
+            # metric_dict[name] = (metric(**args) if args is not None else metric())
         return metric_dict
 
     def _init_evaluation(self):

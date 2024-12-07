@@ -1,7 +1,20 @@
 import torch
-from utils.utils_cuda import util
+import sys
+import os
+
+sys.path.append(os.path.dirname(__file__))
+
+from util import gradient_cuda
+from stop_watch import stop_watch
 
 
+@stop_watch
+def _apply_linalg_svd(grad):
+    print(grad.shape)
+    exit()
+    return torch.linalg.svd(grad, full_matrices=False)
+
+# @stop_watch
 def SVDCoherence_cuda(gmap):
     '''
     gmap: torch.Tensor (B*n, N, N)
@@ -18,6 +31,7 @@ def SVDCoherence_cuda(gmap):
     grad = torch.stack((gxvect, gyvect), dim=-1)
 
     # S: (B*n, 2)
+    # _, S, _ = _apply_linalg_svd(grad)
     _, S, _ = torch.linalg.svd(grad, full_matrices=False)
 
     s1, s2 = S[:,0], S[:,1]
@@ -41,7 +55,7 @@ def AnisoSetEst_cuda(img, N):
 
     # (B, H, W) -> (B, h, w, N, N) -> (B*num_patches, N, N)
     patches = img.unfold(1,N,N).unfold(2,N,N).reshape(-1,N,N)
-    gx, gy = util.gradient_cuda(patches)
+    gx, gy = gradient_cuda(patches)
     G = gx + 1j*gy
 
     co, s1 = SVDCoherence_cuda(G)
@@ -53,7 +67,7 @@ def AnisoSetEst_cuda(img, N):
     mp = (co > thresh).float().reshape(B, h, w)
     return mp
 
-
+@stop_watch
 def MetricQ_cuda(img, N):
     '''
     img: torch.Tensor (Gray) [0, 255] with shape (B, H, W) 
@@ -64,9 +78,8 @@ def MetricQ_cuda(img, N):
     # (B, H, W) -> (B, h, w, N, N) -> (B*num_patches, N, N)
     patches = img.unfold(1,N,N).unfold(2,N,N).reshape(-1,N,N)
 
-    gx, gy = util.gradient_cuda(patches)
+    gx, gy = gradient_cuda(patches)
     G = gx + 1j*gy
-
     co, s1 = SVDCoherence_cuda(G)
 
     alpha = 0.001
@@ -77,6 +90,8 @@ def MetricQ_cuda(img, N):
     # # 各パッチのスコアを計算 
     Q = torch.sum((co * s1) * (co > thresh)) / (w*h)
     
+
+
     return Q
 
 

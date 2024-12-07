@@ -1,10 +1,11 @@
-import cv2
 import torch
 from torch import nn
-import numpy as np
-from bm3d import bm3d_rgb
 from pytorch_bm3d import BM3D
-from utils.stop_watch import stop_watch
+import sys
+import os
+sys.path.append(os.path.dirname(__file__))
+
+from stop_watch import stop_watch
 
 
 class Denoise:
@@ -23,9 +24,9 @@ class Denoise:
 
     @stop_watch
     def denoise(self, img):
-
-        # img: torch.tensor(C, H, W) [0, 1]
-
+        '''
+        img: torch.tensor (RGB) [0, 1] with shape (C, H, W)
+        '''
         denoised, err = self._bm3d_twocolor(img, self.low)
         self.result.append([self.low, err])
 
@@ -50,7 +51,6 @@ class Denoise:
 
             if (cur_low + self.min_step >= cur_high):
                 result = torch.stack([torch.stack(row) for row in self.result])
-                print(result)
                 mask = torch.abs(result[:,0] - cur_high) < 1e-6 
                 idx = torch.nonzero(mask, as_tuple=False) 
 
@@ -64,11 +64,11 @@ class Denoise:
 
     def _bm3d_twocolor(self, img, noise_level):
         if noise_level > 1e-6:
-            denoised = self.bm3d((img.unsqueeze(0)*255).int().contiguous(), variance = noise_level*255).squeeze(0)/255.
+            denoised = self.bm3d((img*255).int().contiguous(), variance = noise_level*255)/255.
         else:
             denoised = img
 
-        _, _, err = self._two_color(denoised, self.margin)
+        _, _, err = self._two_color(denoised[0], self.margin)
         err = (torch.mean(err**0.8))**(1 / 0.8)
 
         return denoised, err
@@ -158,26 +158,5 @@ class Denoise:
 
         return center1, center2, err
 
-    def _img2tensor(self, img):
-        # ndarray (BGR) -> tensor (RGB)
-        # (H, W, C) -> (C, H, W)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img_tensor = torch.tensor(img, device=self.device)
-        img_tensor = img_tensor.permute(2, 0, 1)
-        return img_tensor
-
-
-    def _tensor2img(self, img_tensor):
-        # tensor (RGB) -> ndarray (BGR)
-        # (C, H, W) -> (H, W, C)
-        img = img_tensor.permute(1, 2, 0).cpu().numpy()
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-        return img
-
-    def process(self, img):
-        img_tensor = self._img2tensor(img)
-        denoised_tensor = self.denoise(img_tensor)
-        denoised = self._tensor2img(denoised_tensor)
-        return denoised
 
 

@@ -4,11 +4,19 @@ import numpy as np
 import torch
 import torch.fft
 import torch.nn.functional as F
-from utils.utils_cuda import util
 from skimage.transform import probabilistic_hough_line
 from scipy.signal import fftconvolve
+from scipy import linalg, fft as sp_fft
+import sys
+import os
+sys.path.append(os.path.dirname(__file__))
 
-def compute_ncc(img, ref, margin):
+from tensor_util import tensor2img
+from util import gradient_cuda
+from stop_watch import stop_watch
+
+
+def compute_ncc_cuda(img, ref, margin):
     '''
     img: torch.Tensor (Gray) with shape (B, H, W)
     ref: torch.Tensor (Gray) with shape (B, H, W)
@@ -19,7 +27,7 @@ def compute_ncc(img, ref, margin):
     ncc = torch.ones(1, margin*2 + 1, margin*2 + 1, device=img.device) * 100
     ncc_abs = torch.ones(1, margin*2 + 1, margin*2 + 1, device=img.device) * 100
 
-    img_mask = mask_lines(img)
+    img_mask = mask_lines_cuda(img)
     # ref_mask = mask_lines(ref)
     ref_mask = img_mask.clone()
 
@@ -28,8 +36,8 @@ def compute_ncc(img, ref, margin):
 
     t_mask = ref_mask[:, margin:-margin, margin:-margin]
 
-    dx, dy = util.gradient_cuda(img)
-    tdx, tdy = util.gradient_cuda(template)
+    dy, dx = gradient_cuda(img)
+    tdy, tdx = gradient_cuda(template)
 
     # exclude edges from gradient
     dx[img_mask] = 0
@@ -75,7 +83,7 @@ def compute_ncc(img, ref, margin):
 
 
 # @stop_watch
-def mask_lines(img):
+def mask_lines_cuda(img):
     '''
     img: torch.Tensor (Gray) with shape (B, H, W)
     
@@ -90,31 +98,56 @@ def mask_lines(img):
     m, e = kornia.filters.canny(img.unsqueeze(1), low_threshold=low_thr, high_threshold=high_thr)
     e = e.squeeze(1)
 
-    filter = torch.ones((1,1,3,3), device=img.device)
+    filter = torch.ones((1,1,5,5), device=img.device)
 
-    for _ in range(20):
-        cur_mask = mask_line(e)
-        e[cur_mask] = False
+    e_np = _tensor2ndarray(e[0])
+
+    # cur_mask_l = []
+    # for i in range(1):
+    #     cur_mask = mask_line_cuda(e_np, i)
+    #     cur_mask_l.append(cur_mask)
         
-        #  (1,H,W) -> (1,1,H,W)
-        cur_mask = cur_mask.float().unsqueeze(0)
-        cur_mask = F.conv2d(cur_mask, filter, padding=1)
-        cur_mask = cur_mask.squeeze(0) > 0
-        mask[cur_mask] = True
+    # for cur_mask in cur_mask_l:
+
+    #     cur_mask = _ndarray2tensor(cur_mask, img.device).unsqueeze(0)
+    #     e[cur_mask] = False
+        
+    #     #  (1,H,W) -> (1,1,H,W)
+    #     cur_mask = cur_mask.float().unsqueeze(0)
+    #     cur_mask = F.conv2d(cur_mask, filter, padding=filter.shape[-1]//2)
+    #     cur_mask = cur_mask.squeeze(0) > 0
+    #     mask[cur_mask] = True
+
+
+    cur_mask = mask_line_cuda(e_np, 0)
+    cur_mask = _ndarray2tensor(cur_mask, img.device).unsqueeze(0)
+    e[cur_mask] = False
+    
+    #  (1,H,W) -> (1,1,H,W)
+    cur_mask = cur_mask.float().unsqueeze(0)
+    cur_mask = F.conv2d(cur_mask, filter, padding=filter.shape[-1]//2)
+    cur_mask = cur_mask.squeeze(0) > 0
+    mask[cur_mask] = True
+
+
+    # mask_image = np.clip(mask[0].cpu().numpy().astype(np.int8)*255, 0, 255).astype(np.uint8)
+    # cv2.imwrite('debug_mask.png', mask_image)
+
 
     return mask
 
-
-def mask_line(e):
+# @stop_watch
+def mask_line_cuda(e_np, seed=0):
     '''
     e: canny edge torch.Tensor with shape (1, H, W)
     
     -> mask: torch.tensor lined_mask [0, 1] with shape (1, H, W)
     '''
-    e_np = _tensor2ndarray(e[0])
+    # e_np = _tensor2ndarray(e[0])
 
     # [((x1s, y1s), (x1e, y1e)), ((x2s, y2s), (x2e, 2ye)), ...]
-    lines = probabilistic_hough_line(e_np, threshold=10, line_length=20, line_gap=8)
+    lines = probabilistic_hough_line(e_np, threshold=10, line_length=20, line_gap=8, rng=seed)
+    
     mask = np.zeros(e_np.shape)
 
     for line in lines:
@@ -123,8 +156,8 @@ def mask_line(e):
         p1, p2 = line
         cv2.line(mask, p1, p2, 1, 1)
     
-    mask = mask.astype(np.bool)
-    return _ndarray2tensor(mask, e.device).unsqueeze(0)
+    mask = mask.astype(np.bool_)
+    return mask
 
 
 def _tensor2ndarray(tensor):
@@ -143,6 +176,7 @@ def _ndarray2tensor(ndarray, device):
     assert len(ndarray.shape) == 2, '_ndarray2tensor input must be (H, W)'
     tensor = torch.tensor(ndarray, device=device)
     return tensor
+
 
 
 def xcorr2_fft_cpu(a, b):
@@ -164,6 +198,10 @@ def xcorr2_fft_cpu(a, b):
 
 
 def xcorr2_fft_cuda(a, b):
+    '''
+    a, b: (B, M, N)
+    -> result: (B, M, N)
+    '''
     # b の共役転置を計算
     a = a[0]
     b_conj_rot = torch.rot90(b[0].conj(), 2, [0, 1])
@@ -180,31 +218,44 @@ def _convnfft_cuda(A, B, dims=None):
     if isinstance(dims, int):
         dims = [dims]
 
-    # Define the length function for FFT
-    lfftfun = lambda l: 2**int(np.ceil(np.log2(l)))
-
     original_sizes = [A.size(dim) + B.size(dim) - 1 for dim in dims]
 
+    fshape = [sp_fft.next_fast_len(original_sizes[d], True) for d in dims]
+
     # FFT and IFFT along the specified dimensions
-    for dim in dims:
-        m = A.size(dim)
-        n = B.size(dim)
-        l = lfftfun(m + n - 1)
 
-        A = torch.fft.fft(A, n=l, dim=dim)
-        B = torch.fft.fft(B, n=l, dim=dim)
+    spA = torch.fft.rfftn(A, fshape, dim=dims)
+    spB = torch.fft.rfftn(B, fshape, dim=dims)
 
-    # Element-wise multiplication in the Fourier domain
-    A = A * B
+    ret = torch.fft.irfftn(spA * spB, fshape, dim=dims)
 
-    # Inverse FFT
-    for dim in dims:
-        A = torch.fft.ifft(A, dim=dim).real
+    fslice = tuple([slice(sz) for sz in original_sizes])
+    ret = ret[fslice]
 
-    # Truncate the result based on the shape
-    slices = [slice(None)] * A.ndim
-    for dim, size in zip(dims, original_sizes):
-        slices[dim] = slice(0, size)
+    return ret
 
-    A = A[tuple(slices)]
-    return A
+    # # Define the length function for FFT
+    # lfftfun = lambda l: 2**int(np.ceil(np.log2(l)))
+
+    # for dim in dims:
+    #     m = A.size(dim)
+    #     n = B.size(dim)
+    #     l = lfftfun(m + n - 1)
+
+    #     A = torch.fft.fft(A, n=l, dim=dim)
+    #     B = torch.fft.fft(B, n=l, dim=dim)
+
+    # # Element-wise multiplication in the Fourier domain
+    # A = A * B
+
+    # # Inverse FFT
+    # for dim in dims:
+    #     A = torch.fft.ifft(A, dim=dim).real
+
+    # # Truncate the result based on the shape
+    # slices = [slice(None)] * A.ndim
+    # for dim, size in zip(dims, original_sizes):
+    #     slices[dim] = slice(0, size)
+
+    # A = A[tuple(slices)]
+    # return A

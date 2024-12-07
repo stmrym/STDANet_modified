@@ -2,7 +2,11 @@ import cv2
 import torch
 import numpy as np
 from bm3d import bm3d
-from utils.stop_watch import stop_watch
+import sys
+import os
+sys.path.append(os.path.dirname(__file__))
+
+from stop_watch import stop_watch
 
 @stop_watch
 def denoise(img):
