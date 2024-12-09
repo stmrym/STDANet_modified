@@ -146,7 +146,7 @@ def mask_line_cuda(e_np, seed=0):
     # e_np = _tensor2ndarray(e[0])
 
     # [((x1s, y1s), (x1e, y1e)), ((x2s, y2s), (x2e, 2ye)), ...]
-    lines = probabilistic_hough_line(e_np, threshold=10, line_length=20, line_gap=8, rng=seed)
+    lines = probabilistic_hough_line(e_np, threshold=10, line_length=20, line_gap=8, seed=seed)
     
     mask = np.zeros(e_np.shape)
 

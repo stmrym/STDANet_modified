@@ -1,4 +1,4 @@
-
+from collections import OrderedDict
 import torch.backends.cudnn
 import torch.utils.data
 import utils.data_loaders
@@ -9,6 +9,7 @@ from tensorboardX import SummaryWriter
 from pathlib import Path
 from core.train import Trainer
 import cv2
+import json
 import numpy as np
 from time import time
 from utils import log
@@ -81,6 +82,8 @@ class Evaluation(Trainer):
             loss_dict.avg_meter.reset()
         self.total_losses.reset()
 
+        self.result_dict = OrderedDict()
+
     def _to_ndarray(self, output_dict):
         output_ndarray_dict = {}
         for k, v in output_dict.items():
@@ -90,9 +93,7 @@ class Evaluation(Trainer):
                 output_ndarray_dict[k] = v.detach().cpu().permute(0,2,3,1).numpy()*255
         return output_ndarray_dict
 
-
-
-    def _wright_log(self, dataset_name, epoch_idx):
+    def _write_log(self, dataset_name, epoch_idx):
         if isinstance(self.tb_writer, SummaryWriter):
             for loss_name, losses_dict in self.losses_dict.items():
                 self.tb_writer.add_scalar(f'Loss_VALID_{dataset_name}/{loss_name}', losses_dict.avg_meter.avg, epoch_idx)
@@ -107,36 +108,24 @@ class Evaluation(Trainer):
         log.info(f'[EVAL][Epoch {epoch_idx}/{self.n_epochs}][{dataset_name}] ' + log_str)
 
     def _save_rgb_image(self, output_image, save_seq_dir, img_name):
-            # saving output image
-            os.makedirs(save_seq_dir, exist_ok=True)
-            output_image_bgr = cv2.cvtColor(np.clip(output_image, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
-            cv2.imwrite(os.path.join(save_seq_dir, img_name + '.png'), output_image_bgr)
+        # saving output image
+        os.makedirs(save_seq_dir, exist_ok=True)
+        output_image_bgr = cv2.cvtColor(np.clip(output_image, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
+        cv2.imwrite(os.path.join(save_seq_dir, img_name + '.png'), output_image_bgr)
 
-    def _make_eval_df(self, epoch_average_list: list, save_name: str) -> pd.DataFrame:
-        col_name = ['seq', 'out_SSIM', 'out_SSIM_sd']
-        eval_df = pd.DataFrame(epoch_average_list, columns=col_name)
-        for col in col_name[1:]:
-            eval_df.at['Avg.', col] = eval_df[col].mean()
+    def _calc_avg_result(self):
+        for metric_name in self.result_dict.keys():
+            # Calculating average of each seq
+            for seq in list(self.result_dict[metric_name].keys()):
+                self.result_dict[metric_name].setdefault('Average', {})[seq] = np.mean(list(self.result_dict[metric_name][seq].values()))
 
-        if os.path.isfile(save_name): # Add mode
-            eval_df.to_csv(save_name, mode='a', index=False, header=False)
-        else:   # Create csv file
-            eval_df.to_csv(save_name, mode='x', index=False)
+            # Calculating total average
+            self.result_dict[metric_name]['TotalAverage'] = np.mean(list(self.result_dict[metric_name]['Average'].values()))
+
         
-        return eval_df
-
-    def _add_epoch_average_list(self, epoch_average_list: list, seq_df: pd.DataFrame) -> list:
-        epoch_average_list.append([seq_df['seq'][0], seq_df['out_SSIM'].mean(), np.sqrt(seq_df['out_SSIM'].var())])
-        return epoch_average_list
-
-    def _make_seq_df(self, seq_frame_value_list: list, epoch_average_list: list, save_dir: str, save_name: str) -> list:
-        col_name = ['seq', 'frame', 'out_SSIM']
-        seq_df = pd.DataFrame(seq_frame_value_list, columns=col_name)
-        if not os.path.isdir(os.path.join(save_dir)):
-            os.makedirs(save_dir, exist_ok=True)
-        seq_df.to_csv(os.path.join(save_dir, save_name), index=False)
-        epoch_average_list = self._add_epoch_average_list(epoch_average_list, seq_df)
-        return epoch_average_list
+    def _save_json_result(self, json_save_name):
+        with open(json_save_name, 'w') as f:
+            json.dump(self.result_dict, f, indent=4, sort_keys=True)
 
     def _save_feat_grid(self, feat: torch.Tensor, save_name: str, nrow: int = 1) -> None:
         # feat: (N, H, W)
@@ -154,10 +143,14 @@ class Evaluation(Trainer):
         torchvision.utils.save_image(feat_img, f'{save_name}.png')
         # torchvision.utils.save_image(feat, f'{save_name}')
 
-    def _evaluation(self, deblurnet, save_dir, epoch_idx, dataset_name, dataloader):
+    def _evaluation(self, deblurnet, output_dir, epoch_idx, dataset_name, dataloader):
         # Set up data loader
         self._init_evaluation()
         deblurnet.eval()
+
+        visualize_dir = output_dir / 'Visualization' / Path('epoch-' + str(epoch_idx).zfill(4) + '_' + dataset_name)
+        json_save_name = output_dir / Path('epoch-' + str(epoch_idx).zfill(4) + '_' + dataset_name + '.json')
+
 
         tqdm_eval = tqdm(dataloader)
         tqdm_eval.set_description(f'[EVAL] [Epoch {epoch_idx}/{self.n_epochs}]')
@@ -201,22 +194,25 @@ class Evaluation(Trainer):
                 results = self._to_ndarray(results)
 
                 for batch in range(0, results['out'].shape[0]):
-                    
-                    output_image = results['out'][batch,:,:,:]
-                    gt_image = results['gt'][batch, results['gt'].shape[1]//2,:,:,:]    
-                    for metric in self.metric_dict.values():
-                        metric.update(metric.calculate(img1=output_image, img2=gt_image), self.opt.eval_batch_size)
 
                     seq, img_name = name[batch].split('.')  # name = ['000.00000002']
 
+                    output_image = results['out'][batch,:,:,:]
+                    gt_image = results['gt'][batch, results['gt'].shape[1]//2,:,:,:]    
+                    for metric_name, metric in self.metric_dict.items():
+                        result = metric.calculate(img1=output_image, img2=gt_image)
+                        metric.update(result, self.opt.eval_batch_size)
+                        self.result_dict.setdefault(metric_name, {}).setdefault(seq, {})[img_name + '.png'] = result
+
+
                     if (epoch_idx % self.opt.eval.visualize_freq == 0):
                         if self.opt.eval.save_output_img:
-                            save_seq_dir = Path(str(save_dir) + '_output') / seq
+                            save_seq_dir = Path(str(visualize_dir) + '_output') / seq
                             self._save_rgb_image(output_image, save_seq_dir, img_name)
 
                         if self.opt.eval.save_input_img:
                             input_image = results['pre_input'][batch,results['pre_input'].shape[1]//2,:,:,:]
-                            save_seq_dir = Path(str(save_dir) + '_input') / seq
+                            save_seq_dir = Path(str(visualize_dir) + '_input') / seq
                             self._save_rgb_image(input_image, save_seq_dir, img_name)
                         # save_feat_grid((output_dict['first_scale_inblock']['final'])[batch,1], save_dir + f'{seq}_{img_name}_0_in_feat', nrow=4)
                         # save_feat_grid((output_dict['first_scale_encoder_first']['final'])[batch,1], save_dir + f'{seq}_{img_name}_1_en_feat', nrow=8)
@@ -252,14 +248,15 @@ class Evaluation(Trainer):
                 self.process_time.update((time() - process_start_time))
                 tqdm_eval.set_postfix_str(f'Inference Time {self.inference_time.avg:.3f} Process Time {self.process_time.avg:.3f}')
 
-        
+        # Calc Average and save results to json
+        self._calc_avg_result()
+        self._save_json_result(json_save_name)
         # Add testing results to TensorBoard
-        self._wright_log(dataset_name, epoch_idx)
+        self._write_log(dataset_name, epoch_idx)
 
-    def eval_all_dataset(self, deblurnet, visualize_dir, epoch_idx):
+    def eval_all_dataset(self, deblurnet, output_dir, epoch_idx):
         for dataset_name, dataloader in self.dataloader_dict.items():
-            save_dir = Path(str(visualize_dir) + '_' + dataset_name)
-            self._evaluation(deblurnet, save_dir, epoch_idx, dataset_name, dataloader)
+            self._evaluation(deblurnet, output_dir, epoch_idx, dataset_name, dataloader)
 
 
     def __del__(self):

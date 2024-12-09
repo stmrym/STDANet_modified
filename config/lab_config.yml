@@ -6,7 +6,7 @@ use_cudnn_benchmark: true
 weights: ~
 train_batch_size: 8
 eval_batch_size: 1
-prefix: ''
+prefix: '_VT3_'
 phase: train  # train, resume, test
 exp_path: ./exp_log
 
@@ -43,10 +43,10 @@ dataset:
       # json_file_path: datasets/GOPRO_train_debug.json
 
   val:
-    BSD_3ms24ms:
-      image_blur_path: ../dataset/BSD_3ms24ms/%s/blur/%s/%s.png     # %s, %s, %s: phase, seq_name, image_name
-      image_clear_path: ../dataset/BSD_3ms24ms/%s/GT/%s/%s.png    # %s, %s, %s: phase, seq_name, image_name
-      json_file_path: ../STDAN_modified/datasets/BSD_3ms24ms_test.json 
+    # BSD_3ms24ms:
+    #   image_blur_path: ../dataset/BSD_3ms24ms/%s/blur/%s/%s.png     # %s, %s, %s: phase, seq_name, image_name
+    #   image_clear_path: ../dataset/BSD_3ms24ms/%s/GT/%s/%s.png    # %s, %s, %s: phase, seq_name, image_name
+    #   json_file_path: ../STDAN_modified/datasets/BSD_3ms24ms_test.json 
       # json_file_path: ../STDAN_modified/datasets/BSD_3ms24ms_test_debug.json   
 
     # BSD_2ms16ms_comp:
@@ -120,11 +120,11 @@ train_transform:
     gaussian_para: [0, 1.0e-4]  # mu, std_var
   
   # # # for blur only transform 
-  # UnsharpMasking:
-  #   kernel_size: 51
-  #   sigma: 0
-  #   weight: 0.5
-  #   threshold: 10
+  UnsharpMasking:
+    kernel_size_l: [3, 5, 7, 9] # 51
+    sigma: 0
+    weight_prob: [0, 4] # 0.5
+    threshold: 10 # 40
 
   # RandomBlur:
   #   params:
@@ -160,11 +160,11 @@ train_transform:
   #     quality: [60, 95]   # 30, 95
   #     quality_step: 3
 
-  # RandomVideoCompression:
-  #   params:
-  #     codec: ['libx264', 'h264', 'mpeg4']
-  #     codec_prob: [1/3, 1/3, 1/3]
-  #     bitrate: [1.0e+5, 1.0e+6]   # [1.0e+4, 1.0e+5]
+  RandomVideoCompression:
+    params:
+      codec: ['libx264', 'h264', 'mpeg4']
+      codec_prob: [1/3, 1/3, 1/3]
+      bitrate: [1.0e+4, 1.0e+5]   # [1.0e+4, 1.0e+5]
 
 
 
@@ -219,11 +219,11 @@ eval:
   save_flow: true
   use_tensorboard: true
   metrics:
-    PSNR:
-      crop_border: 0
-      max_order: 255.0
-    SSIM:
-    LPIPS:
+    # PSNR:
+      # crop_border: 0
+      # max_order: 255.0
+    # SSIM:
+    # LPIPS:
     NIQE:
       crop_border: 0
     LR:

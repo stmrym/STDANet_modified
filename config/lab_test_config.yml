@@ -2,24 +2,25 @@ seed: 0
 device: '0'
 num_workers: 8
 use_cudnn_benchmark: true
-test_weights: ./exp_log/train/2024-11-18T170527_CT_ESTDAN_v3_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-*.pth.tar
+test_weights: ./exp_log/train/2024-12-04T192800__ESTDAN_v3_BSD_1ms8ms_BSD_2ms16ms_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-*.pth.tar
 # weights: ~
 eval_batch_size: 4
-prefix: '_CT_ESTDAN_v3'
+prefix: '_123_ESTDAN_v3'
 phase: test  # train, resume, test
 exp_path: ./exp_log
 
 dataset:
   test:
-    # BSD_1ms8ms:
-    #   image_blur_path: ../dataset/BSD_1ms8ms/%s/blur/%s/%s.png
-    #   image_clear_path: ../dataset/BSD_1ms8ms/%s/GT/%s/%s.png
-    #   json_file_path: datasets/BSD_1ms8ms_test.json
+    # GOPRO:
+    #   image_blur_path: ../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png
+    #   image_clear_path: ../dataset/GOPRO_Large/%s/%s/sharp/%s.png
+    #   json_file_path: ../STDAN_modified/datasets/GOPRO_valid.json
+    #   json_file_path: ../STDAN_modified/datasets/GOPRO_valid_debug.json
     
-    # BSD_1ms8ms_comp:
-    #   image_blur_path: ../dataset/BSD_1ms8ms_comp/%s/blur/%s/%s.png
-    #   image_clear_path: ../dataset/BSD_1ms8ms/%s/GT/%s/%s.png
-    #   json_file_path: datasets/BSD_1ms8ms_test.json
+    # BSD_3ms24ms:
+      # image_blur_path: ../dataset/BSD_3ms24ms/%s/blur/%s/%s.png
+      # image_clear_path: ../dataset/BSD_3ms24ms/%s/GT/%s/%s.png
+      # json_file_path: datasets/BSD_3ms24ms_test.json
     
     Mi11Lite:
       image_blur_path: ../dataset/Mi11Lite/%s/%s/%s.png
@@ -38,7 +39,7 @@ network:
   n_feat: 32
   kernel_size: 5
   sobel_out_channels: 2  # for ESTDAN
-  use_cleaning: true # for ESTDANv3
+  use_cleaning: false # for ESTDANv3
   is_sequential_cleaning: false
   is_fix_cleaning: false
   dynamic_refine_thres: 255 # 255 1.5
@@ -88,3 +89,5 @@ eval:
     # LPIPS:
     NIQE:
       crop_border: 0
+    LR:
+      device: 'cuda:0'

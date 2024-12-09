@@ -55,7 +55,6 @@ class Trainer:
         self.evaluation = Evaluation(self.opt, self.output_dir, self.tb_writer)
         
         self.ckpt_dir = self.output_dir / 'checkpoints'
-        self.visualize_dir = self.output_dir / 'visualization'
 
 
     def _build_transform(self, transform_opt):
@@ -232,8 +231,7 @@ class Trainer:
             
             if epoch_idx % self.opt.eval.valid_freq == 0:
                 # Validation for each dataset list
-                visualize_dir = self.visualize_dir / Path('epoch-' + str(epoch_idx).zfill(4))
-                self.evaluation.eval_all_dataset(self.deblurnet, visualize_dir, epoch_idx)
+                self.evaluation.eval_all_dataset(self.deblurnet, self.output_dir, epoch_idx)
         
             # if epoch_idx == 2:
             #     with open('profiling_results.txt', 'w') as f:

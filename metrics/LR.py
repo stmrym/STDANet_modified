@@ -29,7 +29,7 @@ class LR(AverageMeter):
         super(LR, self).__init__()
         self.device = device
 
-    @stop_watch
+    # @stop_watch
     def calculate(self, img1, img2, **kwargs):
         '''
         img1: deblurred image: ndarray (BGR) [0, 255] with shape (H, W, C)

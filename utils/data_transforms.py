@@ -204,20 +204,21 @@ class UnsharpMasking:
     in "keys".
     """
 
-    def __init__(self, kernel_size, sigma, weight, threshold):
-        if kernel_size % 2 == 0:
-            raise ValueError('kernel_size must be an odd number, but '
-                             f'got {kernel_size}.')
+    def __init__(self, kernel_size_l, sigma, weight_prob, threshold):
 
-        self.kernel_size = kernel_size
+        self.kernel_size_l = kernel_size_l
         self.sigma = sigma
-        self.weight = weight
+        self.weight_prob = weight_prob
         self.threshold = threshold
 
-        kernel = cv2.getGaussianKernel(kernel_size, sigma)
-        self.kernel = np.matmul(kernel, kernel.transpose())
-
     def _unsharp_masking(self, imgs):
+
+        kernel_size = random.choice(self.kernel_size_l)
+        kernel = cv2.getGaussianKernel(kernel_size, self.sigma)
+        self.kernel = np.matmul(kernel, kernel.transpose())
+        self.weight = np.random.uniform(self.weight_prob[0], self.weight_prob[1])
+        
+        
         is_single_image = False
         if isinstance(imgs, np.ndarray):
             is_single_image = True
@@ -226,8 +227,17 @@ class UnsharpMasking:
         outputs = []
         for img in imgs:
             residue = img - cv2.filter2D(img, -1, self.kernel)
-            mask = np.float32(np.abs(residue) * 255 > self.threshold)
+
+            smoothing = cv2.getGaussianKernel(3, 0)
+            self.smoothing_kernel = np.matmul(smoothing, smoothing.transpose())
+
+            smoothed =  cv2.filter2D(img, -1, self.smoothing_kernel)
+            laplacian = cv2.Laplacian(smoothed, cv2.CV_32F, ksize=3)
+
+            # mask = np.float32(np.abs(residue) * 255 > self.threshold)    
+            mask = np.float32(np.abs(laplacian) * 255 > self.threshold)    
             soft_mask = cv2.filter2D(mask, -1, self.kernel)
+
             sharpened = np.clip(img + self.weight * residue, 0, 1)
 
             outputs.append(soft_mask * sharpened + (1 - soft_mask) * img)
@@ -243,8 +253,8 @@ class UnsharpMasking:
 
     def __repr__(self):
         repr_str = self.__class__.__name__
-        repr_str += (f'(kernel_size={self.kernel_size}, '
-                     f'sigma={self.sigma}, weight={self.weight}, '
+        repr_str += (f'(kernel_size={self.kernel_size_l}, '
+                     f'sigma={self.sigma}, weight={self.weight_prob}, '
                      f'threshold={self.threshold})')
         return repr_str
 

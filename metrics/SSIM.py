@@ -12,4 +12,4 @@ class SSIM(AverageMeter):
 
     def calculate(self, img1, img2, **kwargs):
         ssim = compare_ssim(img2, img1, **vars(self))
-        return ssim
+        return float(ssim)

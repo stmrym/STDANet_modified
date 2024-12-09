@@ -53,5 +53,4 @@ class Tester(Trainer):
 
         for epoch, weight_path in zip(self.epoch_l, self.weight_path_l):
             self._load_test_weights(weight_path)
-            visualize_dir = self.output_dir / 'visualization' / Path('epoch-' + epoch)
-            self.evaluation.eval_all_dataset(self.deblurnet, visualize_dir, int(epoch))
+            self.evaluation.eval_all_dataset(self.deblurnet, self.output_dir, int(epoch))
