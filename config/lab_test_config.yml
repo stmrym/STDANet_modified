@@ -5,27 +5,27 @@ use_cudnn_benchmark: true
 test_weights: ./exp_log/train/2024-12-04T192800__ESTDAN_v3_BSD_1ms8ms_BSD_2ms16ms_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-*.pth.tar
 # weights: ~
 eval_batch_size: 4
-prefix: '_123_ESTDAN_v3'
+prefix: '_debug_'
 phase: test  # train, resume, test
 exp_path: ./exp_log
 
 dataset:
   test:
-    # GOPRO:
-    #   image_blur_path: ../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png
-    #   image_clear_path: ../dataset/GOPRO_Large/%s/%s/sharp/%s.png
-    #   json_file_path: ../STDAN_modified/datasets/GOPRO_valid.json
-    #   json_file_path: ../STDAN_modified/datasets/GOPRO_valid_debug.json
+    GOPRO:
+      image_blur_path: ../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png
+      image_clear_path: ../dataset/GOPRO_Large/%s/%s/sharp/%s.png
+      # json_file_path: ../STDAN_modified/datasets/GOPRO_valid.json
+      json_file_path: ../STDAN_modified/datasets/GOPRO_valid_debug.json
     
     # BSD_3ms24ms:
-      # image_blur_path: ../dataset/BSD_3ms24ms/%s/blur/%s/%s.png
-      # image_clear_path: ../dataset/BSD_3ms24ms/%s/GT/%s/%s.png
-      # json_file_path: datasets/BSD_3ms24ms_test.json
+    #   image_blur_path: ../dataset/BSD_3ms24ms/%s/blur/%s/%s.png
+    #   image_clear_path: ../dataset/BSD_3ms24ms/%s/GT/%s/%s.png
+    #   json_file_path: datasets/BSD_3ms24ms_test.json
     
-    Mi11Lite:
-      image_blur_path: ../dataset/Mi11Lite/%s/%s/%s.png
-      image_clear_path: ../dataset/Mi11Lite/%s/%s/%s.png
-      json_file_path: datasets/mi11lite.json
+    # Mi11Lite:
+      # image_blur_path: ../dataset/Mi11Lite/%s/%s/%s.png
+      # image_clear_path: ../dataset/Mi11Lite/%s/%s/%s.png
+      # json_file_path: datasets/mi11lite.json
 
 network:
   arch: ESTDAN_v3
@@ -78,16 +78,17 @@ eval:
   valid_freq: 50  # 50
   visualize_freq: 100 # 50
   save_input_img: false
-  save_output_img: false
+  save_output_img: true
   save_flow: true
   use_tensorboard: true
   metrics:
-    # PSNR:
-      # crop_border: 0
-      # max_order: 255.0
-    # SSIM:
-    # LPIPS:
+    PSNR:
+  #     crop_border: 0
+  #     max_order: 255.0
+    SSIM:
+    LPIPS:
     NIQE:
-      crop_border: 0
+      # crop_border: 0
     LR:
-      device: 'cuda:0'
+      # device: 'cuda:0'
+      use_denoise: false

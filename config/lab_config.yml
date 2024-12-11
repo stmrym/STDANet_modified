@@ -27,13 +27,8 @@ dataset:
       image_clear_path: ../dataset/BSD_3ms24ms/%s/GT/%s/%s.png # %s, %s, %s: phase, seq_name, image_name template
       json_file_path: datasets/BSD_3ms24ms_train_1000.json
       # json_file_path: datasets/BSD_3ms24ms_train_2000.json
-
-    # BSD_3ms24ms:
-      # image_blur_path: ../dataset/BSD_3ms24ms/%s/%s/Blur/RGB/%s.png
-      # image_clear_path: ../dataset/BSD_3ms24ms/%s/%s/Sharp/RGB/%s.png # %s, %s, %s: phase, seq_name, image_name template
-      # json_file_path: datasets/BSD_3ms24ms_train_1000.json
-      # json_file_path: datasets/BSD_3ms24ms_train.json
       # json_file_path: datasets/BSD_3ms24ms_train_debug.json
+
 
     GOPRO:
       image_blur_path: ../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png
@@ -121,7 +116,7 @@ train_transform:
   
   # # # for blur only transform 
   UnsharpMasking:
-    kernel_size_l: [3, 5, 7, 9] # 51
+    kernel_size_l: [3, 5, 7, 9, 11] # 51
     sigma: 0
     weight_prob: [0, 4] # 0.5
     threshold: 10 # 40
@@ -188,7 +183,7 @@ loss:
     weight: 0.05
   FFTLoss:
     func: FFTLoss
-    weight: 0.05 
+    weight: 0.01
   
 
 train:
@@ -219,12 +214,13 @@ eval:
   save_flow: true
   use_tensorboard: true
   metrics:
-    # PSNR:
+    PSNR:
       # crop_border: 0
       # max_order: 255.0
-    # SSIM:
-    # LPIPS:
+    SSIM:
+    LPIPS:
     NIQE:
-      crop_border: 0
+      # crop_border: 0
     LR:
-      device: 'cuda:0'
+      # device: 'cuda:0'
+      use_denoise: false

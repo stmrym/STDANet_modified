@@ -39,7 +39,7 @@ class Tester(Trainer):
             self.epoch_l = [weight_path.replace(prefix, '').replace(suffix, '')  for weight_path in self.weight_path_l]
         else:
             self.weight_path_l = [self.opt.test_weights]
-            self.epoch_l = [str(self.init_epoch).zfill(4)]
+            self.epoch_l = [self.opt.test_weights.split('.pth.tar')[0].split('-')[-1]]
 
 
     def _load_test_weights(self, weight_path):

@@ -35,7 +35,9 @@ def main():
     elif opt.phase == 'test':
         timestr = dt.now().isoformat(timespec='seconds').replace(':', '')
         output_dir = Path(opt.exp_path) / 'test' / Path(timestr + '_' + opt.prefix)
-        os.makedirs(output_dir, exist_ok=True)        
+        os.makedirs(output_dir, exist_ok=True)   
+
+        shutil.copy(args.config, output_dir / f'{timestr + "_" + opt.prefix}.yaml')     
 
     elif opt.phase == 'train':
         timestr = dt.now().isoformat(timespec='seconds').replace(':', '')        
