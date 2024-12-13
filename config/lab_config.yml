@@ -6,7 +6,7 @@ use_cudnn_benchmark: true
 weights: ~
 train_batch_size: 8
 eval_batch_size: 1
-prefix: '_VT3_'
+prefix: '_VT3_debug_'
 phase: train  # train, resume, test
 exp_path: ./exp_log
 
