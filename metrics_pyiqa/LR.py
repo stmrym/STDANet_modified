@@ -22,13 +22,16 @@ from LR_utils.pyr_ring import align, grad_ring
 from LR_utils.pyr_ring_cuda import align_cuda, grad_ring_cuda
 from LR_utils.stop_watch import stop_watch
 from LR_utils.debug_util import matrix_imshow
-
+from pyiqa.utils import get_root_logger
 
 
 class LR:
     def __init__(self, device, use_denoise=False, **kwargs):
         self.device = device
         self.use_denoise = use_denoise
+
+        logger = get_root_logger()
+        logger.info(f'Metric [{self.__class__.__name__}] is created.')
 
     # @stop_watch
     def calculate(self, recons, lq, **kwargs):
@@ -351,30 +354,3 @@ class LR:
         result = result_low + result_high
         
         return result
-
-
-
-if __name__ == '__main__':
-
-
-
-    params = {'device': 'cuda:0'}
-
-    blurred_l = [
-        '/mnt/d/results/20241210/074_00000034_input.png'
-    ]
-
-    deblurred_l = [
-        '/mnt/d/results/20241210/074_00000034_output.png'
-    ]
-
-    metric = LR(**params)
-
-
-    for deblurred_path, blurred_path in zip(deblurred_l, blurred_l):
-
-        deblurred = cv2.imread(deblurred_path)
-        blurred = cv2.imread(blurred_path)
-
-        result = metric.calculate(recons=deblurred, lq=blurred)
-        print(f'{deblurred_path}, {blurred_path}, LR: {result:.3f}\n')

@@ -7,6 +7,7 @@ from core.train import Trainer
 from losses.multi_loss import *
 from utils import log
 import glob
+import re
 from tensorboardX import SummaryWriter
 
 class Tester(Trainer):
@@ -35,11 +36,16 @@ class Tester(Trainer):
         # Read Weights Path List
         if '*' in self.opt.test_weights:
             self.weight_path_l = sorted(glob.glob(self.opt.test_weights))
+            pattern = re.compile(r'.*/ckpt-epoch-(\d+)\.pth')
+            self.weight_path_l = [f for f in self.weight_path_l if int(pattern.search(f).group(1)) % self.opt.eval.valid_freq == 0]
+
             prefix, suffix = opt.test_weights.split('*')
             self.epoch_l = [weight_path.replace(prefix, '').replace(suffix, '')  for weight_path in self.weight_path_l]
         else:
             self.weight_path_l = [self.opt.test_weights]
             self.epoch_l = [self.opt.test_weights.split('.pth.tar')[0].split('-')[-1]]
+
+        log.info(f'Testing epochs... {self.epoch_l}')
 
 
     def _load_test_weights(self, weight_path):

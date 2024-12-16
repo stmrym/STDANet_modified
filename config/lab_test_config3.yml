@@ -2,7 +2,7 @@ seed: 0
 device: '0'
 num_workers: 8
 use_cudnn_benchmark: true
-test_weights: /home/moriyamasota/STDAN_modified/exp_log/train/2024-05-20T193725_STDAN_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-*.pth.tar
+test_weights: /home/moriyamasota/STDAN_modified/exp_log/train/2024-06-10T115520_F_ESTDAN_v3_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-*.pth.tar
 # weights: ~
 eval_batch_size: 4
 prefix: ''
@@ -33,7 +33,7 @@ dataset:
       json_file_path: datasets/mi11lite.json
 
 network:
-  arch: STDAN
+  arch: ESTDAN_v3
   use_stack: false
   # use_otho_edge: true
   n_sequence: 3
@@ -62,12 +62,12 @@ eval_transform:
     std: [255.0, 255.0, 255.0]
 
 loss:
-  L1Loss:
-    func: l1Loss
-    weight: 1
-  # CharbonnierLoss:
-  #   func: CharbonnierLoss
+  # L1Loss:
+  #   func: l1Loss
   #   weight: 1
+  CharbonnierLoss:
+    func: CharbonnierLoss
+    weight: 1
   # CleaningCharbonnierLoss:
   #   func: CleaningCharbonnierLoss
   #   weight: 1

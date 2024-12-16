@@ -34,9 +34,11 @@ def main():
 
     elif opt.phase == 'test':
         timestr = dt.now().isoformat(timespec='seconds').replace(':', '')
-        output_dir = Path(opt.exp_path) / 'test' / Path(timestr + '_' + opt.prefix)
-        os.makedirs(output_dir, exist_ok=True)   
+        network_name = opt.network.arch + '_Stack' if opt.network.use_stack else opt.network.arch
+        exp_name = timestr + '_' + opt.prefix + '_' + network_name + '_' + '_'.join(opt.dataset.test.keys())
+        output_dir = Path(opt.exp_path) / 'test' / exp_name
 
+        os.makedirs(output_dir, exist_ok=True)   
         shutil.copy(args.config, output_dir / f'{timestr + "_" + opt.prefix}.yaml')     
 
     elif opt.phase == 'train':
