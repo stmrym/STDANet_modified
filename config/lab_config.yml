@@ -6,7 +6,7 @@ use_cudnn_benchmark: true
 weights: ~
 train_batch_size: 8
 eval_batch_size: 1
-prefix: '_VT3_debug_'
+prefix: '_VT3_CM_'
 phase: train  # train, resume, test
 exp_path: ./exp_log
 
@@ -90,7 +90,7 @@ network:
   n_feat: 32
   kernel_size: 5
   sobel_out_channels: 2  # for ESTDAN
-  use_cleaning: false # for ESTDANv3
+  use_cleaning: true # for ESTDANv3
   is_sequential_cleaning: false
   is_fix_cleaning: false
   dynamic_refine_thres: 255
@@ -175,9 +175,9 @@ loss:
   CharbonnierLoss:
     func: CharbonnierLoss
     weight: 1
-  # CleaningCharbonnierLoss:
-  #   func: CleaningCharbonnierLoss
-  #   weight: 1
+  CleaningCharbonnierLoss:
+    func: CleaningCharbonnierLoss
+    weight: 1
   WarpMSELoss:
     func: warp_loss
     weight: 0.05
@@ -209,7 +209,7 @@ train:
 eval:
   valid_freq: 50  # 50
   visualize_freq: 100 # 50
-  save_input_img: false
+  save_input_img: true
   save_output_img: true
   save_flow: true
   use_tensorboard: true

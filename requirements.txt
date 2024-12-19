@@ -11,3 +11,9 @@ kornia
 streamlit
 av
 lpips
+
+
+[2024/05/15 YOLOv9用にインストール]
+psutil
+ipython
+

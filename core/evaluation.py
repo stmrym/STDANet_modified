@@ -31,7 +31,6 @@ class Evaluation(Trainer):
         self.eval_transforms = self._build_transform(opt.eval_transform)
         if opt.phase == 'test':
             self.dataloader_dict = self._build_dataloader_dict(opt.dataset.test, 'test', self.eval_transforms, opt.eval_batch_size)
-            self.opt.eval.visualize_freq = 1
         elif opt.phase in ['train', 'resume']:
             self.dataloader_dict = self._build_dataloader_dict(opt.dataset.val, 'valid', self.eval_transforms, opt.eval_batch_size)
 

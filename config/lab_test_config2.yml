@@ -2,10 +2,10 @@ seed: 0
 device: '0'
 num_workers: 8
 use_cudnn_benchmark: true
-test_weights: /home/moriyamasota/STDAN_modified/exp_log/train/2024-12-04T192800__ESTDAN_v3_BSD_1ms8ms_BSD_2ms16ms_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-*.pth.tar
+test_weights: /home/moriyamasota/STDAN_modified/exp_log/train/2024-11-21T192622_CM_ESTDAN_v3_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-*.pth.tar
 # weights: ~
 eval_batch_size: 4
-prefix: 'LD'
+prefix: 'CM'
 phase: test  # train, resume, test
 exp_path: ./exp_log
 
@@ -44,7 +44,7 @@ network:
   n_feat: 32
   kernel_size: 5
   sobel_out_channels: 2  # for ESTDAN
-  use_cleaning: false # for ESTDANv3
+  use_cleaning: true # for ESTDANv3
   is_sequential_cleaning: false
   is_fix_cleaning: false
   dynamic_refine_thres: 255 # 255 1.5
@@ -82,7 +82,7 @@ loss:
 eval:
   valid_freq: 50  # 50
   visualize_freq: 100 # 50
-  save_input_img: false
+  save_input_img: true
   save_output_img: true
   save_flow: true
   use_tensorboard: true

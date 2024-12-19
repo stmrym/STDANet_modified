@@ -44,6 +44,8 @@ class Tester(Trainer):
         else:
             self.weight_path_l = [self.opt.test_weights]
             self.epoch_l = [self.opt.test_weights.split('.pth.tar')[0].split('-')[-1]]
+            # Visualizing all epochs regardless of visualize_freq
+            self.opt.eval.visualize_freq = 1
 
         log.info(f'Testing epochs... {self.epoch_l}')
 

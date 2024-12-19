@@ -228,7 +228,7 @@ class ESTDAN_v3(nn.Module):
 
         # sobel_4x_downsample = torch.sqrt((sobel_4x_downsample[:,0]**2 + sobel_4x_downsample[:,1]**2))
         return {
-                # 'pre_input':x, 
+                'pre_input':x, 
                 'out':outBlock,
                 'flow_forwards':flow_forward,
                 'flow_backwards':flow_backward

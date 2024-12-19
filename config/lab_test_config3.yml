@@ -2,10 +2,10 @@ seed: 0
 device: '0'
 num_workers: 8
 use_cudnn_benchmark: true
-test_weights: /home/moriyamasota/STDAN_modified/exp_log/train/2024-06-10T115520_F_ESTDAN_v3_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-*.pth.tar
+test_weights: /home/moriyamasota/STDAN_modified/exp_log/train/2024-05-20T193725_STDAN_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-0850.pth.tar
 # weights: ~
 eval_batch_size: 4
-prefix: ''
+prefix: 'input'
 phase: test  # train, resume, test
 exp_path: ./exp_log
 
@@ -33,7 +33,7 @@ dataset:
       json_file_path: datasets/mi11lite.json
 
 network:
-  arch: ESTDAN_v3
+  arch: STDAN
   use_stack: false
   # use_otho_edge: true
   n_sequence: 3
@@ -85,15 +85,15 @@ eval:
   save_input_img: false
   save_output_img: true
   save_flow: true
-  use_tensorboard: true
+  use_tensorboard: false
   metrics:
     # PSNR:
-  #     crop_border: 0
-  #     max_order: 255.0
+    #   crop_border: 0
+    #   max_order: 255.0
     # SSIM:
     # LPIPS:
     NIQE:
-      # crop_border: 0
+    #   # crop_border: 0
     LR:
-      # device: 'cuda:0'
+    #   # device: 'cuda:0'
       use_denoise: false
