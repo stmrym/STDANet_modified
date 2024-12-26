@@ -2,12 +2,12 @@ seed: 0
 device: '0'
 num_workers: 8
 use_cudnn_benchmark: true
-# weights: ./exp_log/train/2024-11-26T024206_C_ESTDAN_v3_BSD_3ms24ms_GOPRO/checkpoints/latest-ckpt.pth.tar
-weights: ~
+weights: ./exp_log/train/2024-12-20T090716__VT3_CM__ESTDAN_v3_BSD_3ms24ms_GOPRO/checkpoints/latest-ckpt.pth.tar
+# weights: ~
 train_batch_size: 8
 eval_batch_size: 1
-prefix: '_CM_'
-phase: train  # train, resume, test
+prefix: '_VT3_CM_'
+phase: resume  # train, resume, test
 exp_path: ./exp_log
 
 dataset:
@@ -115,11 +115,11 @@ train_transform:
     gaussian_para: [0, 1.0e-4]  # mu, std_var
   
   # # # for blur only transform 
-  # UnsharpMasking:
-  #   kernel_size_l: [3, 5, 7, 9, 11] # 51
-  #   sigma: 0
-  #   weight_prob: [0, 4] # 0.5
-  #   threshold: 10 # 40
+  UnsharpMasking:
+    kernel_size_l: [3, 5, 7, 9, 11] # 51
+    sigma: 0
+    weight_prob: [0, 4] # 0.5
+    threshold: 10 # 40
 
   # RandomBlur:
   #   params:
@@ -155,11 +155,11 @@ train_transform:
   #     quality: [60, 95]   # 30, 95
   #     quality_step: 3
 
-  # RandomVideoCompression:
-  #   params:
-  #     codec: ['libx264', 'h264', 'mpeg4']
-  #     codec_prob: [1/3, 1/3, 1/3]
-  #     bitrate: [1.0e+4, 1.0e+5]   # [1.0e+4, 1.0e+5]
+  RandomVideoCompression:
+    params:
+      codec: ['libx264', 'h264', 'mpeg4']
+      codec_prob: [1/3, 1/3, 1/3]
+      bitrate: [1.0e+4, 1.0e+5]   # [1.0e+4, 1.0e+5]
 
 
 
@@ -190,9 +190,9 @@ train:
   use_percept_loss: false
   motion_requires_grad: true
   sobel_requires_grad: true
-  n_epochs: 1201
+  n_epochs: 2001
   save_freq: 50 # 50
-  cleaning_fix_epoch: 1201  # Valid for when using cleaning module
+  cleaning_fix_epoch: 2001  # Valid for when using cleaning module
   optimization:
     learning_rate: 1.0e-4
     lr_milestones: 
@@ -200,6 +200,10 @@ train:
       - 600
       - 800
       - 1000
+      - 1200
+      - 1400
+      - 1600
+      - 1800
     lr_decay: 0.5
     momentum: 0.9
     beta: 0.999

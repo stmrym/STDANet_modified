@@ -2,10 +2,10 @@ seed: 0
 device: '0'
 num_workers: 8
 use_cudnn_benchmark: true
-test_weights: /home/moriyamasota/STDAN_modified/exp_log/train/2024-11-27T202956_VT2_ESTDAN_v3_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-*.pth.tar
+test_weights: ./exp_log/train/2024-12-20T090716__VT3_CM__ESTDAN_v3_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-1250.pth.tar
 # weights: ~
 eval_batch_size: 4
-prefix: 'VT2'
+prefix: 'VT3_CM_e1250'
 phase: test  # train, resume, test
 exp_path: ./exp_log
 
@@ -44,7 +44,7 @@ network:
   n_feat: 32
   kernel_size: 5
   sobel_out_channels: 2  # for ESTDAN
-  use_cleaning: false # for ESTDANv3
+  use_cleaning: true # for ESTDANv3
   is_sequential_cleaning: false
   is_fix_cleaning: false
   dynamic_refine_thres: 255 # 255 1.5
