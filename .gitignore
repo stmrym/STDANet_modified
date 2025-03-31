@@ -175,7 +175,7 @@ datasets/rename_dataset.py
 datasets/make_original_json.py
 
 # Config
-config/lab_*.yml
+./config/lab_*
 
 
 # VScode

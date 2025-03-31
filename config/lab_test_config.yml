@@ -2,11 +2,11 @@ seed: 0
 device: '0'
 num_workers: 8
 use_cudnn_benchmark: true
-test_weights: ./exp_log/train/2024-12-20T090716__VT3_CM__ESTDAN_v3_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-1250.pth.tar
+test_weights: ~
 # weights: ~
 eval_batch_size: 4
-prefix: 'VT3_CM_e1250'
-phase: test  # train, resume, test
+prefix: ''
+phase: test   # [train], [resume], or [test]
 exp_path: ./exp_log
 
 dataset:
@@ -76,7 +76,7 @@ eval:
   save_output_img: true
   save_flow: true
   use_tensorboard: true
-  metrics:
+  metrics:  # Uncomment out if necessary
     # PSNR:
     # SSIM:
     # LPIPS:

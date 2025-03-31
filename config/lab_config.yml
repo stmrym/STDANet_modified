@@ -2,12 +2,11 @@ seed: 0
 device: '0'
 num_workers: 8
 use_cudnn_benchmark: true
-# weights: ./exp_log/train/2024-12-11T210210_ESTDAN_VT2_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-*.pth.tar
-# weights: ~
-test_weights: ./exp_log/train/2025-01-21T050901_STDAN_VT2_CM_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-*.pth.tar
+weights: ~  # ~ for [train] or '*.pth.tar' for [resume], [test] 
+test_weights: ~
 train_batch_size: 8
 eval_batch_size: 1
-prefix: 'VT2_CM'
+prefix: ''
 phase: test  # [train], [resume], or [test]
 exp_path: ./exp_log
 
@@ -199,7 +198,7 @@ eval:
   save_input_img: true  # save input or pre-input image (when using cleaning module) 
   save_output_img: true # save output image
   use_tensorboard: true
-  metrics:
+  metrics: # Uncomment out if necessary
     PSNR:
     SSIM:
     LPIPS:
