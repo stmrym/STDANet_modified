@@ -2,13 +2,12 @@ seed: 0
 device: '0'
 num_workers: 8
 use_cudnn_benchmark: true
-# weights: ./exp_log/train/2024-12-11T210210_ESTDAN_VT2_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-*.pth.tar
-# weights: ~
-test_weights: ./exp_log/train/2025-01-21T050901_STDAN_VT2_CM_BSD_3ms24ms_GOPRO/checkpoints/ckpt-epoch-*.pth.tar
+weights: ~  # ~ for [train] or '*.pth.tar' for [resume], [test] 
+test_weights: ~ # ~ or '*.pth.tar'
 train_batch_size: 8
 eval_batch_size: 1
-prefix: 'VT2_CM'
-phase: test  # [train], [resume], or [test]
+prefix: ''
+phase: train  # [train], [resume], or [test]
 exp_path: ./exp_log
 
 dataset:
@@ -25,18 +24,18 @@ dataset:
 
 
   val:
-    Mi11Lite:
-      image_blur_path: ../dataset/Mi11Lite/%s/%s/%s.png
-      image_clear_path: ../dataset/Mi11Lite/%s/%s/%s.png
-      json_file_path: datasets/mi11lite.json
+    BSD_3ms24ms:
+      image_blur_path: ../dataset/BSD_3ms24ms/%s/blur/%s/%s.png
+      image_clear_path: ../dataset/BSD_3ms24ms/%s/GT/%s/%s.png # %s, %s, %s: phase, seq_name, image_name template
+      json_file_path: datasets/BSD_3ms24ms_test.json
+
+    GOPRO:
+      image_blur_path: ../dataset/GOPRO_Large/%s/%s/blur_gamma/%s.png
+      image_clear_path: ../dataset/GOPRO_Large/%s/%s/sharp/%s.png
+      json_file_path: datasets/GOPRO_test.json
 
 
   test:
-    # Mi11Lite:
-    #   image_blur_path: ../dataset/Mi11Lite/%s/%s/%s.png
-    #   image_clear_path: ../dataset/Mi11Lite/%s/%s/%s.png
-    #   json_file_path: datasets/mi11lite.json
-    
     BSD_3ms24ms:
       image_blur_path: ../dataset/BSD_3ms24ms/%s/blur/%s/%s.png
       image_clear_path: ../dataset/BSD_3ms24ms/%s/GT/%s/%s.png # %s, %s, %s: phase, seq_name, image_name template
@@ -49,7 +48,7 @@ dataset:
 
 
 network:
-  arch: STDAN  # [STDAN] or [ESTDAN]
+  arch: STDAN # [STDAN] or [ESTDAN]
   use_stack: false
   n_sequence: 3
 

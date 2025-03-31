@@ -28,7 +28,7 @@ dataset:
       json_file_path: datasets/mi11lite.json
 
 network:
-  arch: ESTDAN
+  arch: ESTDAN  # [STDAN] or [ESTDAN]
   use_stack: false
   # use_otho_edge: true
   n_sequence: 3
