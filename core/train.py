@@ -102,6 +102,7 @@ class Trainer:
         log.info(f'{dt.now()} Recovering from {self.opt.weights} ...')
         
         checkpoint = torch.load(self.opt.weights, map_location='cpu')
+        # [TODO] implement for using CM at transfer learning
         self.deblurnet.load_state_dict({k.replace('module.',''):v for k,v in checkpoint['deblurnet_state_dict'].items()})
         self.deblurnet_solver.load_state_dict(checkpoint['deblurnet_solver_state_dict'])
 
@@ -110,7 +111,9 @@ class Trainer:
                     if torch.is_tensor(v):
                         state[k] = v.to(self.device)
         # deblurnet_lr_scheduler.load_state_dict(checkpoint['deblurnet_lr_scheduler'])
-        self.init_epoch = checkpoint['epoch_idx'] + 1
+        # self.init_epoch = checkpoint['epoch_idx'] + 1
+        self.init_epoch = 0
+
 
     def _build_dataloader(self, dataset_opt, phase, transforms, batch_size):
         # Setup datasets

@@ -21,11 +21,6 @@ dataset:
         # image_blur_path: ../dataset/BSD_3ms24ms/%s/blur/%s/%s.png
         # image_clear_path: ../dataset/BSD_3ms24ms/%s/GT/%s/%s.png
         # json_file_path: datasets/BSD_3ms24ms_test.json
-
-    # BSD_3ms24ms:
-      # image_blur_path: ../dataset/BSD_3ms24ms/%s/blur/%s/%s.png
-      # image_clear_path: ../dataset/BSD_3ms24ms/%s/GT/%s/%s.png
-      # json_file_path: datasets/BSD_3ms24ms_test.json
     
     Mi11Lite:
       image_blur_path: ../dataset/Mi11Lite/%s/%s/%s.png
@@ -33,7 +28,7 @@ dataset:
       json_file_path: datasets/mi11lite.json
 
 network:
-  arch: ESTDAN_v3
+  arch: ESTDAN
   use_stack: false
   # use_otho_edge: true
   n_sequence: 3
@@ -50,11 +45,6 @@ network:
   dynamic_refine_thres: 255 # 255 1.5
   n_cleaning_blocks: 5 # 20
   mid_channels: 32 # 64
-
-raft:
-  config_file: ../STDAN_modified/mmflow/configs/raft/raft_8x2_100k_mixed_368x768.py
-  checkpoint: ../STDAN_modified/mmflow/checkpoints/raft_8x2_100k_mixed_368x768.pth
-
 
 eval_transform:
   Normalize:
@@ -88,12 +78,8 @@ eval:
   use_tensorboard: true
   metrics:
     # PSNR:
-  #     crop_border: 0
-  #     max_order: 255.0
     # SSIM:
     # LPIPS:
     NIQE:
-      # crop_border: 0
     LR:
-      # device: 'cuda:0'
       use_denoise: false

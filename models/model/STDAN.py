@@ -2,6 +2,7 @@ import torch.nn as nn
 import torch
 import models.model.blocks as blocks
 from models.submodules import DeformableAttnBlock, DeformableAttnBlock_FUSION
+from models.mmedit import ResidualBlocksWithInputConv
 # from positional_encodings import PositionalEncodingPermute3D
 from torch.nn.init import xavier_uniform_, constant_
 def make_model(args):
@@ -14,8 +15,27 @@ def make_model(args):
 
 class STDAN(nn.Module):
 
-    def __init__(self, in_channels=3, out_channels=3, n_resblock=3, n_feat=32, kernel_size=5, **kwargs):
+    def __init__(self, in_channels=3, out_channels=3, n_resblock=3, n_feat=32, kernel_size=5, 
+                 use_cleaning=False, is_sequential_cleaning=False, is_fix_cleaning=False, dynamic_refine_thres=255, n_cleaning_blocks=20, mid_channels=64,
+                 **kwargs):
         super(STDAN, self).__init__()
+
+        self.n_feat = n_feat
+        self.use_cleaning = use_cleaning
+        
+        if self.use_cleaning:
+            self.dynamic_refine_thres = dynamic_refine_thres / 255.
+            self.is_sequential_cleaning = is_sequential_cleaning
+
+            # image cleaning module
+            self.image_cleaning = nn.Sequential(
+                ResidualBlocksWithInputConv(3, mid_channels, n_cleaning_blocks),
+                nn.Conv2d(mid_channels, 3, 3, 1, 1, bias=True),
+            )
+            if is_fix_cleaning:  # keep the weights of the cleaning module fixed
+                self.image_cleaning.requires_grad_(False)
+            print('Use cleaning module')
+
         InBlock = []
         InBlock.extend([nn.Sequential(
             nn.Conv2d(in_channels, n_feat, kernel_size=3, stride=1,
@@ -104,6 +124,25 @@ class STDAN(nn.Module):
     def forward(self, x):
         b, n, c, h, w = x.size()
         
+                # Pre-Cleaning Module
+        if self.use_cleaning:
+            for clean_iter in range(0, 3):  # at most 3 cleaning, determined empirically
+                if self.is_sequential_cleaning:
+                    residues = []
+                    for i in range(0, n):
+                        residue_i = self.image_cleaning(x[:, i, :, :, :])
+                        x[:, i, :, :, :] += residue_i
+                        residues.append(residue_i)
+                    residues = torch.stack(residues, dim=1)
+                else:  # time -> batch, then apply cleaning at once
+                    x = x.view(-1, c, h, w)
+                    residues = self.image_cleaning(x)
+                    x = (x + residues).view(b, n, c, h, w)
+                
+                # determine whether to continue cleaning
+                # print(clean_iter, torch.mean(torch.abs(residues)))
+                if torch.mean(torch.abs(residues)) < self.dynamic_refine_thres:
+                    break
         
         first_scale_inblock = self.inBlock_t(x.view(b*n,c,h,w))
         

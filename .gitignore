@@ -148,8 +148,9 @@ datasets/data/__pycache__
 models/ops/functions/__pycache__
 models/ops/modules/__pycache__
 weights/*
+weights_for_app/*
 demo_output/*
-STDANet_train_ckpt
+results_complementary/*
 
 # Training and testing code
 run_train.sh
@@ -163,6 +164,7 @@ docker-compose.yml
 
 # Debug
 debug_results
+debug_scripts/
 debug.py
 summary
 *.pt
