@@ -81,7 +81,7 @@ savename = 'my_dataset'
 
 
 
-## RUN
+## Run
 To train, resume, and test , you can simply use the following command (e.g., using [config/sample_config.yml](config/sample_config.yml)):
 ```
 python runner.py config/sample_config.yml
